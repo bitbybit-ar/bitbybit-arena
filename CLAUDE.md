@@ -1,0 +1,206 @@
+# CLAUDE.md - BitByBit Challenges
+
+## Proyecto
+
+**BitByBit Challenges** es un cliente Nostr donde cualquier usuario puede crear desafios, competir con otros y ganar badges y sats via Lightning Network. Es el segundo proyecto de la organizacion BitByBit, despues del habit tracker.
+
+## Hackathon
+
+- **Nombre**: Hackathon #2 de La Crypta
+- **Tema**: Nostr
+- **Entrega**: PR al repo de la hackathon
+- **Pitch**: 3 minutos maximo
+- **Jurado**: Evaluacion por IA
+
+## Stack tecnologico
+
+- **Framework**: Next.js (latest), React 19, TypeScript strict
+- **Estilos**: SCSS modules (NO Tailwind, NO CSS-in-JS)
+- **Iconos**: SVG custom en `components/icons/` (NO lucide-react, NO icon libraries)
+- **i18n**: next-intl con `[locale]` routing (espanol default, ingles segundo idioma)
+- **Base de datos**: Neon DB (PostgreSQL serverless) via `@neondatabase/serverless`
+- **ORM**: Drizzle ORM
+- **Auth**: Nostr solamente (NIP-07 browser extension, NIP-42 challenge-response)
+- **Lightning**: NWC (Nostr Wallet Connect) via `@getalby/sdk`, WebLN, NIP-57 Zaps
+- **Media**: Blossom (NIP-B7) para proof uploads
+- **Badges**: NIP-58
+- **Fuente**: Nunito / Nunito Sans (Google Fonts)
+
+## Estructura del proyecto
+
+```
+bitbybit-challenges/
+  app/
+    [locale]/                  <- Rutas con i18n (es, en)
+      (auth)/                  <- Login con Nostr
+      (app)/                   <- App principal (3 tabs)
+        feed/                  <- Actividad de seguidos
+        explore/               <- Explorar + crear desafios
+        my-challenges/         <- Desafios del usuario
+      layout.tsx               <- Layout con providers
+      page.tsx                 <- Landing page
+    api/                       <- API routes (NO dentro de [locale])
+      auth/                    <- Nostr auth (challenge-response)
+    layout.tsx                 <- Root layout
+  components/
+    common/                    <- Bubble, Block, BlockTower (design system)
+    icons/                     <- SVG icons como React components
+    landing/                   <- Hero, HowItWorks, About, Partners, Support
+    layout/                    <- Navbar, Footer, NostrLoginModal
+  i18n/                        <- Configuracion next-intl
+  lib/
+    api/                       <- apiHandler wrapper, errores
+    db/                        <- Drizzle ORM schema y conexion
+    hooks/                     <- useNostr, useScrollReveal
+    nostr/                     <- types, verify, relays, metadata
+    auth.ts                    <- Sesiones JWT
+    types.ts                   <- Interfaces TypeScript compartidas
+    theme-context.tsx          <- Theme provider (light/dark)
+  messages/                    <- es.json, en.json
+  styles/                      <- SCSS foundation
+    _colors.scss               <- Color aliases + alpha() helper
+    _theme.scss                <- Light/dark theme definitions
+    _spacing.scss              <- Spacing scale + container
+    _typography.scss           <- Font families, sizes, weights
+    _common-mixins.scss        <- container, gradient-text, card-base, section-padding
+    _media-mixins.scss         <- Responsive breakpoints
+    _cards.scss                <- Card system (solid, no glassmorphism)
+    _bubbles.scss              <- Bubble animations
+    _blocks.scss               <- Block animations
+    globals.scss               <- Global resets, scroll reveal
+  tests/
+  docs/                        <- Design docs, Nostr event specs
+  drizzle/                     <- Migrations
+```
+
+### Reglas de estructura
+
+- **NO usar carpeta `src/`** - Todo en root
+- **Componentes**: un directorio por componente con `index.tsx` + `nombre.module.scss`
+- **Paginas**: usar route groups `(auth)`, `(app)` para organizar
+- **API routes**: siempre en `app/api/`, nunca dentro de `[locale]`
+- **Tipos**: centralizar en `lib/types.ts`
+
+## Convenciones de codigo
+
+### TypeScript
+- Strict mode habilitado
+- Usar `interface` para objetos, `type` para unions/intersections
+- NO usar `any` - usar `unknown` con type guards
+- Imports con alias `@/` (mapea a root)
+
+### React
+- `"use client"` solo cuando se necesite (hooks, eventos, browser APIs)
+- Server Components por defecto
+- Props interface antes del componente
+
+### SCSS
+- Usar SCSS modules (`.module.scss`) para cada componente
+- Importar modulos de estilos con `@use`:
+  ```scss
+  @use "@/styles/colors" as *;
+  @use "@/styles/spacing" as *;
+  @use "@/styles/typography" as *;
+  @use "@/styles/common-mixins" as *;
+  @use "@/styles/media-mixins" as *;
+  @use "@/styles/cards" as *;
+  ```
+
+#### Variables obligatorias (NO hardcodear valores)
+- **Colores**: Siempre usar variables `$color-*` de `_colors.scss`
+- **Transparencia**: Usar `alpha($color, amount)`
+- **Spacing**: `$spacing-4` a `$spacing-100` (NO usar px sueltos)
+- **Border radius**: `$border-radius-sm` a `$border-radius-full`
+- **Font sizes**: `$font-size-xs` a `$font-size-hero`
+- **Font weights**: `$font-weight-normal` a `$font-weight-extrabold`
+
+#### Design System: NO Glassmorphism
+- Usar cards solidas (`@include card` de `_cards.scss`)
+- Elementos decorativos: **Bubbles** (circulos flotantes) y **Blocks** (del loader BitByBit)
+- Los Bubbles rompen la estructura de secciones y agregan movimiento organico
+- Los Blocks representan progreso y la marca "bit by bit"
+- Dark mode y light mode con paleta de colores limpia (purple, gold, green, red)
+
+#### Responsive (mobile-first)
+- `@include mobile`, `@include tablet`, `@include desktop`
+
+### Paleta de colores
+| Rol | Light | Dark |
+|-----|-------|------|
+| Background | White #FFFFFF | Navy #0F0F1A |
+| Surface | Warm Gray #F7F7F8 | Dark Navy #1A1A2E |
+| Primary (Purple) | #8B5CF6 | #A78BFA |
+| Secondary (Gold) | #F7A825 | #F7A825 |
+| Accent (Red) | #EF4444 | #F87171 |
+| Accent Alt (Green) | #22C55E | #34D399 |
+
+### Iconos
+- Crear SVG icons como React components en `components/icons/index.tsx`
+- Props estandar: `size`, `className`, `color`
+- NO instalar librerias de iconos externas
+
+### i18n
+- Usar `useTranslations()` en client components
+- Usar `getTranslations()` en server components
+- Todas las strings visibles deben estar en `messages/es.json` y `messages/en.json`
+- Espanol es el idioma por defecto
+
+### Auth
+- Nostr solamente (NIP-07 extension)
+- NIP-42 challenge-response flow
+- Sesion via cookie httpOnly (`session`)
+- JWT con jose (HS256, 7 dias)
+- Auto-create user on first Nostr login
+
+### Base de datos
+- Drizzle ORM con Neon DB
+- Conexion lazy via `getDb()` en `lib/db/index.ts`
+- Schema Drizzle en `lib/db/schema.ts` (source of truth)
+- 8 tablas: users, challenges, participants, completions, votes, prizes, badges, notifications
+- NO usar string interpolation en queries (SQL injection)
+
+### Nostr NIPs usados
+- **NIP-01**: Protocolo basico
+- **NIP-07**: Login con extension del browser
+- **NIP-42**: Challenge-response auth
+- **NIP-57**: Lightning Zaps (premios, donaciones)
+- **NIP-58**: Badges (logros por completar desafios)
+- **NIP-75**: Zap Goals (funding de premio)
+- **NIP-B7**: Blossom (uploads de prueba de completacion)
+- **NIP-92**: Media attachments (metadatos de fotos)
+
+## Modelo de datos clave
+
+- **User**: identidad Nostr (pubkey), perfil sincronizado de relays
+- **Challenge**: creado por un usuario, con reglas, duracion, tipo, premio opcional
+- **Participant**: usuario que se unio a un desafio, con progreso y puntos
+- **Completion**: prueba de completacion (foto, texto) con status de verificacion
+- **Vote**: voto de la comunidad para verificar completaciones
+- **Prize**: registro de pago de premio Lightning
+- **Badge**: badge NIP-58 otorgado al completar un desafio
+- **Notification**: notificaciones in-app
+
+## Comandos
+
+```bash
+npm run dev          # Servidor de desarrollo
+npm run build        # Build de produccion
+npm run lint         # ESLint
+npm test             # Correr tests (Vitest)
+npm run test:watch   # Tests en modo watch
+npm run test:coverage # Tests con cobertura
+npx tsc --noEmit     # Type-check sin compilar
+```
+
+## Git workflow
+
+- **Never push directly to `main`**. Always create a feature branch and open a PR.
+- Branch naming: `fix/<description>` or `feat/<description>`
+- Use `gh pr create` to open the PR with a clear title and description.
+- Git author for commits: `Analia Acosta <analia.a.acosta@gmail.com>`
+
+## Proyecto relacionado
+
+- [bitbybit-habits](https://github.com/bitbybit-ar/bitbybit-habits): Habit tracker con Lightning rewards (Hackathon #1 FOUNDATIONS)
+- Misma organizacion, mismo stack, mismas convenciones de codigo
+- Dominio: https://bitbybit.com.ar

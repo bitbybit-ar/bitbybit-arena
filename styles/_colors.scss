@@ -1,0 +1,30 @@
+// Color aliases — map to CSS custom properties set by _theme.scss
+$color-primary: var(--color-primary);
+$color-secondary: var(--color-secondary);
+$color-accent: var(--color-accent);
+$color-accent-alt: var(--color-accent-alt);
+$color-success: var(--color-success);
+$color-warning: var(--color-warning);
+$color-error: var(--color-error);
+$color-info: var(--color-info);
+$color-nostr: var(--color-nostr);
+
+$color-bg: var(--color-bg);
+$color-bg-2: var(--color-bg-2);
+$color-bg-3: var(--color-bg-3);
+$color-surface: var(--color-surface);
+
+$color-text-primary: var(--color-text-primary);
+$color-text-secondary: var(--color-text-secondary);
+
+$color-border: var(--color-border);
+
+// Static colors (don't change with theme)
+$static-white: #ffffff;
+$static-black: #000000;
+$static-navy: #0f0f1a;
+
+// Transparency helper — use instead of rgba() with CSS vars
+@function alpha($color, $amount) {
+  @return color-mix(in srgb, $color $amount, transparent);
+}

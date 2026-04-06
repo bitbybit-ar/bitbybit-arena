@@ -1,0 +1,97 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+
+.footer {
+  border-top: 1px solid $color-border;
+  padding: $spacing-40 0 $spacing-24;
+}
+
+.inner {
+  @include container;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-24;
+  flex-wrap: wrap;
+  gap: $spacing-16;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+}
+
+.logoBlocks {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.brandText {
+  font-family: $font-display;
+  font-weight: $font-weight-bold;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: $spacing-20;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: $spacing-4;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  text-decoration: none;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: $color-text-primary;
+    text-decoration: none;
+  }
+}
+
+.bottom {
+  text-align: center;
+  padding-top: $spacing-24;
+  border-top: 1px solid $color-border;
+}
+
+.built {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  margin-bottom: $spacing-8;
+}
+
+.hackathonLink {
+  color: $color-primary;
+  text-decoration: none;
+  font-weight: $font-weight-medium;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.motto {
+  font-family: $font-display;
+  font-weight: $font-weight-bold;
+  font-size: $font-size-base;
+  @include gradient-text;
+  background-image: linear-gradient(
+    135deg,
+    $color-primary,
+    $color-secondary,
+    $color-accent-alt
+  );
+}

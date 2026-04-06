@@ -1,0 +1,44 @@
+@use "@/styles/spacing" as *;
+
+.tower {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.blocks {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 4px;
+  align-items: center;
+}
+
+.glow {
+  position: absolute;
+  bottom: -20px;
+  width: 120px;
+  height: 40px;
+  border-radius: 50%;
+  filter: blur(12px);
+  opacity: 0.35;
+  animation: glow-pulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow {
+    animation: none;
+    opacity: 0.35;
+  }
+}

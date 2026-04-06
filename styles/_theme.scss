@@ -1,0 +1,93 @@
+// Theme definitions — white/navy backgrounds with purple, gold, green, red accents
+
+$themes: (
+  light: (
+    // Backgrounds
+    color-bg: #ffffff,
+    color-bg-2: #f7f7f8,
+    color-bg-3: #efefef,
+    color-surface: #f7f7f8,
+
+    // Text
+    color-text-primary: #1a1a2e,
+    color-text-secondary: #6b7280,
+
+    // Accents
+    color-primary: #8b5cf6,
+    color-secondary: #f7a825,
+    color-accent: #ef4444,
+    color-accent-alt: #22c55e,
+
+    // Semantic
+    color-success: #22c55e,
+    color-warning: #f7a825,
+    color-error: #ef4444,
+    color-info: #3b82f6,
+    color-nostr: #8b5cf6,
+
+    // Border
+    color-border: rgba(26 26 46 / 0.08),
+
+    // Card
+    card-shadow: rgba(0 0 0 / 0.04),
+    card-shadow-hover: rgba(139 92 246 / 0.12),
+    card-border: rgba(26 26 46 / 0.08),
+
+    // Bubble
+    bubble-opacity: 0.08,
+  ),
+  dark: (
+    // Backgrounds
+    color-bg: #0f0f1a,
+    color-bg-2: #1a1a2e,
+    color-bg-3: #252540,
+    color-surface: #1a1a2e,
+
+    // Text
+    color-text-primary: #f0f0f5,
+    color-text-secondary: #9ca3af,
+
+    // Accents — slightly brighter for dark bg contrast
+    color-primary: #a78bfa,
+    color-secondary: #f7a825,
+    color-accent: #f87171,
+    color-accent-alt: #34d399,
+
+    // Semantic
+    color-success: #34d399,
+    color-warning: #f7a825,
+    color-error: #f87171,
+    color-info: #60a5fa,
+    color-nostr: #a78bfa,
+
+    // Border
+    color-border: rgba(255 255 255 / 0.06),
+
+    // Card
+    card-shadow: rgba(0 0 0 / 0.2),
+    card-shadow-hover: rgba(167 139 250 / 0.15),
+    card-border: rgba(255 255 255 / 0.06),
+
+    // Bubble
+    bubble-opacity: 0.12,
+  ),
+);
+
+// Generate CSS custom properties from theme map
+@mixin theme-properties($theme-map) {
+  @each $key, $value in $theme-map {
+    --#{$key}: #{$value};
+  }
+}
+
+// Light theme is default
+:root,
+[data-theme="light"] {
+  @include theme-properties(map-get($themes, light));
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  @include theme-properties(map-get($themes, dark));
+  color-scheme: dark;
+}

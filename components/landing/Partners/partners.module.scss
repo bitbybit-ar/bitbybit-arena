@@ -1,0 +1,66 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/cards" as *;
+
+.section {
+  @include section-padding;
+  position: relative;
+}
+
+.container {
+  @include container;
+  text-align: center;
+}
+
+.title {
+  font-family: $font-display;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-extrabold;
+  margin-bottom: $spacing-48;
+}
+
+.logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-48;
+  flex-wrap: wrap;
+}
+
+.partnerLink {
+  @include card;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-12;
+  padding: $spacing-24 $spacing-32;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px var(--card-shadow-hover);
+    text-decoration: none;
+  }
+
+  &:hover .partnerLogo {
+    filter: grayscale(0);
+  }
+}
+
+.partnerLogo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  filter: grayscale(1);
+  transition: filter 0.3s ease;
+}
+
+.partnerName {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}

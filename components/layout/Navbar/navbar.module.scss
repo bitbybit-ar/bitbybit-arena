@@ -1,0 +1,81 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/media-mixins" as *;
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: $navbar-height;
+  z-index: 1000;
+  transition: background-color 0.3s ease, border-color 0.3s ease,
+    box-shadow 0.3s ease;
+  border-bottom: 1px solid transparent;
+}
+
+.scrolled {
+  background-color: $color-bg;
+  border-bottom-color: $color-border;
+  box-shadow: 0 1px 8px var(--card-shadow);
+}
+
+.inner {
+  max-width: $container-max-width;
+  margin: 0 auto;
+  padding: 0 $container-padding;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
+}
+
+.logoBlocks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.logoText {
+  font-family: $font-display;
+  font-weight: $font-weight-bold;
+  font-size: $font-size-base;
+  color: $color-text-primary;
+
+  @include mobile {
+    display: none;
+  }
+}
+
+.logoAccent {
+  color: $color-primary;
+}
+
+.signInButton {
+  background: $color-primary;
+  color: $static-white;
+  border: none;
+  border-radius: $border-radius-md;
+  padding: $spacing-8 $spacing-20;
+  font-family: $font-body;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}

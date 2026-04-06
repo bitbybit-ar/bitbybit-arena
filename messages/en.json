@@ -1,0 +1,92 @@
+{
+  "common": {
+    "appName": "BitByBit Challenges",
+    "signIn": "Sign in",
+    "signInWithNostr": "Sign in with Nostr",
+    "signOut": "Sign out",
+    "loading": "Loading",
+    "error": "Error",
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "copy": "Copy",
+    "copied": "Copied",
+    "sats": "sats",
+    "viewAll": "View all"
+  },
+  "landing": {
+    "hero": {
+      "badge": "Built on Nostr",
+      "headline1": "Challenge Yourself.",
+      "headline2": "Earn Sats.",
+      "subtitle": "Create challenges, compete with others, prove your wins, and earn Bitcoin rewards — all on the open Nostr network.",
+      "exploreCta": "Explore Challenges",
+      "createCta": "Create a Challenge"
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "step1Title": "Create",
+      "step1Description": "Set the rules, duration, and fund it with sats. Your challenge is published to Nostr for anyone to discover.",
+      "step2Title": "Compete",
+      "step2Description": "Join challenges, submit photo proof, and track your progress. The community verifies completions.",
+      "step3Title": "Earn",
+      "step3Description": "Complete challenges to earn NIP-58 badges and Lightning rewards. Your wins are visible across Nostr."
+    },
+    "about": {
+      "title": "Part of the BitByBit Ecosystem",
+      "description": "BitByBit started as a habit tracker that rewards kids with real sats for completing tasks. Now we're taking the same idea — real rewards for real effort — to the open Nostr network.",
+      "habitsTitle": "BitByBit Habits",
+      "habitsPrivate": "Private & family-focused",
+      "habitsRoutines": "Daily routines",
+      "habitsReward": "Sponsor rewards kid",
+      "habitsLink": "Visit bitbybit.com.ar",
+      "challengesTitle": "BitByBit Challenges",
+      "challengesPublic": "Public & social",
+      "challengesCompetitions": "Time-bounded competitions",
+      "challengesReward": "Community rewards everyone",
+      "challengesHere": "You're here"
+    },
+    "partners": {
+      "title": "Partners"
+    },
+    "support": {
+      "title": "Support BitByBit",
+      "subtitle": "Open source and community-driven. Help us keep building.",
+      "donateSats": "Donate Sats",
+      "donateDescription": "Send sats via Lightning Network",
+      "contribute": "Contribute",
+      "contributeDescription": "Collaborate on GitHub with code or ideas",
+      "starOnGithub": "Star on GitHub",
+      "zapUs": "Zap us"
+    },
+    "footer": {
+      "builtFor": "Built for",
+      "hackathonName": "Hackathon #2 by La Crypta",
+      "motto": "Bit by bit, building the future",
+      "github": "GitHub",
+      "nostr": "Nostr",
+      "habits": "BitByBit Habits"
+    }
+  },
+  "nostrLogin": {
+    "title": "Sign in with Nostr",
+    "description": "Use your Nostr extension (Alby, nos2x, etc.) to sign in.",
+    "connecting": "Connecting...",
+    "noExtension": "No Nostr extension detected",
+    "installExtension": "Install an extension like Alby or nos2x to continue.",
+    "getAlby": "Get Alby",
+    "error": "Error connecting with Nostr",
+    "retry": "Retry"
+  },
+  "feed": {
+    "title": "Activity"
+  },
+  "explore": {
+    "title": "Explore Challenges",
+    "createNew": "Create Challenge"
+  },
+  "myChallenges": {
+    "title": "My Challenges"
+  }
+}

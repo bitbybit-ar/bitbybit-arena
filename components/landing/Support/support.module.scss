@@ -1,0 +1,142 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/cards" as *;
+@use "@/styles/media-mixins" as *;
+
+.section {
+  @include section-padding;
+  position: relative;
+  background: $color-bg-2;
+}
+
+.container {
+  @include container;
+  text-align: center;
+}
+
+.title {
+  font-family: $font-display;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-extrabold;
+  margin-bottom: $spacing-12;
+}
+
+.subtitle {
+  color: $color-text-secondary;
+  font-size: $font-size-subtitle;
+  margin-bottom: $spacing-48;
+}
+
+.cards {
+  display: flex;
+  gap: $spacing-24;
+  justify-content: center;
+
+  @include mobile {
+    flex-direction: column;
+  }
+}
+
+.card {
+  @include card;
+  background: $color-bg;
+  padding: $spacing-32;
+  text-align: center;
+  flex: 1;
+  max-width: 380px;
+  position: relative;
+  overflow: hidden;
+
+  @include mobile {
+    max-width: 100%;
+  }
+}
+
+.cardBorder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+
+  &.gold {
+    background: $color-secondary;
+  }
+  &.purple {
+    background: $color-primary;
+  }
+}
+
+.cardIcon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: $spacing-16;
+}
+
+.cardTitle {
+  font-family: $font-display;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-8;
+}
+
+.cardDescription {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  margin-bottom: $spacing-20;
+}
+
+.lightningAddress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-8;
+  padding: $spacing-12;
+  background: $color-bg-2;
+  border-radius: $border-radius-md;
+  border: 1px solid $color-border;
+}
+
+.address {
+  font-size: $font-size-sm;
+  color: $color-secondary;
+  font-weight: $font-weight-medium;
+}
+
+.copyButton {
+  display: flex;
+  align-items: center;
+  gap: $spacing-4;
+  background: none;
+  border: none;
+  color: $color-text-secondary;
+  cursor: pointer;
+  padding: $spacing-4;
+  border-radius: $border-radius-sm;
+  font-size: $font-size-xs;
+
+  &:hover {
+    color: $color-text-primary;
+  }
+}
+
+.githubButton {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-8;
+  padding: $spacing-12 $spacing-24;
+  background: $color-text-primary;
+  color: $color-bg;
+  border-radius: $border-radius-md;
+  font-weight: $font-weight-semibold;
+  font-size: $font-size-sm;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 0.9;
+    text-decoration: none;
+  }
+}

@@ -1,0 +1,96 @@
+import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages, setRequestLocale } from "next-intl/server";
+import { Nunito, Nunito_Sans } from "next/font/google";
+import { routing } from "@/i18n/routing";
+import { ThemeProvider } from "@/lib/theme-context";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import "@/styles/globals.scss";
+
+const nunito = Nunito({
+  subsets: ["latin"],
+  weight: ["700", "800"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const nunitoSans = Nunito_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+const appName = "BitByBit Challenges";
+const appDescription =
+  "Create challenges, compete with others, and earn badges and sats on the Nostr network.";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return {
+    title: {
+      default: appName,
+      template: `%s | ${appName}`,
+    },
+    description: appDescription,
+    metadataBase: new URL(
+      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+    ),
+    alternates: {
+      canonical: `/${locale}`,
+      languages: { es: "/es", en: "/en" },
+    },
+    openGraph: {
+      title: appName,
+      description: appDescription,
+      type: "website",
+      locale,
+    },
+  };
+}
+
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
+
+export default async function LocaleLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const messages = await getMessages();
+
+  return (
+    <html lang={locale} className={`${nunito.variable} ${nunitoSans.variable}`}>
+      <head>
+        <meta name="theme-color" content="#8B5CF6" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=document.cookie.match(/(?:^|;\\s*)theme=(\\w+)/);var theme=t?t[1]:null;if(!theme){theme=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',theme)}catch(e){}})()`,
+          }}
+        />
+      </head>
+      <body>
+        <NextIntlClientProvider messages={messages}>
+          <ThemeProvider>
+            <a href="#main-content" className="skip-link">
+              Skip to content
+            </a>
+            <Navbar />
+            <main id="main-content">{children}</main>
+            <Footer />
+          </ThemeProvider>
+        </NextIntlClientProvider>
+      </body>
+    </html>
+  );
+}

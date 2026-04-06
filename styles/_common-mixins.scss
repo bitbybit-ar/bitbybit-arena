@@ -1,0 +1,44 @@
+@use "./colors" as *;
+@use "./spacing" as *;
+@use "./media-mixins" as *;
+
+@mixin container {
+  max-width: $container-max-width;
+  margin: 0 auto;
+  padding: 0 $container-padding;
+
+  @include mobile {
+    padding: 0 $container-padding-mobile;
+  }
+}
+
+@mixin gradient-text {
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@mixin card-base {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: 0 2px 8px var(--card-shadow);
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px var(--card-shadow-hover);
+  }
+}
+
+@mixin section-padding {
+  padding: $spacing-100 0;
+
+  @media (max-width: 768px) {
+    padding: 60px 0;
+  }
+}
+
+@mixin transition($property: all, $duration: 0.2s) {
+  transition: $property $duration ease;
+}
