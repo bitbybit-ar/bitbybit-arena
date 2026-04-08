@@ -37,3 +37,9 @@ next-env.d.ts
 
 # drizzle
 /drizzle/meta
+
+# python venv
+.venv
+
+# IDE
+.idea
