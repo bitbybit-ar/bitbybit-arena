@@ -171,6 +171,26 @@
   }
 }
 
+.zapButton {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-4;
+  padding: $spacing-4 $spacing-12;
+  margin-top: $spacing-8;
+  background: alpha($color-secondary, 10%);
+  color: $color-secondary;
+  border: 1px solid alpha($color-secondary, 20%);
+  border-radius: $border-radius-full;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: alpha($color-secondary, 20%);
+  }
+}
+
 .completionList {
   display: flex;
   flex-direction: column;

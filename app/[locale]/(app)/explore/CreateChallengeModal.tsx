@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/modal";
 import { FormInput, FormTextarea, FormSelect, FormButton } from "@/components/ui/form";
+import { buildChallengeEvent } from "@/lib/nostr/events";
+import { signAndPublish } from "@/lib/nostr/publish";
 import styles from "./create-challenge.module.scss";
 
 interface CreateChallengeModalProps {
@@ -54,6 +56,26 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
       if (!json.success) {
         setError(json.error);
         return;
+      }
+
+      // Publish challenge event to Nostr relays (best-effort)
+      try {
+        const challengeEvent = buildChallengeEvent({
+          slug: json.data.slug,
+          title,
+          description,
+          type,
+          category: category || undefined,
+          goal: goal ? Number(goal) : undefined,
+          unit: unit || undefined,
+          verification,
+          badgeName: badgeName || undefined,
+          startsAt: startsAt || undefined,
+          endsAt: endsAt || undefined,
+        });
+        await signAndPublish(challengeEvent);
+      } catch {
+        // Non-blocking: challenge is created in DB even if Nostr publish fails
       }
 
       onCreated();

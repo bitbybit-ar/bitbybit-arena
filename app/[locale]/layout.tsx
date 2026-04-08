@@ -4,6 +4,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { Nunito, Nunito_Sans } from "next/font/google";
 import { routing } from "@/i18n/routing";
 import { ThemeProvider } from "@/lib/theme-context";
+import { ToastProvider } from "@/components/ui/toast";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import "@/styles/globals.scss";
@@ -78,12 +79,14 @@ export default async function LocaleLayout({
       <body>
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>
-            <a href="#main-content" className="skip-link">
-              Skip to content
-            </a>
-            <Navbar />
-            <main id="main-content">{children}</main>
-            <Footer />
+            <ToastProvider>
+              <a href="#main-content" className="skip-link">
+                Skip to content
+              </a>
+              <Navbar />
+              <main id="main-content">{children}</main>
+              <Footer />
+            </ToastProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

@@ -61,22 +61,33 @@
   }
 }
 
-.themeToggle {
+.toggleGroup {
+  display: flex;
+  align-items: center;
+  gap: $spacing-4;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  overflow: hidden;
+}
+
+.toggle {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: $border-radius-sm;
-  border: 1px solid $color-border;
   background: transparent;
+  border: none;
   color: $color-text-secondary;
   cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+  font-family: $font-body;
+  transition: color 0.2s ease, background 0.2s ease;
 
   &:hover {
     color: $color-primary;
-    border-color: $color-primary;
+    background: alpha($color-primary, 8%);
   }
 }
 

@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowRightIcon, CheckIcon, FlagIcon, BadgeIcon } from "@/components/icons";
+import { ArrowRightIcon, CheckIcon, FlagIcon, BadgeIcon, BoltIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { Spinner } from "@/components/ui/spinner";
+import { buildJoinEvent, buildCompletionEvent, buildBadgeAwardEvent } from "@/lib/nostr/events";
+import { signAndPublish } from "@/lib/nostr/publish";
 import styles from "./challenge-detail.module.scss";
 
 interface ChallengeDetail {
@@ -25,7 +27,8 @@ interface ChallengeDetail {
   participant_count: number;
   completion_count: number;
   creator_id: string;
-  creator: { id: string; display_name: string; username: string };
+  slug: string;
+  creator: { id: string; display_name: string; username: string; nostr_pubkey: string; lightning_address?: string };
 }
 
 interface CompletionItem {
@@ -33,7 +36,7 @@ interface CompletionItem {
   content: string;
   status: string;
   submitted_at: string;
-  user: { id: string; display_name: string; username: string };
+  user: { id: string; display_name: string; username: string; nostr_pubkey?: string };
 }
 
 interface ParticipantItem {
@@ -41,7 +44,7 @@ interface ParticipantItem {
   user_id: string;
   status: string;
   progress: number;
-  user: { id: string; display_name: string; username: string };
+  user: { id: string; display_name: string; username: string; nostr_pubkey?: string };
 }
 
 export default function ChallengeDetailPage() {
@@ -103,6 +106,12 @@ export default function ChallengeDetailPage() {
   const handleJoin = async () => {
     setActionLoading("join");
     await fetch(`/api/challenges/${challengeId}/join`, { method: "POST" });
+    // Publish join event to Nostr (best-effort)
+    if (challenge) {
+      try {
+        await signAndPublish(buildJoinEvent(challenge.creator.nostr_pubkey, challenge.slug));
+      } catch { /* non-blocking */ }
+    }
     await fetchAll();
     setActionLoading(null);
   };
@@ -122,6 +131,16 @@ export default function ChallengeDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: proofContent }),
     });
+    // Publish completion event to Nostr (best-effort)
+    if (challenge) {
+      try {
+        await signAndPublish(buildCompletionEvent({
+          creatorPubkey: challenge.creator.nostr_pubkey,
+          challengeSlug: challenge.slug,
+          content: proofContent,
+        }));
+      } catch { /* non-blocking */ }
+    }
     setProofContent("");
     await fetchAll();
     setActionLoading(null);
@@ -139,13 +158,27 @@ export default function ChallengeDetailPage() {
   };
 
   const handleAwardBadges = async () => {
-    if (selectedWinners.size === 0) return;
+    if (selectedWinners.size === 0 || !challenge) return;
     setActionLoading("award");
     await fetch(`/api/challenges/${challengeId}/award`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_ids: Array.from(selectedWinners) }),
     });
+    // Publish badge award events to Nostr (best-effort)
+    try {
+      const winners = participants.filter((p) => selectedWinners.has(p.user_id));
+      for (const winner of winners) {
+        if (winner.user.nostr_pubkey) {
+          await signAndPublish(buildBadgeAwardEvent({
+            badgeName: challenge.badge_name || challenge.title,
+            challengeSlug: challenge.slug,
+            creatorPubkey: challenge.creator.nostr_pubkey,
+            recipientPubkey: winner.user.nostr_pubkey,
+          }));
+        }
+      }
+    } catch { /* non-blocking */ }
     setSelectedWinners(new Set());
     await fetchAll();
     setActionLoading(null);
@@ -277,6 +310,15 @@ export default function ChallengeDetailPage() {
                     </Tag>
                   </div>
                   <p className={styles.completionContent}>{comp.content}</p>
+                  {comp.user.nostr_pubkey && challenge.creator.lightning_address && (
+                    <button
+                      className={styles.zapButton}
+                      onClick={() => window.open(`lightning:${challenge.creator.lightning_address}`, "_blank")}
+                      title="Zap"
+                    >
+                      <BoltIcon size={14} /> Zap
+                    </button>
+                  )}
                   {isCreator && comp.status === "pending" && (
                     <div className={styles.verifyActions}>
                       <Button size="sm" onClick={() => handleVerify(comp.id, "approved")} disabled={actionLoading === comp.id}>

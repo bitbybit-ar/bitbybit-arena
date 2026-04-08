@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter, usePathname } from "next/navigation";
 import { Block } from "@/components/common/Block";
 import { GithubIcon, MoonIcon, SunIcon } from "@/components/icons";
 import { useTheme } from "@/lib/theme-context";
@@ -10,6 +11,15 @@ import styles from "./footer.module.scss";
 export function Footer() {
   const t = useTranslations("landing.footer");
   const { theme, toggleTheme } = useTheme();
+  const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const toggleLocale = () => {
+    const newLocale = locale === "es" ? "en" : "es";
+    const pathWithoutLocale = pathname.replace(/^\/(es|en)/, "");
+    router.push(`/${newLocale}${pathWithoutLocale}`);
+  };
 
   return (
     <footer className={styles.footer}>
@@ -42,13 +52,22 @@ export function Footer() {
             >
               {t("habits")}
             </a>
-            <button
-              className={styles.themeToggle}
-              onClick={toggleTheme}
-              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {theme === "dark" ? <SunIcon size={16} /> : <MoonIcon size={16} />}
-            </button>
+            <div className={styles.toggleGroup}>
+              <button
+                className={styles.toggle}
+                onClick={toggleTheme}
+                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? <SunIcon size={14} /> : <MoonIcon size={14} />}
+              </button>
+              <button
+                className={styles.toggle}
+                onClick={toggleLocale}
+                aria-label={locale === "es" ? "Switch to English" : "Cambiar a Espanol"}
+              >
+                {locale === "es" ? "EN" : "ES"}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -65,7 +84,6 @@ export function Footer() {
             </a>
           </p>
           <div className={styles.mottoRow}>
-            <p className={styles.motto}>{t("motto")}</p>
             <a
               href="https://lacrypta.ar"
               target="_blank"
@@ -80,6 +98,7 @@ export function Footer() {
                 className={styles.cryptaLogo}
               />
             </a>
+            <p className={styles.motto}>{t("motto")}</p>
           </div>
         </div>
       </div>
