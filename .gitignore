@@ -41,5 +41,8 @@ next-env.d.ts
 # python venv
 .venv
 
+# graphify
+graphify-out
+
 # IDE
 .idea
