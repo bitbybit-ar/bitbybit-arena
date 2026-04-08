@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { Nunito, Nunito_Sans } from "next/font/google";
@@ -73,12 +74,11 @@ export default async function LocaleLayout({
     <html lang={locale} className={`${nunito.variable} ${nunitoSans.variable}`} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#8B5CF6" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=document.cookie.match(/(?:^|;\\s*)theme=(\\w+)/);var theme=t?t[1]:null;if(!theme){theme=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',theme)}catch(e){}})()`,
-          }}
-        />
+        <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
       </head>
+      <Script id="theme-init" strategy="beforeInteractive">
+        {`(function(){try{var t=document.cookie.match(/(?:^|;\\s*)theme=(\\w+)/);var theme=t?t[1]:null;if(!theme){theme=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',theme)}catch(e){}})()`}
+      </Script>
       <body>
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>

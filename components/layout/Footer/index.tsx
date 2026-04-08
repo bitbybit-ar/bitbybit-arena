@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Block } from "@/components/common/Block";
 import { GithubIcon, MoonIcon, SunIcon } from "@/components/icons";
@@ -63,7 +64,23 @@ export function Footer() {
               {t("hackathonName")}
             </a>
           </p>
-          <p className={styles.motto}>{t("motto")}</p>
+          <div className={styles.mottoRow}>
+            <p className={styles.motto}>{t("motto")}</p>
+            <a
+              href="https://lacrypta.ar"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.cryptaLink}
+            >
+              <Image
+                src="https://github.com/lacrypta.png?size=64"
+                alt="La Crypta"
+                width={64}
+                height={64}
+                className={styles.cryptaLogo}
+              />
+            </a>
+          </div>
         </div>
       </div>
     </footer>

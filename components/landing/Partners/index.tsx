@@ -21,13 +21,13 @@ const partners = [
 
 export function Partners() {
   const t = useTranslations("landing.partners");
-  const ref = useScrollReveal<HTMLElement>();
+  const ref = useScrollReveal<HTMLDivElement>();
 
   return (
-    <section className={styles.section} ref={ref}>
+    <section className={styles.section}>
       <Bubble size={50} color="purple" variant="icon" icon={<HandshakeIcon />} position={{ top: "15%", right: "10%" }} animation="float" delay={0.3} />
 
-      <div className={`${styles.container} scroll-reveal`}>
+      <div className={`${styles.container} scroll-reveal`} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
 
         <div className={styles.logos}>

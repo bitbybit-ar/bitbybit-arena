@@ -12,7 +12,7 @@ const LIGHTNING_ADDRESS = "bitbybit@getalby.com";
 
 export function Support() {
   const t = useTranslations("landing.support");
-  const ref = useScrollReveal<HTMLElement>();
+  const ref = useScrollReveal<HTMLDivElement>();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -22,11 +22,11 @@ export function Support() {
   };
 
   return (
-    <section className={styles.section} ref={ref}>
+    <section className={styles.section}>
       <Bubble size={80} color="gold" variant="icon" icon={<BoltIcon />} position={{ top: "10%", left: "5%" }} animation="float-slow" delay={0.5} />
       <Bubble size={44} color="red" position={{ bottom: "15%", right: "8%" }} animation="drift" delay={1.2} />
 
-      <div className={`${styles.container} scroll-reveal`}>
+      <div className={`${styles.container} scroll-reveal`} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
         <p className={styles.subtitle}>{t("subtitle")}</p>
 

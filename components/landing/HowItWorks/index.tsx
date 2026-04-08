@@ -15,14 +15,14 @@ const STEPS = [
 
 export function HowItWorks() {
   const t = useTranslations("landing.howItWorks");
-  const ref = useScrollReveal<HTMLElement>();
+  const ref = useScrollReveal<HTMLDivElement>();
 
   return (
-    <section className={styles.section} ref={ref}>
+    <section className={styles.section}>
       <Bubble size={60} color="green" variant="icon" icon={<CheckIcon />} position={{ top: "10%", right: "5%" }} animation="float" delay={0.5} />
       <Bubble size={40} color="purple" position={{ bottom: "15%", left: "3%" }} animation="drift" delay={1.2} />
 
-      <div className={`${styles.container} scroll-reveal-stagger`}>
+      <div className={`${styles.container} scroll-reveal-stagger`} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
 
         <div className={styles.steps}>

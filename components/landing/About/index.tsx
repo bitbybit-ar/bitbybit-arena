@@ -9,14 +9,14 @@ import styles from "./about.module.scss";
 
 export function About() {
   const t = useTranslations("landing.about");
-  const ref = useScrollReveal<HTMLElement>();
+  const ref = useScrollReveal<HTMLDivElement>();
 
   return (
-    <section className={styles.section} ref={ref}>
+    <section className={styles.section}>
       <Bubble size={70} color="gold" position={{ top: "10%", right: "8%" }} animation="float-slow" delay={0.5} />
       <Bubble size={44} color="purple" position={{ bottom: "20%", left: "5%" }} animation="drift" delay={1} />
 
-      <div className={`${styles.container} scroll-reveal`}>
+      <div className={`${styles.container} scroll-reveal`} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
         <p className={styles.description}>{t("description")}</p>
 
