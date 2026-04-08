@@ -14,6 +14,9 @@
     "copied": "Copied",
     "sats": "sats",
     "viewAll": "View all",
+    "explore": "Explore",
+    "myChallenges": "My Challenges",
+    "settings": "Settings",
     "back": "Back",
     "delete": "Delete",
     "edit": "Edit",
@@ -200,5 +203,18 @@
     "empty": "No challenges yet. Explore and join one!",
     "emptyCreated": "You haven't created any challenges yet.",
     "emptyJoined": "You haven't joined any challenges yet."
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "nostrPubkey": "Nostr public key",
+    "displayName": "Display name",
+    "username": "Username",
+    "about": "About",
+    "aboutPlaceholder": "Tell us about yourself...",
+    "lightningAddress": "Lightning address",
+    "lightningPlaceholder": "user@getalby.com",
+    "saving": "Saving...",
+    "saved": "Profile saved!"
   }
 }

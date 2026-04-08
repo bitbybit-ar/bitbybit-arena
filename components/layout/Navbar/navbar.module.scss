@@ -35,6 +35,11 @@
   display: flex;
   align-items: center;
   gap: $spacing-12;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: none;
+  }
 }
 
 .logoBlocks {
@@ -58,6 +63,49 @@
   color: $color-primary;
 }
 
+.nav {
+  display: flex;
+  align-items: center;
+  gap: $spacing-16;
+
+  @include mobile {
+    gap: $spacing-8;
+  }
+}
+
+.navLink {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  text-decoration: none;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: $color-text-primary;
+    text-decoration: none;
+  }
+
+  @include mobile {
+    display: none;
+  }
+}
+
+.userMenu {
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
+}
+
+.userName {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+
+  @include mobile {
+    display: none;
+  }
+}
+
 .signInButton {
   background: $color-primary;
   color: $static-white;
@@ -68,14 +116,28 @@
   font-size: $font-size-sm;
   font-weight: $font-weight-semibold;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition: transform 0.2s ease, filter 0.2s ease;
 
   &:hover {
     transform: translateY(-1px);
     filter: brightness(1.1);
   }
+}
 
-  &:active {
-    transform: translateY(0);
+.signOutButton {
+  background: transparent;
+  color: $color-text-secondary;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  padding: $spacing-4 $spacing-12;
+  font-family: $font-body;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    color: $color-text-primary;
+    border-color: $color-text-primary;
   }
 }

@@ -14,6 +14,9 @@
     "copied": "Copiado",
     "sats": "sats",
     "viewAll": "Ver todos",
+    "explore": "Explorar",
+    "myChallenges": "Mis desafios",
+    "settings": "Configuracion",
     "back": "Volver",
     "delete": "Eliminar",
     "edit": "Editar",
@@ -200,5 +203,18 @@
     "empty": "Todavia no tenes desafios. Explora y unite a uno!",
     "emptyCreated": "No creaste ningun desafio aun.",
     "emptyJoined": "No te uniste a ningun desafio aun."
+  },
+  "settings": {
+    "title": "Configuracion",
+    "profile": "Perfil",
+    "nostrPubkey": "Clave publica Nostr",
+    "displayName": "Nombre",
+    "username": "Usuario",
+    "about": "Acerca de",
+    "aboutPlaceholder": "Conta algo sobre vos...",
+    "lightningAddress": "Direccion Lightning",
+    "lightningPlaceholder": "usuario@getalby.com",
+    "saving": "Guardando...",
+    "saved": "Perfil guardado!"
   }
 }

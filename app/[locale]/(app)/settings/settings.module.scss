@@ -1,0 +1,67 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: $spacing-32 $container-padding;
+  padding-top: calc($navbar-height + #{$spacing-32});
+  min-height: 100vh;
+
+  @include mobile {
+    padding: $spacing-16 $container-padding-mobile;
+    padding-top: calc($navbar-height + #{$spacing-16});
+  }
+}
+
+.title {
+  font-family: $font-display;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-extrabold;
+  margin-bottom: $spacing-24;
+}
+
+.loadingState {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.card {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: 0 2px 8px $card-shadow;
+  padding: $spacing-32;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-16;
+
+  @include mobile {
+    padding: $spacing-20;
+  }
+}
+
+.sectionTitle {
+  font-family: $font-display;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-4;
+}
+
+.pubkey {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-8;
+
+  code {
+    background: alpha($color-text-primary, 6%);
+    padding: 2px $spacing-8;
+    border-radius: $border-radius-sm;
+    font-size: $font-size-xs;
+  }
+}
