@@ -1,0 +1,167 @@
+"use client";
+
+import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { Modal } from "@/components/ui/modal";
+import { FormInput, FormTextarea, FormSelect, FormButton } from "@/components/ui/form";
+import styles from "./create-challenge.module.scss";
+
+interface CreateChallengeModalProps {
+  onClose: () => void;
+  onCreated: () => void;
+}
+
+export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModalProps) {
+  const t = useTranslations("createChallenge");
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [type, setType] = useState("one_time");
+  const [category, setCategory] = useState("");
+  const [goal, setGoal] = useState("");
+  const [unit, setUnit] = useState("");
+  const [verification, setVerification] = useState("creator_approval");
+  const [badgeName, setBadgeName] = useState("");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/challenges", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          description,
+          type,
+          category: category || undefined,
+          goal: goal ? Number(goal) : undefined,
+          unit: unit || undefined,
+          verification_type: verification,
+          badge_name: badgeName || undefined,
+          starts_at: startsAt || undefined,
+          ends_at: endsAt || undefined,
+        }),
+      });
+
+      const json = await res.json();
+      if (!json.success) {
+        setError(json.error);
+        return;
+      }
+
+      onCreated();
+    } catch {
+      setError("Failed to create challenge");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showGoal = type === "streak" || type === "competition";
+
+  return (
+    <Modal onClose={onClose} title={t("title")} size="lg">
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <FormInput
+          label={t("nameLabel")}
+          placeholder={t("namePlaceholder")}
+          value={title}
+          onChange={setTitle}
+          required
+        />
+
+        <FormTextarea
+          label={t("descriptionLabel")}
+          placeholder={t("descriptionPlaceholder")}
+          value={description}
+          onChange={setDescription}
+          rows={3}
+          required
+        />
+
+        <div className={styles.row}>
+          <FormSelect
+            label={t("typeLabel")}
+            value={type}
+            onChange={setType}
+          >
+            <option value="one_time">{t("types.one_time")}</option>
+            <option value="streak">{t("types.streak")}</option>
+            <option value="competition">{t("types.competition")}</option>
+            <option value="race">{t("types.race")}</option>
+            <option value="creative">{t("types.creative")}</option>
+          </FormSelect>
+
+          <FormInput
+            label={t("categoryLabel")}
+            placeholder={t("categoryPlaceholder")}
+            value={category}
+            onChange={setCategory}
+          />
+        </div>
+
+        {showGoal && (
+          <div className={styles.row}>
+            <FormInput
+              label={t("goalLabel")}
+              placeholder={t("goalPlaceholder")}
+              type="number"
+              value={goal}
+              onChange={setGoal}
+            />
+            <FormInput
+              label={t("unitLabel")}
+              placeholder={t("unitPlaceholder")}
+              value={unit}
+              onChange={setUnit}
+            />
+          </div>
+        )}
+
+        <FormSelect
+          label={t("verificationLabel")}
+          value={verification}
+          onChange={setVerification}
+        >
+          <option value="creator_approval">{t("verificationTypes.creator_approval")}</option>
+          <option value="automatic">{t("verificationTypes.automatic")}</option>
+        </FormSelect>
+
+        <FormInput
+          label={t("badgeNameLabel")}
+          placeholder={t("badgeNamePlaceholder")}
+          value={badgeName}
+          onChange={setBadgeName}
+        />
+
+        <div className={styles.row}>
+          <FormInput
+            label={t("startsAtLabel")}
+            type="date"
+            value={startsAt}
+            onChange={setStartsAt}
+          />
+          <FormInput
+            label={t("endsAtLabel")}
+            type="date"
+            value={endsAt}
+            onChange={setEndsAt}
+          />
+        </div>
+
+        {error && <p className={styles.error}>{error}</p>}
+
+        <FormButton type="submit" loading={loading} loadingText={t("creating")}>
+          {t("title")}
+        </FormButton>
+      </form>
+    </Modal>
+  );
+}

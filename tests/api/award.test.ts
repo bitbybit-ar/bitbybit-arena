@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   buildRequest, parseResponse, createMockSession, mockState,
   setSession, setDbRows, setMutationResult, setupDbMock,
-  makeChallenge, makeParticipant, makeBadge,
+  makeChallenge, makeParticipant,
 } from "../helpers";
 
 // Add makeBadge to helpers inline since it wasn't exported

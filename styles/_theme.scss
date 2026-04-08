@@ -1,3 +1,5 @@
+@use "sass:map";
+
 // Theme definitions — white/navy backgrounds with purple, gold, green, red accents
 
 $themes: (
@@ -83,11 +85,11 @@ $themes: (
 // Light theme is default
 :root,
 [data-theme="light"] {
-  @include theme-properties(map-get($themes, light));
+  @include theme-properties(map.get($themes, light));
   color-scheme: light;
 }
 
 [data-theme="dark"] {
-  @include theme-properties(map-get($themes, dark));
+  @include theme-properties(map.get($themes, dark));
   color-scheme: dark;
 }

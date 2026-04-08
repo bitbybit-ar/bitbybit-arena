@@ -70,7 +70,7 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={`${nunito.variable} ${nunitoSans.variable}`}>
+    <html lang={locale} className={`${nunito.variable} ${nunitoSans.variable}`} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#8B5CF6" />
         <script

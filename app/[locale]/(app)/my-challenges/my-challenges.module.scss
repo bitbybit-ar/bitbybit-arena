@@ -1,0 +1,127 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.page {
+  max-width: $container-max-width;
+  margin: 0 auto;
+  padding: $spacing-32 $container-padding;
+  padding-top: calc($navbar-height + #{$spacing-32});
+  min-height: 100vh;
+
+  @include mobile {
+    padding: $spacing-16 $container-padding-mobile;
+    padding-top: calc($navbar-height + #{$spacing-16});
+  }
+}
+
+.title {
+  font-family: $font-display;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-extrabold;
+  margin-bottom: $spacing-24;
+}
+
+.tabs {
+  display: flex;
+  gap: $spacing-4;
+  margin-bottom: $spacing-32;
+  border-bottom: 1px solid $color-border;
+}
+
+.tab {
+  padding: $spacing-12 $spacing-20;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: $color-text-secondary;
+  font-size: $font-size-base;
+  font-weight: $font-weight-medium;
+  font-family: $font-body;
+  cursor: pointer;
+  @include transition;
+
+  &:hover {
+    color: $color-text-primary;
+  }
+}
+
+.tabActive {
+  color: $color-primary;
+  border-bottom-color: $color-primary;
+}
+
+.loadingState {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.emptyState {
+  text-align: center;
+  padding: $spacing-80 0;
+  color: $color-text-secondary;
+
+  svg {
+    margin-bottom: $spacing-16;
+    opacity: 0.4;
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+}
+
+.card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: 0 2px 8px $card-shadow;
+  padding: $spacing-20;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px $card-shadow-hover;
+  }
+}
+
+.cardTop {
+  display: flex;
+  gap: $spacing-8;
+  margin-bottom: $spacing-4;
+}
+
+.cardTitle {
+  font-family: $font-display;
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-8;
+}
+
+.cardMeta {
+  display: flex;
+  gap: $spacing-16;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.progress {
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+.completed {
+  color: $color-accent-alt;
+  font-weight: $font-weight-medium;
+}

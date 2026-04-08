@@ -1,0 +1,240 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: $spacing-32 $container-padding;
+  padding-top: calc($navbar-height + #{$spacing-32});
+  min-height: 100vh;
+
+  @include mobile {
+    padding: $spacing-16 $container-padding-mobile;
+    padding-top: calc($navbar-height + #{$spacing-16});
+  }
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-4;
+  background: none;
+  border: none;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  cursor: pointer;
+  margin-bottom: $spacing-24;
+  padding: 0;
+
+  svg {
+    transform: rotate(180deg);
+  }
+
+  &:hover {
+    color: $color-primary;
+  }
+}
+
+.loadingState {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-16;
+  padding-top: 200px;
+  color: $color-text-secondary;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-24;
+}
+
+.challengeCard {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: 0 2px 8px $card-shadow;
+  padding: $spacing-32;
+
+  @include mobile {
+    padding: $spacing-20;
+  }
+}
+
+.challengeTitle {
+  font-family: $font-display;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-extrabold;
+  margin-bottom: $spacing-4;
+}
+
+.creator {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  margin-bottom: $spacing-16;
+}
+
+.description {
+  line-height: $line-height-base;
+  margin-bottom: $spacing-24;
+  white-space: pre-line;
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+  margin-bottom: $spacing-24;
+  padding: $spacing-16;
+  background: alpha($color-text-primary, 3%);
+  border-radius: $border-radius-md;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: $font-size-sm;
+}
+
+.detailLabel {
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+}
+
+.creatorBadge {
+  display: inline-block;
+  padding: $spacing-8 $spacing-16;
+  background: alpha($color-primary, 10%);
+  color: $color-primary;
+  border-radius: $border-radius-full;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.section {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  padding: $spacing-24;
+
+  @include mobile {
+    padding: $spacing-16;
+  }
+}
+
+.sectionTitle {
+  font-family: $font-display;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-16;
+}
+
+.emptyText {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+}
+
+.proofInput {
+  width: 100%;
+  padding: $spacing-12 $spacing-16;
+  border-radius: $border-radius-md;
+  border: 1px solid $color-border;
+  background: alpha($color-text-primary, 4%);
+  color: $color-text-primary;
+  font-size: $font-size-base;
+  font-family: $font-body;
+  resize: vertical;
+  min-height: 80px;
+  margin-bottom: $spacing-12;
+  outline: none;
+  @include transition;
+
+  &:focus {
+    border-color: $color-primary;
+    box-shadow: 0 0 0 2px alpha($color-primary, 15%);
+  }
+
+  &::placeholder {
+    color: $color-text-secondary;
+    opacity: 0.5;
+  }
+}
+
+.completionList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+}
+
+.completionCard {
+  padding: $spacing-16;
+  background: alpha($color-text-primary, 3%);
+  border-radius: $border-radius-md;
+}
+
+.completionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-8;
+}
+
+.completionUser {
+  font-weight: $font-weight-semibold;
+  font-size: $font-size-sm;
+}
+
+.completionContent {
+  font-size: $font-size-sm;
+  line-height: $line-height-base;
+  color: $color-text-secondary;
+  white-space: pre-line;
+}
+
+.verifyActions {
+  display: flex;
+  gap: $spacing-8;
+  margin-top: $spacing-12;
+}
+
+.participantList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+  margin-bottom: $spacing-16;
+}
+
+.participantRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
+  padding: $spacing-8 $spacing-12;
+  background: alpha($color-text-primary, 3%);
+  border-radius: $border-radius-md;
+  font-size: $font-size-sm;
+
+  input[type="checkbox"] {
+    accent-color: $color-primary;
+  }
+}
+
+.participantName {
+  flex: 1;
+  font-weight: $font-weight-medium;
+}
+
+.participantProgress {
+  color: $color-text-secondary;
+  font-size: $font-size-xs;
+}

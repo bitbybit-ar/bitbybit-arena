@@ -1,10 +1,14 @@
+"use client";
+
 import { useTranslations } from "next-intl";
 import { Block } from "@/components/common/Block";
-import { GithubIcon } from "@/components/icons";
+import { GithubIcon, MoonIcon, SunIcon } from "@/components/icons";
+import { useTheme } from "@/lib/theme-context";
 import styles from "./footer.module.scss";
 
 export function Footer() {
   const t = useTranslations("landing.footer");
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <footer className={styles.footer}>
@@ -37,6 +41,13 @@ export function Footer() {
             >
               {t("habits")}
             </a>
+            <button
+              className={styles.themeToggle}
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <SunIcon size={16} /> : <MoonIcon size={16} />}
+            </button>
           </div>
         </div>
 

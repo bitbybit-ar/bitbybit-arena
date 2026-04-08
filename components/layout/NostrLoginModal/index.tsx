@@ -12,6 +12,7 @@ interface NostrLoginModalProps {
 
 export function NostrLoginModal({ onClose }: NostrLoginModalProps) {
   const t = useTranslations("nostrLogin");
+  const tCommon = useTranslations("common");
   const { hasExtension, login, isLoading } = useNostr();
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +29,7 @@ export function NostrLoginModal({ onClose }: NostrLoginModalProps) {
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <button className={styles.closeButton} onClick={onClose} aria-label={t("close") || "Close"}>
+        <button className={styles.closeButton} onClick={onClose} aria-label={tCommon("close")}>
           <CloseIcon size={20} />
         </button>
 

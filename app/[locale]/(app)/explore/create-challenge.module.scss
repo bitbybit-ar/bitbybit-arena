@@ -1,0 +1,25 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/media-mixins" as *;
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-16;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-12;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.error {
+  color: $color-error;
+  font-size: $font-size-sm;
+}

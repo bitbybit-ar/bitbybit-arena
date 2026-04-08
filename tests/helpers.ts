@@ -94,15 +94,11 @@ export function buildRequest(
     }
   }
 
-  const init: RequestInit = {
+  return new NextRequest(url, {
     method,
     headers: { "Content-Type": "application/json", "x-forwarded-for": "127.0.0.1" },
-  };
-  if (body) {
-    init.body = JSON.stringify(body);
-  }
-
-  return new NextRequest(url, init);
+    body: body ? JSON.stringify(body) : undefined,
+  });
 }
 
 // --- Response parser ---
