@@ -1,4 +1,4 @@
-/** Merge CSS module classes — falsy values are filtered out. */
+/** Merge CSS module class names — falsy values are filtered out. */
 export function cn(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(" ");
 }
