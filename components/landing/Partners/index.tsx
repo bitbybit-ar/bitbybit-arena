@@ -3,8 +3,9 @@
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
-import { Bubble } from "@/components/common/Bubble";
-import { HandshakeIcon } from "@/components/icons";
+import { Block } from "@/components/common/Block";
+import { PixelDissolve } from "@/components/common/PixelDissolve";
+import { FlagIcon, BoltIcon, TrophyIcon } from "@/components/icons";
 import styles from "./partners.module.scss";
 
 const partners = [
@@ -12,16 +13,15 @@ const partners = [
     name: "La Crypta",
     url: "https://lacrypta.ar",
     logo: "https://github.com/lacrypta.png?size=64",
+    descriptionKey: "laCryptaDescription" as const,
+    color: "gold" as const,
   },
   {
-    name: "OpenClaw",
-    url: "https://openclaw.com",
-    logo: "https://github.com/openclaw.png?size=64",
-  },
-  {
-    name: "Bitcoin",
-    url: "https://bitcoin.org",
-    logo: "https://github.com/bitcoin.png?size=64",
+    name: "Nostr WoT",
+    url: "https://nostr-wot.com/",
+    logo: "/images/partners/nostr-wot.webp",
+    descriptionKey: "nostrWotDescription" as const,
+    color: "purple" as const,
   },
 ];
 
@@ -31,10 +31,20 @@ export function Partners() {
 
   return (
     <section className={styles.section}>
-      <Bubble size={50} color="purple" variant="icon" icon={<HandshakeIcon />} position={{ top: "15%", right: "10%" }} animation="float" delay={0.3} />
+      {/* Floating blocks with icons */}
+      <Block size="medium" color="purple" className={styles.floatBlock1}>
+        <FlagIcon size={22} color="white" />
+      </Block>
+      <Block size="medium" color="gold" className={styles.floatBlock2}>
+        <BoltIcon size={22} color="white" />
+      </Block>
+      <Block size="medium" color="green" className={styles.floatBlock3}>
+        <TrophyIcon size={22} color="white" />
+      </Block>
 
       <div className={`${styles.container} scroll-reveal`} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
+        <p className={styles.subtitle}>{t("subtitle")}</p>
 
         <div className={styles.logos}>
           {partners.map((partner) => (
@@ -43,8 +53,9 @@ export function Partners() {
               href={partner.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={styles.partnerLink}
+              className={`${styles.partnerLink} ${styles[partner.color]}`}
             >
+              <div className={`${styles.cardBorder} ${styles[`border-${partner.color}`]}`} />
               <Image
                 src={partner.logo}
                 alt={partner.name}
@@ -53,9 +64,17 @@ export function Partners() {
                 className={styles.partnerLogo}
               />
               <span className={styles.partnerName}>{partner.name}</span>
+              <span className={styles.partnerDescription}>
+                {t(partner.descriptionKey)}
+              </span>
             </a>
           ))}
         </div>
+      </div>
+
+      {/* Bottom pixel dissolve */}
+      <div className={styles.dissolveBottom}>
+        <PixelDissolve />
       </div>
     </section>
   );

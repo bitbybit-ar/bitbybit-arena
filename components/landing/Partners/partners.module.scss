@@ -2,9 +2,13 @@
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
 @use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
 .section {
   @include section-padding;
   position: relative;
+  overflow: hidden;
+  background: $color-bg-2;
 }
 
 .container {
@@ -14,36 +18,54 @@
 
 .title {
   font-family: $font-display;
-  font-size: $font-size-2xl;
+  font-size: $font-size-xl;
   font-weight: $font-weight-extrabold;
-  margin-bottom: $spacing-48;
+  margin-bottom: $spacing-8;
+}
+
+.subtitle {
+  color: $color-text-secondary;
+  font-size: $font-size-base;
+  margin-bottom: $spacing-32;
 }
 
 .logos {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  gap: $spacing-48;
+  gap: $spacing-32;
   flex-wrap: wrap;
 }
 
 .partnerLink {
-  background: $color-surface;
+  background: $color-bg;
   border: 1px solid $color-border;
   border-radius: $border-radius-lg;
   box-shadow: 0 2px 8px $card-shadow;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: $spacing-12;
-  padding: $spacing-24 $spacing-32;
+  gap: $spacing-8;
+  padding: $spacing-32 $spacing-40;
   text-decoration: none;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  max-width: 280px;
 
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px $card-shadow-hover;
     text-decoration: none;
+  }
+
+  // Colored glow on hover per partner
+  &.gold:hover {
+    box-shadow: 0 8px 28px alpha($color-secondary, 20%);
+  }
+
+  &.purple:hover {
+    box-shadow: 0 8px 28px alpha($color-primary, 20%);
   }
 
   &:hover .partnerLogo {
@@ -51,9 +73,26 @@
   }
 }
 
+// Colored top border
+.cardBorder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.border-gold {
+  background: $color-secondary;
+}
+
+.border-purple {
+  background: $color-primary;
+}
+
 .partnerLogo {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   object-fit: cover;
   filter: grayscale(1);
@@ -61,7 +100,70 @@
 }
 
 .partnerName {
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
+  font-family: $font-display;
+  font-size: $font-size-base;
+  font-weight: $font-weight-bold;
   color: $color-text-primary;
+}
+
+.partnerDescription {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  line-height: $line-height-base;
+}
+
+// Floating blocks with icons
+.floatBlock1,
+.floatBlock2,
+.floatBlock3 {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+}
+
+.floatBlock1 {
+  top: 12%;
+  right: 6%;
+  animation: partner-drift-a 5.5s ease-in-out infinite;
+}
+
+.floatBlock2 {
+  bottom: 18%;
+  left: 4%;
+  animation: partner-drift-b 4.5s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.floatBlock3 {
+  top: 45%;
+  left: 8%;
+  animation: partner-drift-a 6s ease-in-out infinite;
+  animation-delay: -3.5s;
+}
+
+@keyframes partner-drift-a {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(14px, -16px); }
+}
+
+@keyframes partner-drift-b {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-10px, 12px); }
+}
+
+// Pixel dissolve divider
+.dissolveBottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floatBlock1,
+  .floatBlock2,
+  .floatBlock3 {
+    animation: none;
+  }
 }

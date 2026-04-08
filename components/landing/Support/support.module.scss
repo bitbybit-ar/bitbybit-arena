@@ -5,8 +5,9 @@
 @use "@/styles/media-mixins" as *;
 
 .section {
-  @include section-padding;
+  padding: $spacing-64 0;
   position: relative;
+  overflow: hidden;
   background: $color-bg-2;
 }
 
@@ -17,128 +18,106 @@
 
 .title {
   font-family: $font-display;
-  font-size: $font-size-2xl;
+  font-size: $font-size-xl;
   font-weight: $font-weight-extrabold;
-  margin-bottom: $spacing-12;
+  margin-bottom: $spacing-8;
 }
 
 .subtitle {
   color: $color-text-secondary;
-  font-size: $font-size-subtitle;
-  margin-bottom: $spacing-48;
+  font-size: $font-size-base;
+  margin-bottom: $spacing-32;
 }
 
-.cards {
+.actions {
   display: flex;
-  gap: $spacing-24;
+  gap: $spacing-16;
   justify-content: center;
-
-  @include mobile {
-    flex-direction: column;
-  }
+  flex-wrap: wrap;
 }
 
-.card {
-  background: $color-bg;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-lg;
-  box-shadow: 0 2px 8px $card-shadow;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  padding: $spacing-32;
-  text-align: center;
-  flex: 1;
-  max-width: 380px;
-  position: relative;
-  overflow: hidden;
-
-  @include mobile {
-    max-width: 100%;
-  }
-}
-
-.cardBorder {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-
-  &.gold {
-    background: $color-secondary;
-  }
-  &.purple {
-    background: $color-primary;
-  }
-}
-
-.cardIcon {
-  display: flex;
-  justify-content: center;
-  margin-bottom: $spacing-16;
-}
-
-.cardTitle {
-  font-family: $font-display;
-  font-size: $font-size-lg;
-  font-weight: $font-weight-bold;
-  margin-bottom: $spacing-8;
-}
-
-.cardDescription {
-  color: $color-text-secondary;
-  font-size: $font-size-sm;
-  margin-bottom: $spacing-20;
-}
-
-.lightningAddress {
-  display: flex;
+.zapButton {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: $spacing-8;
-  padding: $spacing-12;
-  background: $color-bg-2;
-  border-radius: $border-radius-md;
-  border: 1px solid $color-border;
-}
-
-.address {
-  font-size: $font-size-sm;
-  color: $color-secondary;
-  font-weight: $font-weight-medium;
-}
-
-.copyButton {
-  display: flex;
-  align-items: center;
-  gap: $spacing-4;
-  background: none;
+  padding: $spacing-12 $spacing-32;
+  min-width: 220px;
+  background: $color-secondary;
+  color: $static-white;
   border: none;
-  color: $color-text-secondary;
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
   cursor: pointer;
-  padding: $spacing-4;
-  border-radius: $border-radius-sm;
-  font-size: $font-size-xs;
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
-    color: $color-text-primary;
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+    box-shadow: 0 8px 24px alpha($color-secondary, 25%);
   }
 }
 
 .githubButton {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: $spacing-8;
-  padding: $spacing-12 $spacing-24;
+  padding: $spacing-12 $spacing-32;
+  min-width: 220px;
   background: $color-text-primary;
   color: $color-bg;
   border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-base;
   font-weight: $font-weight-semibold;
-  font-size: $font-size-sm;
   text-decoration: none;
-  transition: opacity 0.2s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 
   &:hover {
+    transform: translateY(-2px);
     opacity: 0.9;
     text-decoration: none;
+  }
+}
+
+// Floating blocks
+.floatBlock1,
+.floatBlock2 {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+}
+
+.floatBlock1 {
+  top: 15%;
+  left: 5%;
+  animation: support-drift-a 5s ease-in-out infinite;
+}
+
+.floatBlock2 {
+  bottom: 15%;
+  right: 6%;
+  animation: support-drift-b 5.5s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+@keyframes support-drift-a {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(12px, -14px); }
+}
+
+@keyframes support-drift-b {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-10px, 12px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floatBlock1,
+  .floatBlock2 {
+    animation: none;
   }
 }

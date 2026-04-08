@@ -40,7 +40,7 @@ Users have three ways to log in, covering different use cases and devices. The l
 
 **QR URI format:**
 ```
-nostrconnect://<app-pubkey>?relay=wss://relay.example.com&metadata={"name":"BitByBit Challenges"}
+nostrconnect://<app-pubkey>?relay=wss://relay.example.com&metadata={"name":"BitByBit Arena"}
 ```
 
 **UX:**

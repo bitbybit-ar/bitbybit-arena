@@ -2,7 +2,7 @@
 
 ## Overview
 
-BitByBit Challenges uses standard Nostr NIPs where possible and defines custom event kinds for challenge-specific functionality. All events are published to Nostr relays, making challenges discoverable by any client.
+BitByBit Arena uses standard Nostr NIPs where possible and defines custom event kinds for challenge-specific functionality. All events are published to Nostr relays, making challenges discoverable by any client.
 
 ## NIPs Used
 

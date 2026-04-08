@@ -34,7 +34,7 @@ The Nostr events are the **source of truth** for public data. The database is an
 ## Project Structure
 
 ```
-bitbybit-challenges/
+bitbybit-arena/
   app/
     [locale]/                  <- i18n routes (es, en)
       (auth)/                  <- Nostr login
@@ -78,7 +78,7 @@ bitbybit-challenges/
 
 ## Key Differences from bitbybit-habits
 
-| Aspect | Habits | Challenges |
+| Aspect | Habits | Arena |
 |--------|--------|------------|
 | **Auth** | Email/password + optional Nostr | Nostr only (NIP-07) |
 | **Data model** | Private, family-scoped | Public, network-wide |

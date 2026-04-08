@@ -55,7 +55,7 @@ export function Bubble({
         height: size,
         ...position,
         animationDelay: `${delay}s`,
-        ...(opacity !== undefined ? { "--bubble-custom-opacity": opacity } as React.CSSProperties : {}),
+        ...(opacity !== undefined ? { "--bubble-custom-opacity": `${Math.round(opacity * 100)}%` } as React.CSSProperties : {}),
       }}
       aria-hidden="true"
     >

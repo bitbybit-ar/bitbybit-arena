@@ -10,7 +10,7 @@ Social media incentivizes passive consumption. There's no decentralized platform
 
 ## Solution
 
-BitByBit Challenges is a Nostr-native app that makes challenges social, verifiable, and rewarding:
+BitByBit Arena is a Nostr-native app that makes challenges social, verifiable, and rewarding:
 
 - **Create** a challenge with rules, duration, and verification method
 - **Join** challenges that interest you
@@ -60,7 +60,7 @@ BitByBit Challenges is a Nostr-native app that makes challenges social, verifiab
 
 ## Relationship with BitByBit Habits
 
-BitByBit Habits is a private, family-focused habit tracker (sponsor creates habits for kids). BitByBit Challenges is public and social — anyone can create/join challenges on the open Nostr network.
+BitByBit Habits is a private, family-focused habit tracker (sponsor creates habits for kids). BitByBit Arena is public and competitive — anyone can create/join challenges on the open Nostr network.
 
 They share:
 - The BitByBit brand and organization
@@ -69,4 +69,4 @@ They share:
 
 They differ in:
 - **Habits** = private, family, ongoing routines, sponsor-kid relationship
-- **Challenges** = public, social, time-bounded competitions, peer-to-peer
+- **Arena** = public, competitive, time-bounded battles, peer-to-peer

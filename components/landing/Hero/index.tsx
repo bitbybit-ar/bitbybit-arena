@@ -1,9 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { BlockTower } from "@/components/common/BlockTower";
-import { Bubble } from "@/components/common/Bubble";
-import { BoltIcon, TrophyIcon } from "@/components/icons";
+import { Block } from "@/components/common/Block";
+import { PixelIcon } from "@/components/common/PixelIcon";
+import { PixelDissolve } from "@/components/common/PixelDissolve";
+import { FlagIcon, TrophyIcon, BoltIcon, BadgeIcon } from "@/components/icons";
 import styles from "./hero.module.scss";
 
 export function Hero() {
@@ -11,20 +12,31 @@ export function Hero() {
 
   return (
     <section className={styles.hero}>
-      {/* Decorative bubbles */}
-      <Bubble size={80} color="purple" position={{ top: "12%", right: "8%" }} animation="float" delay={0} />
-      <Bubble size={48} color="gold" position={{ top: "20%", right: "18%" }} animation="drift" delay={1.5} />
-      <Bubble size={100} color="green" variant="icon" icon={<TrophyIcon />} position={{ bottom: "20%", right: "5%" }} animation="float-slow" delay={0.8} />
-      <Bubble size={60} color="purple" position={{ bottom: "15%", left: "5%" }} animation="drift" delay={2} />
-      <Bubble size={36} color="red" position={{ top: "30%", left: "3%" }} animation="float" delay={1} />
+      {/* Arena floor grid */}
+      <div className={styles.arenaFloor} />
+
+      {/* Spotlight effects */}
+      <div className={styles.spotlight} />
+
+      {/* Floating blocks with icons */}
+      <Block size="medium" color="purple" className={styles.floatBlock1}>
+        <FlagIcon size={22} color="white" />
+      </Block>
+      <Block size="medium" color="gold" className={styles.floatBlock2}>
+        <TrophyIcon size={22} color="white" />
+      </Block>
+      <Block size="medium" color="green" className={styles.floatBlock3}>
+        <BadgeIcon size={22} color="white" />
+      </Block>
+      <Block size="medium" color="red" className={styles.floatBlock4}>
+        <BoltIcon size={22} color="white" />
+      </Block>
+      <Block size="medium" color="purple" className={styles.floatBlock5}>
+        <FlagIcon size={22} color="white" />
+      </Block>
 
       <div className={styles.container}>
         <div className={styles.content}>
-          <span className={styles.badge}>
-            <BoltIcon size={14} />
-            {t("badge")}
-          </span>
-
           <h1 className={styles.headline}>
             <span className={styles.line1}>{t("headline1")}</span>
             <span className={styles.line2}>{t("headline2")}</span>
@@ -39,8 +51,13 @@ export function Hero() {
         </div>
 
         <div className={styles.visual}>
-          <BlockTower maxBlocks={5} blockSize="large" animate />
+          <PixelIcon shape="sword" blockSize={16} animate />
         </div>
+      </div>
+
+      {/* Pixel dissolve transition to next section */}
+      <div className={styles.dissolveWrapper}>
+        <PixelDissolve />
       </div>
     </section>
   );

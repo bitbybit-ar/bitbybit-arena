@@ -3,14 +3,14 @@
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
 import { Block } from "@/components/common/Block";
-import { Bubble } from "@/components/common/Bubble";
-import { FlagIcon, CameraIcon, BoltIcon, CheckIcon } from "@/components/icons";
+import { PixelIcon } from "@/components/common/PixelIcon";
+import { PixelDissolve } from "@/components/common/PixelDissolve";
 import styles from "./how-it-works.module.scss";
 
 const STEPS = [
-  { color: "purple" as const, icon: FlagIcon },
-  { color: "green" as const, icon: CameraIcon },
-  { color: "gold" as const, icon: BoltIcon },
+  { color: "purple" as const, pixelShape: "flag" as const },
+  { color: "green" as const, pixelShape: "shield" as const },
+  { color: "gold" as const, pixelShape: "trophy" as const },
 ];
 
 export function HowItWorks() {
@@ -19,26 +19,29 @@ export function HowItWorks() {
 
   return (
     <section className={styles.section}>
-      <Bubble size={60} color="green" variant="icon" icon={<CheckIcon />} position={{ top: "10%", right: "5%" }} animation="float" delay={0.5} />
-      <Bubble size={40} color="purple" position={{ bottom: "15%", left: "3%" }} animation="drift" delay={1.2} />
+      {/* Decorative blocks — all animated */}
+      <Block size="small" color="purple" className={styles.floatBlock1} />
+      <Block size="tiny" color="gold" className={styles.floatBlock2} />
+      <Block size="small" color="green" className={styles.floatBlock3} />
+      <Block size="tiny" color="red" className={styles.floatBlock4} />
+      <Block size="small" color="gold" className={styles.floatBlock5} />
+      <Block size="tiny" color="purple" className={styles.floatBlock6} />
 
       <div className={`${styles.container} scroll-reveal-stagger`} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
+        <p className={styles.subtitle}>{t("subtitle")}</p>
 
         <div className={styles.steps}>
           {STEPS.map((step, i) => {
-            const StepIcon = step.icon;
             const num = i + 1;
             return (
               <div key={i} className={styles.step}>
-                <div className={`${styles.numberBadge} ${styles[step.color]}`}>
-                  <span>{num}</span>
-                </div>
                 <div className={styles.card}>
-                  <div className={styles.cardIcon}>
-                    <Block size="medium" color={step.color}>
-                      <StepIcon size={22} color="white" />
-                    </Block>
+                  <div className={`${styles.numberBadge} ${styles[step.color]}`}>
+                    <span>{num}</span>
+                  </div>
+                  <div className={styles.pixelIcon}>
+                    <PixelIcon shape={step.pixelShape} blockSize={8} />
                   </div>
                   <h3 className={styles.stepTitle}>
                     {t(`step${num}Title` as "step1Title")}
@@ -48,7 +51,7 @@ export function HowItWorks() {
                   </p>
                 </div>
 
-                {/* Connecting blocks between steps */}
+                {/* Pixel trail between steps */}
                 {i < STEPS.length - 1 && (
                   <div className={styles.connector}>
                     <Block size="tiny" color={step.color} />
@@ -59,6 +62,10 @@ export function HowItWorks() {
             );
           })}
         </div>
+      </div>
+
+      <div className={styles.dissolveWrapper}>
+        <PixelDissolve />
       </div>
     </section>
   );

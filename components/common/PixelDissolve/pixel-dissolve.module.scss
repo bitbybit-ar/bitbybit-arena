@@ -1,0 +1,11 @@
+.dissolve {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  pointer-events: none;
+}
+
+.particle {
+  position: absolute;
+  transform: translateX(-50%);
+}

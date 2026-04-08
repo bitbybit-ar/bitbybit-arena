@@ -4,7 +4,8 @@ import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
 import { Bubble } from "@/components/common/Bubble";
 import { Block } from "@/components/common/Block";
-import { ExternalLinkIcon } from "@/components/icons";
+import { PixelDissolve } from "@/components/common/PixelDissolve";
+import { ExternalLinkIcon, BoltIcon, HeartIcon, TrophyIcon, FlagIcon, BadgeIcon } from "@/components/icons";
 import styles from "./about.module.scss";
 
 export function About() {
@@ -13,8 +14,21 @@ export function About() {
 
   return (
     <section className={styles.section}>
-      <Bubble size={70} color="gold" position={{ top: "10%", right: "8%" }} animation="float-slow" delay={0.5} />
-      <Bubble size={44} color="purple" position={{ bottom: "20%", left: "5%" }} animation="drift" delay={1} />
+      {/* Bubbles — Habits identity (organic, round, playful, with icons) */}
+      <Bubble size={70} color="gold" variant="icon" icon={<BoltIcon />} opacity={0.35} position={{ top: "8%", left: "3%" }} animation="float" delay={0} />
+      <Bubble size={50} color="green" variant="icon" icon={<HeartIcon />} opacity={0.3} position={{ top: "25%", left: "12%" }} animation="drift" delay={1.5} />
+      <Bubble size={56} color="gold" variant="icon" icon={<TrophyIcon />} opacity={0.35} position={{ bottom: "18%", left: "6%" }} animation="float-slow" delay={0.8} />
+
+      {/* Blocks — Arena identity (geometric, sharp, competitive, with icons) */}
+      <Block size="medium" color="purple" className={styles.floatBlock1}>
+        <FlagIcon size={22} color="white" />
+      </Block>
+      <Block size="medium" color="red" className={styles.floatBlock2}>
+        <BoltIcon size={22} color="white" />
+      </Block>
+      <Block size="medium" color="green" className={styles.floatBlock3}>
+        <BadgeIcon size={22} color="white" />
+      </Block>
 
       <div className={`${styles.container} scroll-reveal`} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
@@ -40,14 +54,9 @@ export function About() {
             </a>
           </div>
 
-          <div className={styles.dividerBlocks}>
-            <Block size="small" color="purple" />
-            <Block size="small" color="gold" />
-            <Block size="small" color="green" />
-          </div>
-
           <div className={`${styles.card} ${styles.active}`}>
             <div className={`${styles.cardBorder} ${styles.purple}`} />
+            <div className={styles.arenaGlow} />
             <h3 className={styles.cardTitle}>{t("challengesTitle")}</h3>
             <ul className={styles.cardList}>
               <li>{t("challengesPublic")}</li>
@@ -57,6 +66,10 @@ export function About() {
             <span className={styles.hereBadge}>{t("challengesHere")}</span>
           </div>
         </div>
+      </div>
+
+      <div className={styles.dissolveWrapper}>
+        <PixelDissolve />
       </div>
     </section>
   );

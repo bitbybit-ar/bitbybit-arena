@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Block } from "@/components/common/Block";
+import { MoonIcon, SunIcon } from "@/components/icons";
+import { useTheme } from "@/lib/theme-context";
 import { NostrLoginModal } from "@/components/layout/NostrLoginModal";
 import styles from "./navbar.module.scss";
 
@@ -17,7 +19,10 @@ interface SessionUser {
 
 export function Navbar() {
   const t = useTranslations("common");
+  const { theme, toggleTheme } = useTheme();
+  const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -43,6 +48,12 @@ export function Navbar() {
     router.push("/");
   };
 
+  const toggleLocale = () => {
+    const newLocale = locale === "es" ? "en" : "es";
+    const pathWithoutLocale = pathname.replace(/^\/(es|en)/, "");
+    router.push(`/${newLocale}${pathWithoutLocale}`);
+  };
+
   return (
     <>
       <nav className={`${styles.navbar} ${scrolled ? styles.scrolled : ""}`}>
@@ -59,6 +70,23 @@ export function Navbar() {
           </Link>
 
           <div className={styles.nav}>
+            <div className={styles.toggleGroup}>
+              <button
+                className={styles.toggle}
+                onClick={toggleTheme}
+                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? <SunIcon size={14} /> : <MoonIcon size={14} />}
+              </button>
+              <button
+                className={styles.toggle}
+                onClick={toggleLocale}
+                aria-label={locale === "es" ? "Switch to English" : "Cambiar a Espanol"}
+              >
+                {locale === "es" ? "EN" : "ES"}
+              </button>
+            </div>
+
             {user ? (
               <>
                 <Link href="/explore" className={styles.navLink}>

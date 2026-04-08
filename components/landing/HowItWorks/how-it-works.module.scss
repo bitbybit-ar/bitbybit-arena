@@ -19,13 +19,22 @@
   font-size: $font-size-2xl;
   font-weight: $font-weight-extrabold;
   text-align: center;
-  margin-bottom: $spacing-64;
+  margin-bottom: $spacing-16;
   color: $color-text-primary;
+}
+
+.subtitle {
+  text-align: center;
+  color: $color-text-secondary;
+  font-size: $font-size-subtitle;
+  max-width: 560px;
+  margin: 0 auto $spacing-64;
+  line-height: $line-height-base;
 }
 
 .steps {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: center;
   gap: $spacing-8;
 
@@ -50,19 +59,40 @@
   }
 }
 
+.card {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: 0 2px 8px $card-shadow;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: $spacing-48 $spacing-24 $spacing-24;
+  text-align: center;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px $card-shadow-hover;
+  }
+}
+
+// Number badge — top left corner of card
 .numberBadge {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  position: absolute;
+  top: $spacing-12;
+  left: $spacing-12;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: $font-display;
   font-weight: $font-weight-extrabold;
-  font-size: $font-size-base;
+  font-size: $font-size-sm;
   color: $static-white;
-  margin-bottom: $spacing-16;
-  box-shadow: 0 2px 8px $card-shadow;
 
   &.purple {
     background: $color-primary;
@@ -75,23 +105,8 @@
   }
 }
 
-.card {
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-lg;
-  box-shadow: 0 2px 8px $card-shadow;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  padding: $spacing-24;
-  text-align: center;
-  width: 100%;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px $card-shadow-hover;
-  }
-}
-
-.cardIcon {
+// Pixel icon — centered, full opacity
+.pixelIcon {
   display: flex;
   justify-content: center;
   margin-bottom: $spacing-16;
@@ -127,5 +142,88 @@
     top: 50%;
     transform: translateY(-50%);
     flex-direction: row;
+  }
+}
+
+// Floating decorative blocks — high contrast, visible animation
+.floatBlock1,
+.floatBlock2,
+.floatBlock3,
+.floatBlock4,
+.floatBlock5,
+.floatBlock6 {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+}
+
+.floatBlock1 {
+  top: 5%;
+  right: 6%;
+  animation: drift-a 5s ease-in-out infinite;
+}
+
+.floatBlock2 {
+  top: 12%;
+  left: 4%;
+  animation: drift-b 4s ease-in-out infinite;
+}
+
+.floatBlock3 {
+  bottom: 8%;
+  right: 10%;
+  animation: drift-c 6s ease-in-out infinite;
+}
+
+.floatBlock4 {
+  bottom: 15%;
+  left: 7%;
+  animation: drift-a 4.5s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.floatBlock5 {
+  top: 40%;
+  right: 2%;
+  animation: drift-b 5.5s ease-in-out infinite;
+  animation-delay: -1s;
+}
+
+.floatBlock6 {
+  top: 50%;
+  left: 2%;
+  animation: drift-c 5s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+@keyframes drift-a {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(15px, -20px); }
+}
+
+@keyframes drift-b {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-12px, 18px); }
+}
+
+@keyframes drift-c {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(10px, 15px); }
+}
+
+.dissolveWrapper {
+  position: relative;
+  margin-top: $spacing-48;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floatBlock1,
+  .floatBlock2,
+  .floatBlock3,
+  .floatBlock4,
+  .floatBlock5,
+  .floatBlock6 {
+    animation: none;
   }
 }

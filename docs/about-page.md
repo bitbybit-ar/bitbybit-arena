@@ -2,7 +2,7 @@
 
 ## Overview
 
-Public page at `/about`. Tells the story of BitByBit, introduces the team, and connects both projects (Habits + Challenges). No auth required.
+Public page at `/about`. Tells the story of BitByBit, introduces the team, and connects both projects (Habits + Arena). No auth required.
 
 ## Sections
 
@@ -16,7 +16,7 @@ BitByBit started during the FOUNDATIONS hackathon by La Crypta in March 2026. Th
 
 The name "BitByBit" reflects the philosophy: small consistent actions, stacked over time, create big results. Like stacking sats, like building blocks.
 
-For the second La Crypta hackathon (Nostr theme), we took the same idea — real rewards for real effort — and brought it to the open Nostr network. **BitByBit Challenges** lets anyone create public challenges, compete with others, and earn badges and sats. No families, no permissions — just the open protocol.
+For the second La Crypta hackathon (Nostr theme), we took the same idea — real rewards for real effort — and brought it to the open Nostr network. **BitByBit Arena** lets anyone create public challenges, compete with others, and earn badges and sats. No families, no permissions — just the open protocol.
 
 Both projects share the same codebase quality, the same team, and the same belief: Bitcoin should reward action, not just speculation.
 
@@ -26,7 +26,7 @@ Both projects share the same codebase quality, the same team, and the same belie
 
 Side-by-side comparison (similar to the About section on landing, but more detailed).
 
-| | BitByBit Habits | BitByBit Challenges |
+| | BitByBit Habits | BitByBit Arena |
 |--|-----------------|---------------------|
 | **Hackathon** | FOUNDATIONS (#1) — Lightning | Hackathon #2 — Nostr |
 | **Theme** | Private, family | Public, social |
@@ -90,7 +90,7 @@ Brief section acknowledging La Crypta as the community that made this possible.
 │                                         │
 │  Two Projects                           │
 │  ┌─────────────┐  ┌─────────────┐      │
-│  │  Habits     │  │ Challenges  │      │
+│  │  Habits     │  │  Arena      │      │
 │  │  ...        │  │ ...         │      │
 │  └─────────────┘  └─────────────┘      │
 │                                         │

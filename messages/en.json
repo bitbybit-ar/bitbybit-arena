@@ -43,53 +43,53 @@
   },
   "landing": {
     "hero": {
-      "badge": "Built on Nostr",
-      "headline1": "Challenge Yourself.",
-      "headline2": "Earn Sats.",
-      "subtitle": "Create challenges, compete with others, prove your wins, and earn Bitcoin rewards — all on the open Nostr network.",
-      "exploreCta": "Explore Challenges",
-      "createCta": "Create a Challenge"
+      "headline1": "Enter the Arena.",
+      "headline2": "Battle for Sats.",
+      "subtitle": "What if anyone could challenge anyone, and the victories lived on Nostr forever?",
+      "exploreCta": "Explore the Arena",
+      "createCta": "Launch a Challenge"
     },
     "howItWorks": {
       "title": "How it works",
+      "subtitle": "Create challenges, compete for sats, and earn badges that live on your Nostr identity.",
       "step1Title": "Create",
-      "step1Description": "Set the rules, duration, and fund it with sats. Your challenge is published to Nostr for anyone to discover.",
-      "step2Title": "Compete",
-      "step2Description": "Join challenges, submit your proof of completion, and track your progress.",
+      "step1Description": "Set the rules, duration, and fund it with sats. Your arena is published to Nostr for anyone to discover.",
+      "step2Title": "Battle",
+      "step2Description": "Enter challenges, submit your proof of victory, and track your progress.",
       "step3Title": "Earn",
-      "step3Description": "Complete challenges to earn NIP-58 badges on your Nostr identity. Your wins are visible across the network."
+      "step3Description": "Conquer challenges to earn NIP-58 badges on your Nostr identity. Your victories are celebrated across the network."
     },
     "about": {
-      "title": "Part of the BitByBit Ecosystem",
-      "description": "BitByBit started as a habit tracker that rewards kids with real sats for completing tasks. Now we're taking the same idea — real rewards for real effort — to the open Nostr network.",
+      "title": "The BitByBit Family",
+      "description": "BitByBit believes effort deserves bitcoin. We started rewarding kids for habits. Now, the arena rewards everyone who dares to compete.",
       "habitsTitle": "BitByBit Habits",
       "habitsPrivate": "Private & family-focused",
       "habitsRoutines": "Daily routines",
       "habitsReward": "Sponsor rewards kid",
       "habitsLink": "Visit bitbybit.com.ar",
       "challengesTitle": "BitByBit Arena",
-      "challengesPublic": "Public & social",
-      "challengesCompetitions": "Time-bounded competitions",
-      "challengesReward": "Community rewards everyone",
+      "challengesPublic": "Public & competitive",
+      "challengesCompetitions": "Time-bounded battles",
+      "challengesReward": "The arena crowns champions",
       "challengesHere": "You're here"
     },
     "partners": {
-      "title": "Partners"
+      "title": "Partners",
+      "subtitle": "Building the future of Nostr, together.",
+      "laCryptaDescription": "Bitcoin community in Argentina",
+      "nostrWotDescription": "Web of Trust for Nostr"
     },
     "support": {
       "title": "Support BitByBit",
       "subtitle": "Open source and community-driven. Help us keep building.",
-      "donateSats": "Donate Sats",
-      "donateDescription": "Send sats via Lightning Network",
-      "contribute": "Contribute",
-      "contributeDescription": "Collaborate on GitHub with code or ideas",
-      "starOnGithub": "Star on GitHub",
-      "zapUs": "Zap us"
+      "zapDevs": "Zap the devs",
+      "starOnGithub": "Star on GitHub"
     },
     "footer": {
       "builtFor": "Built for",
       "hackathonName": "Hackathon #2 by La Crypta",
       "motto": "Bitcoin o Muerte",
+      "aboutUs": "About Us",
       "github": "GitHub",
       "nostr": "Nostr",
       "habits": "BitByBit Habits"

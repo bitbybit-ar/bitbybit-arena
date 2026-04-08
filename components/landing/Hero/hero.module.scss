@@ -19,11 +19,38 @@
   }
 }
 
+// Spotlight radial gradients
+.spotlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 600px 400px at 40% 35%, alpha($color-primary, 6%) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 300px at 70% 60%, alpha($color-secondary, 3%) 0%, transparent 70%);
+  animation: spotlight-pulse 8s ease-in-out infinite;
+}
+
+// Arena floor dot grid
+.arenaFloor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle 1.5px at center, alpha($color-primary, 4%) 0%, transparent 100%);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 20%, transparent 75%);
+
+  @include mobile {
+    display: none;
+  }
+}
+
 .container {
   @include container;
   display: flex;
   align-items: center;
   gap: $spacing-64;
+  position: relative;
+  z-index: 1;
 
   @include mobile {
     flex-direction: column;
@@ -34,20 +61,6 @@
 
 .content {
   flex: 1;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: $spacing-8;
-  padding: $spacing-4 $spacing-12;
-  background: alpha($color-primary, 10%);
-  color: $color-primary;
-  border-radius: $border-radius-full;
-  font-size: $font-size-xs;
-  font-weight: $font-weight-semibold;
-  margin-bottom: $spacing-24;
-  animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .headline {
@@ -68,6 +81,11 @@
 .line2 {
   display: block;
   color: $color-secondary;
+  font-size: 0.5em;
+  font-weight: $font-weight-bold;
+  letter-spacing: $letter-spacing-wide;
+  text-transform: uppercase;
+  margin-top: $spacing-8;
 }
 
 .subtitle {
@@ -134,12 +152,77 @@
 .visual {
   flex-shrink: 0;
   animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;
+  filter: drop-shadow(0 8px 32px alpha($color-primary, 20%));
 
   @include mobile {
     order: -1;
   }
 }
 
+// Floating blocks with icons
+.floatBlock1,
+.floatBlock2,
+.floatBlock3,
+.floatBlock4,
+.floatBlock5 {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+}
+
+.floatBlock1 {
+  top: 15%;
+  right: 7%;
+  animation: hero-drift-a 5s ease-in-out infinite;
+}
+
+.floatBlock2 {
+  bottom: 25%;
+  left: 5%;
+  animation: hero-drift-b 5.5s ease-in-out infinite;
+  animation-delay: -1.5s;
+}
+
+.floatBlock3 {
+  top: 40%;
+  left: 3%;
+  animation: hero-drift-a 6s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+.floatBlock4 {
+  bottom: 18%;
+  right: 12%;
+  animation: hero-drift-b 4.5s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.floatBlock5 {
+  top: 10%;
+  left: 14%;
+  animation: hero-drift-a 5s ease-in-out infinite;
+  animation-delay: -4s;
+}
+
+@keyframes hero-drift-a {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(14px, -18px); }
+}
+
+@keyframes hero-drift-b {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-12px, 14px); }
+}
+
+.dissolveWrapper {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+// Animations
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -151,8 +234,28 @@
   }
 }
 
+@keyframes spotlight-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes block-drift {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(5px, -8px);
+  }
+  66% {
+    transform: translate(-3px, 5px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .badge,
   .headline,
   .subtitle,
   .ctas,
@@ -160,5 +263,17 @@
     animation: none;
     opacity: 1;
     transform: none;
+  }
+
+  .spotlight {
+    animation: none;
+  }
+
+  .floatBlock1,
+  .floatBlock2,
+  .floatBlock3,
+  .floatBlock4,
+  .floatBlock5 {
+    animation: none;
   }
 }

@@ -64,6 +64,14 @@
   border-color: alpha($color-primary, 20%);
 }
 
+// Subtle spotlight glow behind the Arena card
+.arenaGlow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 30%, alpha($color-primary, 4%), transparent 70%);
+}
+
 .cardBorder {
   position: absolute;
   top: 0;
@@ -103,7 +111,7 @@
       content: "";
       width: 6px;
       height: 6px;
-      border-radius: 50%;
+      border-radius: 2px;
       background: $color-primary;
       flex-shrink: 0;
     }
@@ -134,12 +142,55 @@
   font-weight: $font-weight-semibold;
 }
 
-.dividerBlocks {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+// Floating blocks — Arena side (right)
+.floatBlock1,
+.floatBlock2,
+.floatBlock3 {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+}
 
-  @include mobile {
-    flex-direction: row;
+.floatBlock1 {
+  top: 10%;
+  right: 5%;
+  animation: block-drift-a 5s ease-in-out infinite;
+}
+
+.floatBlock2 {
+  top: 40%;
+  right: 10%;
+  animation: block-drift-b 4.5s ease-in-out infinite;
+  animation-delay: -1.5s;
+}
+
+.floatBlock3 {
+  bottom: 12%;
+  right: 3%;
+  animation: block-drift-a 6s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+@keyframes block-drift-a {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(12px, -18px); }
+}
+
+@keyframes block-drift-b {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-10px, 14px); }
+}
+
+.dissolveWrapper {
+  position: relative;
+  margin-top: $spacing-48;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floatBlock1,
+  .floatBlock2,
+  .floatBlock3 {
+    animation: none;
   }
 }
