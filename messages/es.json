@@ -13,7 +13,30 @@
     "copy": "Copiar",
     "copied": "Copiado",
     "sats": "sats",
-    "viewAll": "Ver todos"
+    "viewAll": "Ver todos",
+    "back": "Volver",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "join": "Unirse",
+    "withdraw": "Retirarse",
+    "submit": "Enviar",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "noResults": "No se encontraron resultados",
+    "participants": "participantes",
+    "completions": "completaciones",
+    "badge": "Badge",
+    "created": "Creado",
+    "joined": "Unido",
+    "open": "Abierto",
+    "inProgress": "En progreso",
+    "completed": "Completado",
+    "cancelled": "Cancelado",
+    "pending": "Pendiente",
+    "approved": "Aprobado",
+    "rejected": "Rechazado",
+    "active": "Activo",
+    "withdrawn": "Retirado"
   },
   "landing": {
     "hero": {
@@ -29,9 +52,9 @@
       "step1Title": "Crea",
       "step1Description": "Define las reglas, duracion y fondea con sats. Tu desafio se publica en Nostr para que cualquiera lo descubra.",
       "step2Title": "Compite",
-      "step2Description": "Unite a desafios, subi tu prueba con fotos y segui tu progreso. La comunidad verifica las completaciones.",
+      "step2Description": "Unite a desafios, envia tu prueba de completacion y segui tu progreso.",
       "step3Title": "Gana",
-      "step3Description": "Completa desafios para ganar badges NIP-58 y recompensas Lightning. Tus logros son visibles en todo Nostr."
+      "step3Description": "Completa desafios para ganar badges NIP-58 en tu identidad Nostr. Tus logros son visibles en toda la red."
     },
     "about": {
       "title": "Parte del ecosistema BitByBit",
@@ -79,14 +102,103 @@
     "error": "Error al conectar con Nostr",
     "retry": "Reintentar"
   },
-  "feed": {
-    "title": "Actividad"
+  "login": {
+    "title": "Bienvenido a BitByBit Challenges",
+    "subtitle": "Inicia sesion con tu identidad Nostr para crear y unirte a desafios.",
+    "backToHome": "Volver al inicio"
   },
   "explore": {
     "title": "Explorar desafios",
-    "createNew": "Crear desafio"
+    "createNew": "Crear desafio",
+    "searchPlaceholder": "Buscar desafios...",
+    "filters": "Filtros",
+    "allTypes": "Todos los tipos",
+    "allStatuses": "Todos los estados",
+    "sortBy": "Ordenar por",
+    "newest": "Mas recientes",
+    "endingSoon": "Por terminar",
+    "mostParticipants": "Mas participantes",
+    "mostActive": "Mas activos",
+    "empty": "No hay desafios aun. Se el primero en crear uno!",
+    "emptyFiltered": "No se encontraron desafios con estos filtros.",
+    "signInToJoin": "Inicia sesion para unirte",
+    "signInToCreate": "Inicia sesion para crear"
+  },
+  "createChallenge": {
+    "title": "Crear desafio",
+    "nameLabel": "Titulo",
+    "namePlaceholder": "Ej: 30 dias de meditacion",
+    "descriptionLabel": "Descripcion",
+    "descriptionPlaceholder": "Describe el desafio, reglas y como se verifica...",
+    "typeLabel": "Tipo",
+    "types": {
+      "one_time": "Unica vez",
+      "streak": "Racha",
+      "competition": "Competencia",
+      "race": "Carrera",
+      "creative": "Creativo"
+    },
+    "categoryLabel": "Categoria",
+    "categoryPlaceholder": "Ej: fitness, aprendizaje, creatividad",
+    "goalLabel": "Meta",
+    "goalPlaceholder": "Ej: 30",
+    "unitLabel": "Unidad",
+    "unitPlaceholder": "Ej: dias, libros, km",
+    "verificationLabel": "Verificacion",
+    "verificationTypes": {
+      "creator_approval": "Aprobacion del creador",
+      "automatic": "Automatica (sistema de honor)"
+    },
+    "badgeNameLabel": "Nombre del badge",
+    "badgeNamePlaceholder": "Ej: Maestro Zen 30 Dias",
+    "startsAtLabel": "Fecha de inicio",
+    "endsAtLabel": "Fecha de fin",
+    "creating": "Creando...",
+    "success": "Desafio creado!"
+  },
+  "challenge": {
+    "by": "por",
+    "joinChallenge": "Unirse al desafio",
+    "joining": "Uniendose...",
+    "withdrawFromChallenge": "Retirarse del desafio",
+    "withdrawing": "Retirandose...",
+    "alreadyJoined": "Ya estas participando",
+    "yourChallenge": "Tu desafio",
+    "progress": "Progreso",
+    "submitProof": "Enviar prueba",
+    "proofPlaceholder": "Describe lo que hiciste...",
+    "submitting": "Enviando...",
+    "proofSubmitted": "Prueba enviada!",
+    "completions": "Completaciones",
+    "noCompletions": "Todavia no hay completaciones.",
+    "pendingReview": "Pendiente de revision",
+    "verifyCompletions": "Verificar completaciones",
+    "approving": "Aprobando...",
+    "rejecting": "Rechazando...",
+    "awardBadges": "Otorgar badges",
+    "awarding": "Otorgando...",
+    "awarded": "Badges otorgados!",
+    "selectWinners": "Selecciona los ganadores",
+    "participants": "Participantes",
+    "noParticipants": "Todavia no hay participantes.",
+    "details": "Detalles",
+    "type": "Tipo",
+    "verification": "Verificacion",
+    "goal": "Meta",
+    "starts": "Empieza",
+    "ends": "Termina",
+    "status": "Estado",
+    "editChallenge": "Editar desafio",
+    "deleteChallenge": "Eliminar desafio",
+    "confirmDelete": "Estas seguro? Esta accion no se puede deshacer.",
+    "deleted": "Desafio eliminado"
   },
   "myChallenges": {
-    "title": "Mis desafios"
+    "title": "Mis desafios",
+    "created": "Creados",
+    "joined": "Unidos",
+    "empty": "Todavia no tenes desafios. Explora y unite a uno!",
+    "emptyCreated": "No creaste ningun desafio aun.",
+    "emptyJoined": "No te uniste a ningun desafio aun."
   }
 }

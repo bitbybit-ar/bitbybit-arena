@@ -13,7 +13,30 @@
     "copy": "Copy",
     "copied": "Copied",
     "sats": "sats",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "back": "Back",
+    "delete": "Delete",
+    "edit": "Edit",
+    "join": "Join",
+    "withdraw": "Withdraw",
+    "submit": "Submit",
+    "approve": "Approve",
+    "reject": "Reject",
+    "noResults": "No results found",
+    "participants": "participants",
+    "completions": "completions",
+    "badge": "Badge",
+    "created": "Created",
+    "joined": "Joined",
+    "open": "Open",
+    "inProgress": "In progress",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "active": "Active",
+    "withdrawn": "Withdrawn"
   },
   "landing": {
     "hero": {
@@ -29,9 +52,9 @@
       "step1Title": "Create",
       "step1Description": "Set the rules, duration, and fund it with sats. Your challenge is published to Nostr for anyone to discover.",
       "step2Title": "Compete",
-      "step2Description": "Join challenges, submit photo proof, and track your progress. The community verifies completions.",
+      "step2Description": "Join challenges, submit your proof of completion, and track your progress.",
       "step3Title": "Earn",
-      "step3Description": "Complete challenges to earn NIP-58 badges and Lightning rewards. Your wins are visible across Nostr."
+      "step3Description": "Complete challenges to earn NIP-58 badges on your Nostr identity. Your wins are visible across the network."
     },
     "about": {
       "title": "Part of the BitByBit Ecosystem",
@@ -79,14 +102,103 @@
     "error": "Error connecting with Nostr",
     "retry": "Retry"
   },
-  "feed": {
-    "title": "Activity"
+  "login": {
+    "title": "Welcome to BitByBit Challenges",
+    "subtitle": "Sign in with your Nostr identity to create and join challenges.",
+    "backToHome": "Back to home"
   },
   "explore": {
     "title": "Explore Challenges",
-    "createNew": "Create Challenge"
+    "createNew": "Create Challenge",
+    "searchPlaceholder": "Search challenges...",
+    "filters": "Filters",
+    "allTypes": "All types",
+    "allStatuses": "All statuses",
+    "sortBy": "Sort by",
+    "newest": "Newest",
+    "endingSoon": "Ending soon",
+    "mostParticipants": "Most participants",
+    "mostActive": "Most active",
+    "empty": "No challenges yet. Be the first to create one!",
+    "emptyFiltered": "No challenges found with these filters.",
+    "signInToJoin": "Sign in to join",
+    "signInToCreate": "Sign in to create"
+  },
+  "createChallenge": {
+    "title": "Create Challenge",
+    "nameLabel": "Title",
+    "namePlaceholder": "E.g., 30-day meditation challenge",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Describe the challenge, rules, and how to verify...",
+    "typeLabel": "Type",
+    "types": {
+      "one_time": "One time",
+      "streak": "Streak",
+      "competition": "Competition",
+      "race": "Race",
+      "creative": "Creative"
+    },
+    "categoryLabel": "Category",
+    "categoryPlaceholder": "E.g., fitness, learning, creativity",
+    "goalLabel": "Goal",
+    "goalPlaceholder": "E.g., 30",
+    "unitLabel": "Unit",
+    "unitPlaceholder": "E.g., days, books, km",
+    "verificationLabel": "Verification",
+    "verificationTypes": {
+      "creator_approval": "Creator approval",
+      "automatic": "Automatic (honor system)"
+    },
+    "badgeNameLabel": "Badge name",
+    "badgeNamePlaceholder": "E.g., 30-Day Zen Master",
+    "startsAtLabel": "Start date",
+    "endsAtLabel": "End date",
+    "creating": "Creating...",
+    "success": "Challenge created!"
+  },
+  "challenge": {
+    "by": "by",
+    "joinChallenge": "Join Challenge",
+    "joining": "Joining...",
+    "withdrawFromChallenge": "Withdraw from Challenge",
+    "withdrawing": "Withdrawing...",
+    "alreadyJoined": "Already participating",
+    "yourChallenge": "Your challenge",
+    "progress": "Progress",
+    "submitProof": "Submit Proof",
+    "proofPlaceholder": "Describe what you did...",
+    "submitting": "Submitting...",
+    "proofSubmitted": "Proof submitted!",
+    "completions": "Completions",
+    "noCompletions": "No completions yet.",
+    "pendingReview": "Pending review",
+    "verifyCompletions": "Verify Completions",
+    "approving": "Approving...",
+    "rejecting": "Rejecting...",
+    "awardBadges": "Award Badges",
+    "awarding": "Awarding...",
+    "awarded": "Badges awarded!",
+    "selectWinners": "Select winners",
+    "participants": "Participants",
+    "noParticipants": "No participants yet.",
+    "details": "Details",
+    "type": "Type",
+    "verification": "Verification",
+    "goal": "Goal",
+    "starts": "Starts",
+    "ends": "Ends",
+    "status": "Status",
+    "editChallenge": "Edit Challenge",
+    "deleteChallenge": "Delete Challenge",
+    "confirmDelete": "Are you sure? This action cannot be undone.",
+    "deleted": "Challenge deleted"
   },
   "myChallenges": {
-    "title": "My Challenges"
+    "title": "My Challenges",
+    "created": "Created",
+    "joined": "Joined",
+    "empty": "No challenges yet. Explore and join one!",
+    "emptyCreated": "You haven't created any challenges yet.",
+    "emptyJoined": "You haven't joined any challenges yet."
   }
 }
