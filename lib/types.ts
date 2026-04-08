@@ -23,13 +23,11 @@ export type ChallengeStatus = "open" | "in_progress" | "completed" | "cancelled"
 
 export type VerificationType =
   | "creator_approval"
-  | "community_vote"
   | "automatic";
 
 export type PrizeDistribution =
   | "first_to_complete"
   | "winner_takes_all"
-  | "tiered"
   | "split"
   | "none";
 
@@ -56,6 +54,7 @@ export interface Challenge {
   // Computed
   participant_count?: number;
   completion_count?: number;
+  creator?: User;
 }
 
 export type CompletionStatus = "pending" | "approved" | "rejected";
@@ -65,25 +64,12 @@ export interface Completion {
   challenge_id: string;
   user_id: string;
   step: number | null;
-  content: string | null;
-  proof_url: string | null;
-  proof_hash: string | null;
+  content: string;
   status: CompletionStatus;
   reviewed_by: string | null;
   submitted_at: string;
-}
-
-export type PrizeStatus = "pending" | "paid" | "failed";
-
-export interface Prize {
-  id: string;
-  challenge_id: string;
-  winner_id: string;
-  amount_sats: number;
-  placement: string | null;
-  payment_method: string | null;
-  status: PrizeStatus;
-  paid_at: string | null;
+  // Computed
+  user?: User;
 }
 
 export interface Badge {
@@ -104,6 +90,8 @@ export interface Participant {
   status: "active" | "completed" | "withdrawn";
   completed_at: string | null;
   joined_at: string;
+  // Computed
+  user?: User;
 }
 
 export interface ApiResponse<T = unknown> {

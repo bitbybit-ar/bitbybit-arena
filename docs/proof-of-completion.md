@@ -2,48 +2,29 @@
 
 ## The Problem
 
-How does a user prove they actually completed a challenge? This is the hardest design problem in the app. Different challenges need different proof mechanisms.
+How does a user prove they actually completed a challenge? Different challenges need different proof mechanisms, but for MVP we keep it simple: text-only proofs.
 
-## Proof Types
+## Proof Type (MVP)
 
-### 1. Photo/Video Proof (Primary method for MVP)
+### Text Description
 
-User uploads a photo or short video as evidence.
+User writes what they did. Simple, fast, works for any challenge type.
 
 **Flow:**
 1. User taps "Submit Proof" on the challenge
-2. Camera opens (or file picker)
-3. Photo uploaded to Blossom server (NIP-B7)
-4. Blossom returns URL + SHA-256 hash
-5. Completion event (kind: 7101) published with `proof` and `imeta` tags
-6. Hash in the event ensures the photo can't be swapped later
+2. Text input opens (title + description)
+3. Completion event (kind: 7101) published to Nostr with the text as content
+4. Verification process begins based on challenge settings
 
-**Strengths:**
-- Simple, intuitive UX
-- Works for most challenge types (fitness, creative, learning, etc.)
-- Tamper-evident via Blossom hash
+**Use cases:**
+- "Read a chapter of a book" → "Finished chapter 5 of The Bitcoin Standard"
+- "Meditate for 10 minutes" → "Did a 15-minute session this morning"
+- "Run a 5K" → "Ran 5.2km in 28 minutes at the park"
+- "Best sunset photo" → "Caught an amazing sunset from the rooftop" (description only for MVP)
 
-**Weaknesses:**
-- Photos can be faked (screenshots, old photos, AI generated)
-- Not suitable for all challenge types
+### Future: Photo/Video Proof (Post-MVP)
 
-**Mitigation:**
-- Timestamp metadata in the photo (EXIF if available)
-- Community can flag suspicious submissions
-- Creator can reject during verification
-- Future: integrate ProofMode for cryptographic device attestation
-
-### 2. Text Description
-
-User writes what they did. Simplest proof, relies on honor system.
-
-**Use case:** Challenges where photo proof doesn't make sense (e.g., "Read a chapter of a book", "Meditate for 10 minutes").
-
-### 3. Link/URL Proof
-
-User submits a link as evidence (e.g., a Strava activity, a published blog post, a GitHub commit).
-
-**Use case:** Challenges tied to online activity.
+Photo uploads via Blossom (NIP-B7) are planned but deferred. They add complexity (upload flow, file size limits, Blossom server selection) without being essential for the core demo flow.
 
 ## Verification Methods
 
@@ -72,7 +53,7 @@ The challenge creator chooses the verification method when creating the challeng
 ## Verification Flow
 
 ```
-User submits proof (kind: 7101)
+User submits text proof (kind: 7101)
          |
          v
     +-----------+
@@ -86,43 +67,22 @@ User submits proof (kind: 7101)
     |     |          |
     v     v          v
  kind:7102         Badge awarded (kind: 8)
- approved?         Prize distributed (zap)
+ approved?
     |
     v
  Badge awarded (kind: 8)
- Prize distributed (zap)
 ```
 
 ## Anti-Fraud Considerations
 
-For MVP, we accept that proof can be faked. The mitigations are social, not technical:
+For MVP, we accept that text proofs rely on trust. The mitigations are social, not technical:
 
 1. **Reputation** — Nostr identity is persistent. Cheating damages your public reputation
 2. **Creator gatekeeping** — Creator approval catches obvious fakes
 3. **Community flagging** — Other participants can call out suspicious submissions
-4. **Prize structure** — Small prizes reduce incentive to cheat
-5. **Public submissions** — All proofs are visible on Nostr, creating social accountability
+4. **Public submissions** — All proofs are visible on Nostr, creating social accountability
 
 For post-MVP, consider:
+- Photo/video proof via Blossom (NIP-B7) with tamper-evident hashing
 - ProofMode integration (cryptographic device attestation)
 - NIP-03 OpenTimestamps for provable submission times
-- AI-assisted photo verification (detect screenshots, duplicates)
-- Staking mechanism (participants stake sats, lose them if caught cheating)
-
-## Blossom Integration
-
-### Upload Flow
-1. Client generates NIP-98 auth token (signed by user's Nostr key)
-2. Client uploads file to Blossom server via PUT
-3. Blossom stores file, returns URL like `https://blossom.server/<sha256>.jpg`
-4. Client includes URL and hash in completion event
-
-### Server Selection
-- Use user's configured Blossom servers (kind: 10063 server list)
-- Fallback to default servers (e.g., blossom.band, cdn.satellite.earth)
-- Store server list in user preferences
-
-### File Size Limits
-- Photos: max 5MB (reasonable quality, fast upload)
-- Videos: max 20MB (short clips only for MVP)
-- Supported formats: JPEG, PNG, WebP, MP4

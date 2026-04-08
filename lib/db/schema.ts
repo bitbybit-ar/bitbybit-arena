@@ -53,7 +53,7 @@ export const challenges = pgTable(
     unit: varchar("unit", { length: 30 }), // days, completions, points
     verification_type: varchar("verification_type", { length: 20 })
       .notNull()
-      .default("creator_approval"), // creator_approval, community_vote, automatic
+      .default("creator_approval"), // creator_approval, automatic
     prize_amount_sats: integer("prize_amount_sats").default(0),
     prize_distribution: varchar("prize_distribution", { length: 30 }), // first_to_complete, winner_takes_all, tiered, split, none
     badge_nostr_event_id: varchar("badge_nostr_event_id", { length: 64 }),
@@ -115,9 +115,7 @@ export const completions = pgTable(
       .references(() => users.id),
     nostr_event_id: varchar("nostr_event_id", { length: 64 }),
     step: integer("step"), // which step in a streak/multi-step challenge
-    content: text("content"), // text description
-    proof_url: text("proof_url"), // Blossom URL to photo/video
-    proof_hash: varchar("proof_hash", { length: 64 }), // SHA-256 of proof file
+    content: text("content").notNull(), // text description (text-only for MVP)
     status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
     reviewed_by: uuid("reviewed_by").references(() => users.id),
     reviewed_at: timestamp("reviewed_at"),
@@ -127,54 +125,6 @@ export const completions = pgTable(
     index("completions_challenge_idx").on(table.challenge_id),
     index("completions_user_idx").on(table.user_id),
     index("completions_status_idx").on(table.status),
-  ]
-);
-
-// --- Community votes on completions ---
-export const votes = pgTable(
-  "votes",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    completion_id: uuid("completion_id")
-      .notNull()
-      .references(() => completions.id),
-    user_id: uuid("user_id")
-      .notNull()
-      .references(() => users.id),
-    vote: varchar("vote", { length: 10 }).notNull(), // approve, reject
-    nostr_event_id: varchar("nostr_event_id", { length: 64 }),
-    created_at: timestamp("created_at").notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("votes_unique_idx").on(table.completion_id, table.user_id),
-    index("votes_completion_idx").on(table.completion_id),
-  ]
-);
-
-// --- Prizes ---
-export const prizes = pgTable(
-  "prizes",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    challenge_id: uuid("challenge_id")
-      .notNull()
-      .references(() => challenges.id),
-    winner_id: uuid("winner_id")
-      .notNull()
-      .references(() => users.id),
-    amount_sats: integer("amount_sats").notNull(),
-    placement: varchar("placement", { length: 10 }), // 1st, 2nd, 3rd, completer
-    payment_method: varchar("payment_method", { length: 20 }), // zap, nwc, manual
-    payment_hash: varchar("payment_hash", { length: 64 }),
-    zap_event_id: varchar("zap_event_id", { length: 64 }),
-    status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, paid, failed
-    paid_at: timestamp("paid_at"),
-    created_at: timestamp("created_at").notNull().defaultNow(),
-  },
-  (table) => [
-    index("prizes_challenge_idx").on(table.challenge_id),
-    index("prizes_winner_idx").on(table.winner_id),
-    index("prizes_status_idx").on(table.status),
   ]
 );
 

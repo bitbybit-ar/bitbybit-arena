@@ -2,8 +2,6 @@
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
 @use "@/styles/common-mixins" as *;
-@use "@/styles/cards" as *;
-
 .section {
   @include section-padding;
   position: relative;
@@ -30,7 +28,10 @@
 }
 
 .partnerLink {
-  @include card;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: 0 2px 8px $card-shadow;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -41,7 +42,7 @@
 
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px var(--card-shadow-hover);
+    box-shadow: 0 8px 24px $card-shadow-hover;
     text-decoration: none;
   }
 

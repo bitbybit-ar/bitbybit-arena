@@ -1,0 +1,211 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+
+// ── Field wrapper ──
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+}
+
+.label {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+}
+
+.required {
+  color: $color-error;
+  margin-left: 2px;
+}
+
+// ── Base input ──
+.input {
+  padding: $spacing-12 $spacing-16;
+  border-radius: $border-radius-md;
+  color: $color-text-primary;
+  font-size: $font-size-base;
+  font-family: $font-family-base;
+  width: 100%;
+  background: alpha($color-text-primary, 4%);
+  border: 1px solid $color-border;
+  outline: none;
+  @include transition;
+
+  &::placeholder {
+    color: $color-text-secondary;
+    opacity: 0.4;
+  }
+
+  &:focus {
+    border-color: $color-primary;
+    box-shadow: 0 0 0 2px alpha($color-primary, 15%);
+  }
+}
+
+// ── Password toggle ──
+.inputWrapper {
+  position: relative;
+}
+
+.inputWithToggle {
+  padding-right: $spacing-40;
+}
+
+.passwordToggle {
+  position: absolute;
+  right: $spacing-12;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: $color-text-secondary;
+  display: flex;
+  align-items: center;
+  @include transition;
+
+  &:hover {
+    color: $color-text-primary;
+  }
+}
+
+// ── Select ──
+.select {
+  padding: $spacing-12 $spacing-16;
+  border-radius: $border-radius-md;
+  color: $color-text-primary;
+  font-size: $font-size-base;
+  font-family: $font-family-base;
+  width: 100%;
+  background: alpha($color-text-primary, 4%);
+  border: 1px solid $color-border;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right $spacing-16 center;
+  padding-right: $spacing-40;
+  @include transition;
+
+  &:focus {
+    border-color: $color-primary;
+    box-shadow: 0 0 0 2px alpha($color-primary, 15%);
+  }
+
+  option {
+    background: $color-bg-2;
+    color: $color-text-primary;
+  }
+}
+
+// ── Textarea ──
+.textarea {
+  padding: $spacing-12 $spacing-16;
+  border-radius: $border-radius-md;
+  color: $color-text-primary;
+  font-size: $font-size-base;
+  font-family: $font-family-base;
+  width: 100%;
+  background: alpha($color-text-primary, 4%);
+  border: 1px solid $color-border;
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+  @include transition;
+
+  &::placeholder {
+    color: $color-text-secondary;
+    opacity: 0.4;
+  }
+
+  &:focus {
+    border-color: $color-primary;
+    box-shadow: 0 0 0 2px alpha($color-primary, 15%);
+  }
+}
+
+// ── Error states ──
+.fieldError {
+  .label {
+    color: $color-error;
+  }
+}
+
+.inputError {
+  border-color: $color-error !important;
+  box-shadow: 0 0 0 1px alpha($color-error, 20%);
+}
+
+.errorText {
+  font-size: $font-size-xs;
+  color: $color-error;
+  margin-top: 2px;
+}
+
+// ── Submit button ──
+.submitButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-8;
+  width: 100%;
+  padding: $spacing-12 $spacing-24;
+  border-radius: $border-radius-md;
+  border: none;
+  background: $color-primary;
+  color: $static-white;
+  font-size: $font-size-base;
+  font-weight: $font-weight-bold;
+  font-family: $font-family-base;
+  cursor: pointer;
+  @include transition;
+  margin-top: $spacing-8;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px alpha($color-primary, 30%);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.97);
+    transition-duration: 0.1s;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.outlineButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-8;
+  width: 100%;
+  padding: $spacing-12 $spacing-24;
+  border-radius: $border-radius-md;
+  background: transparent;
+  border: 1px solid $color-primary;
+  color: $color-primary;
+  font-size: $font-size-base;
+  font-weight: $font-weight-bold;
+  font-family: $font-family-base;
+  cursor: pointer;
+  @include transition;
+  margin-top: $spacing-8;
+
+  &:hover:not(:disabled) {
+    background: alpha($color-primary, 8%);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}

@@ -1,0 +1,27 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+
+.card {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: 0 2px 8px $card-shadow;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: $spacing-24;
+}
+
+.variant-default {
+  // Base card styling above
+}
+
+.variant-hover {
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px $card-shadow-hover;
+  }
+}
+
+.variant-highlight {
+  border-color: alpha($color-primary, 30%);
+  box-shadow: 0 4px 20px alpha($color-primary, 8%);
+}

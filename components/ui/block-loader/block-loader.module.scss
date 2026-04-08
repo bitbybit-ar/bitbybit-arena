@@ -1,0 +1,149 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+// Block colors — solid style (no glassmorphism)
+$block-colors: (
+  "purple": $color-primary,
+  "gold":   $color-secondary,
+  "green":  $color-accent-alt,
+  "red":    $color-accent,
+);
+
+@keyframes dropIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-80px) scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(6px) scale(1.02);
+  }
+  75% {
+    transform: translateY(-3px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeOutTower {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+}
+
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-5px); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 260px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.tower {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.towerFade {
+  animation: fadeOutTower 400ms ease-in forwards;
+}
+
+.block {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: dropIn 550ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.icon {
+  position: relative;
+  z-index: 1;
+  color: $static-white;
+  filter: drop-shadow(0 1px 3px alpha($static-black, 30%));
+}
+
+// Generate color variants — solid backgrounds
+@each $name, $color in $block-colors {
+  .#{$name} {
+    background: $color;
+    border: 1px solid alpha($color, 80%);
+    box-shadow: 0 4px 12px alpha($color, 25%);
+  }
+
+  .glow_#{$name} {
+    background: radial-gradient(
+      ellipse,
+      alpha($color, 35%) 0%,
+      transparent 70%
+    );
+  }
+}
+
+.glow {
+  position: absolute;
+  bottom: 40px;
+  width: 120px;
+  height: 40px;
+  border-radius: 50%;
+  filter: blur(12px);
+  z-index: 0;
+  animation: glowPulse 2s ease-in-out infinite;
+  transition: background 300ms ease;
+}
+
+.label {
+  margin-top: $spacing-20;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  z-index: 1;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 2px;
+}
+
+.dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: $color-text-secondary;
+  animation: dotBounce 1.4s ease-in-out infinite;
+
+  &:nth-child(2) { animation-delay: 0.16s; }
+  &:nth-child(3) { animation-delay: 0.32s; }
+}

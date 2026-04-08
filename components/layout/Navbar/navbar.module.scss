@@ -18,7 +18,7 @@
 .scrolled {
   background-color: $color-bg;
   border-bottom-color: $color-border;
-  box-shadow: 0 1px 8px var(--card-shadow);
+  box-shadow: 0 1px 8px $card-shadow;
 }
 
 .inner {

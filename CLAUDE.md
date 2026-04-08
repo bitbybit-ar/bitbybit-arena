@@ -21,8 +21,8 @@
 - **Base de datos**: Neon DB (PostgreSQL serverless) via `@neondatabase/serverless`
 - **ORM**: Drizzle ORM
 - **Auth**: Nostr solamente (NIP-07 browser extension, NIP-42 challenge-response)
-- **Lightning**: NWC (Nostr Wallet Connect) via `@getalby/sdk`, WebLN, NIP-57 Zaps
-- **Media**: Blossom (NIP-B7) para proof uploads
+- **Zaps**: NIP-57 (client-side only, no server-side Lightning/invoices)
+- **Media**: Text-only proofs for MVP (photo upload deferred)
 - **Badges**: NIP-58
 - **Fuente**: Nunito / Nunito Sans (Google Fonts)
 
@@ -33,8 +33,7 @@ bitbybit-challenges/
   app/
     [locale]/                  <- Rutas con i18n (es, en)
       (auth)/                  <- Login con Nostr
-      (app)/                   <- App principal (3 tabs)
-        feed/                  <- Actividad de seguidos
+      (app)/                   <- App principal (2 tabs)
         explore/               <- Explorar + crear desafios
         my-challenges/         <- Desafios del usuario
       layout.tsx               <- Layout con providers
@@ -64,9 +63,6 @@ bitbybit-challenges/
     _typography.scss           <- Font families, sizes, weights
     _common-mixins.scss        <- container, gradient-text, card-base, section-padding
     _media-mixins.scss         <- Responsive breakpoints
-    _cards.scss                <- Card system (solid, no glassmorphism)
-    _bubbles.scss              <- Bubble animations
-    _blocks.scss               <- Block animations
     globals.scss               <- Global resets, scroll reveal
   tests/
   docs/                        <- Design docs, Nostr event specs
@@ -103,7 +99,6 @@ bitbybit-challenges/
   @use "@/styles/typography" as *;
   @use "@/styles/common-mixins" as *;
   @use "@/styles/media-mixins" as *;
-  @use "@/styles/cards" as *;
   ```
 
 #### Variables obligatorias (NO hardcodear valores)
@@ -115,8 +110,8 @@ bitbybit-challenges/
 - **Font weights**: `$font-weight-normal` a `$font-weight-extrabold`
 
 #### Design System: NO Glassmorphism
-- Usar cards solidas (`@include card` de `_cards.scss`)
-- Elementos decorativos: **Bubbles** (circulos flotantes) y **Blocks** (del loader BitByBit)
+- Cards solidas: usar inline styles con `$color-surface`, `$color-border`, `$border-radius-lg` (no card mixins)
+- Elementos decorativos: **Bubbles** (circulos flotantes) y **Blocks** (del loader BitByBit) — como componentes en `components/common/`
 - Los Bubbles rompen la estructura de secciones y agregan movimiento organico
 - Los Blocks representan progreso y la marca "bit by bit"
 - Dark mode y light mode con paleta de colores limpia (purple, gold, green, red)
@@ -156,27 +151,24 @@ bitbybit-challenges/
 - Drizzle ORM con Neon DB
 - Conexion lazy via `getDb()` en `lib/db/index.ts`
 - Schema Drizzle en `lib/db/schema.ts` (source of truth)
-- 8 tablas: users, challenges, participants, completions, votes, prizes, badges, notifications
+- 6 tablas: users, challenges, participants, completions, badges, notifications
 - NO usar string interpolation en queries (SQL injection)
 
 ### Nostr NIPs usados
 - **NIP-01**: Protocolo basico
 - **NIP-07**: Login con extension del browser
 - **NIP-42**: Challenge-response auth
-- **NIP-57**: Lightning Zaps (premios, donaciones)
+- **NIP-57**: Zaps (client-side zap requests, read zap receipts from relays)
 - **NIP-58**: Badges (logros por completar desafios)
-- **NIP-75**: Zap Goals (funding de premio)
-- **NIP-B7**: Blossom (uploads de prueba de completacion)
-- **NIP-92**: Media attachments (metadatos de fotos)
+- **NIP-75**: Zap Goals (funding de premio para desafios)
+- **NIP-B7**: Blossom (deferred — text-only proofs for MVP)
 
 ## Modelo de datos clave
 
 - **User**: identidad Nostr (pubkey), perfil sincronizado de relays
-- **Challenge**: creado por un usuario, con reglas, duracion, tipo, premio opcional
+- **Challenge**: creado por un usuario, con reglas, duracion, tipo
 - **Participant**: usuario que se unio a un desafio, con progreso y puntos
 - **Completion**: prueba de completacion (foto, texto) con status de verificacion
-- **Vote**: voto de la comunidad para verificar completaciones
-- **Prize**: registro de pago de premio Lightning
 - **Badge**: badge NIP-58 otorgado al completar un desafio
 - **Notification**: notificaciones in-app
 

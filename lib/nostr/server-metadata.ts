@@ -1,10 +1,9 @@
-import WebSocket from "ws";
 import { DEFAULT_RELAYS } from "./relays";
-import type { NostrEvent, NostrMetadata } from "./types";
+import type { NostrMetadata } from "./types";
 
 /**
  * Server-side: Fetch the latest kind 0 (metadata) event for a pubkey from relays.
- * Uses the `ws` package for WebSocket (works in Node.js without browser APIs).
+ * Uses native WebSocket (available in Node.js 21+ and Next.js edge runtime).
  */
 export async function fetchNostrMetadataServer(
   pubkey: string,
@@ -14,7 +13,8 @@ export async function fetchNostrMetadataServer(
   const urls = relayUrls ?? DEFAULT_RELAYS;
 
   return new Promise((resolve) => {
-    let bestEvent: NostrEvent | null = null;
+    let bestCreatedAt = 0;
+    let bestContent: string | null = null;
     let resolved = false;
     const sockets: WebSocket[] = [];
 
@@ -24,9 +24,9 @@ export async function fetchNostrMetadataServer(
       for (const s of sockets) {
         try { s.close(); } catch { /* ignore */ }
       }
-      if (bestEvent) {
+      if (bestContent) {
         try {
-          resolve(JSON.parse(bestEvent.content) as NostrMetadata);
+          resolve(JSON.parse(bestContent) as NostrMetadata);
         } catch {
           resolve(null);
         }
@@ -52,7 +52,7 @@ export async function fetchNostrMetadataServer(
         sockets.push(ws);
         const subId = `srv_${Math.random().toString(36).slice(2, 8)}`;
 
-        ws.on("open", () => {
+        ws.addEventListener("open", () => {
           ws.send(JSON.stringify([
             "REQ",
             subId,
@@ -60,13 +60,14 @@ export async function fetchNostrMetadataServer(
           ]));
         });
 
-        ws.on("message", (raw: Buffer) => {
+        ws.addEventListener("message", (event) => {
           try {
-            const data = JSON.parse(raw.toString());
+            const data = JSON.parse(String(event.data));
             if (data[0] === "EVENT" && data[2]) {
-              const event = data[2] as NostrEvent;
-              if (!bestEvent || event.created_at > bestEvent.created_at) {
-                bestEvent = event;
+              const nostrEvent = data[2];
+              if (nostrEvent.created_at > bestCreatedAt) {
+                bestCreatedAt = nostrEvent.created_at;
+                bestContent = nostrEvent.content;
               }
             }
             if (data[0] === "EOSE") {
@@ -75,8 +76,8 @@ export async function fetchNostrMetadataServer(
           } catch { /* ignore parse errors */ }
         });
 
-        ws.on("error", () => { try { ws.close(); } catch { /* ignore */ } });
-        ws.on("close", checkAllDone);
+        ws.addEventListener("error", () => { try { ws.close(); } catch { /* ignore */ } });
+        ws.addEventListener("close", checkAllDone);
       } catch {
         closedCount++;
       }

@@ -2,7 +2,6 @@
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
 @use "@/styles/common-mixins" as *;
-@use "@/styles/cards" as *;
 @use "@/styles/media-mixins" as *;
 
 .section {
@@ -40,8 +39,11 @@
 }
 
 .card {
-  @include card;
   background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: 0 2px 8px $card-shadow;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   padding: $spacing-32;
   text-align: center;
   flex: 1;

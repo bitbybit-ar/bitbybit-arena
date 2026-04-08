@@ -38,25 +38,25 @@
 
 // Colors
 .purple {
-  background: var(--color-primary);
+  background: $color-primary;
   box-shadow: 0 2px 6px alpha($color-primary, 25%),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .gold {
-  background: var(--color-secondary);
+  background: $color-secondary;
   box-shadow: 0 2px 6px alpha($color-secondary, 25%),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .green {
-  background: var(--color-accent-alt);
+  background: $color-accent-alt;
   box-shadow: 0 2px 6px alpha($color-accent-alt, 25%),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .red {
-  background: var(--color-accent);
+  background: $color-accent;
   box-shadow: 0 2px 6px alpha($color-accent, 25%),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }

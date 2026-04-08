@@ -1,8 +1,6 @@
 @use "@/styles/colors" as *;
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
-@use "@/styles/cards" as *;
-
 .overlay {
   position: fixed;
   inset: 0;
@@ -16,8 +14,10 @@
 }
 
 .modal {
-  @include card;
   background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: 0 2px 8px $card-shadow;
   max-width: 420px;
   width: 100%;
   padding: $spacing-32;

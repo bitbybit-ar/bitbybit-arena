@@ -1,0 +1,34 @@
+@use "@/styles/colors" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/spacing" as *;
+
+.tag {
+  display: inline-block;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: $spacing-4 $spacing-12;
+  border-radius: $border-radius-full;
+  margin-bottom: $spacing-16;
+}
+
+.variant-purple {
+  background: alpha($color-primary, 15%);
+  color: $color-primary;
+}
+
+.variant-gold {
+  background: alpha($color-secondary, 15%);
+  color: $color-secondary;
+}
+
+.variant-green {
+  background: alpha($color-accent-alt, 15%);
+  color: $color-accent-alt;
+}
+
+.variant-red {
+  background: alpha($color-accent, 15%);
+  color: $color-accent;
+}

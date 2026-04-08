@@ -10,13 +10,9 @@ BitByBit Challenges uses standard Nostr NIPs where possible and defines custom e
 |-----|---------|---------------|
 | **NIP-01** | Basic protocol | Event structure, relay communication |
 | **NIP-07** | Browser extension | Login with Nostr identity (nos2x, Alby, etc.) |
-| **NIP-57** | Lightning Zaps | Community zaps on completions, prize payouts |
-| **NIP-58** | Badges | Achievement badges for challenge completers |
+| **NIP-57** | Lightning Zaps | Community zaps on completions (client-side only) |
+| **NIP-58** | Badges | Achievement badges tied to Nostr identity |
 | **NIP-75** | Zap Goals | Prize pool funding for challenges |
-| **NIP-51** | Lists | Challenge collections, participant tracking |
-| **NIP-B7** | Blossom | Photo/video proof uploads |
-| **NIP-96** | HTTP File Storage | Alternative media upload |
-| **NIP-92** | Media Attachments | Attaching proof images to completion events |
 | **NIP-25** | Reactions | Likes/reactions on challenges and completions |
 | **NIP-10** | Reply threading | Comments on challenges |
 
@@ -86,8 +82,6 @@ Regular event. User submits proof of completing a challenge (or a step in a stre
   "tags": [
     ["a", "30100:<creator-pubkey>:<challenge-d-tag>"],
     ["p", "<creator-pubkey>"],
-    ["proof", "<blossom-url-to-photo>"],
-    ["imeta", "url <photo-url>", "m image/jpeg", "dim 1024x1024", "x <sha256>"],
     ["progress", "15", "30"],
     ["step", "15"]
   ]
@@ -95,8 +89,7 @@ Regular event. User submits proof of completing a challenge (or a step in a stre
 ```
 
 **Notes:**
-- `proof` tag: URL to uploaded evidence (photo, video, screenshot)
-- `imeta` tag: NIP-92 media metadata
+- `content`: text description of the completion (text-only for MVP)
 - `progress` tag: current/total for streak/competition challenges
 - `step` tag: which step number this submission is for
 

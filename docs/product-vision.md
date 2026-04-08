@@ -2,7 +2,7 @@
 
 ## One-liner
 
-A Nostr client where anyone can create challenges, compete with others, and earn badges and sats.
+aA Nostr-native challenge platform — create challenges, compete with others, earn badges that live on your Nostr identity.
 
 ## Problem
 
@@ -12,10 +12,11 @@ Social media incentivizes passive consumption. There's no decentralized platform
 
 BitByBit Challenges is a Nostr-native app that makes challenges social, verifiable, and rewarding:
 
-- **Create** a challenge with rules, duration, and optional sat prize
+- **Create** a challenge with rules, duration, and verification method
 - **Join** challenges that interest you
-- **Prove** completion with photo/video evidence
-- **Earn** NIP-58 badges and Lightning sats
+- **Prove** completion with a text description
+- **Earn** NIP-58 badges tied to your Nostr identity
+- **Zap** impressive completions (optional, community-driven)
 - **Share** everything to Nostr — your activity is visible across the network
 
 ## Target Users
@@ -29,22 +30,15 @@ BitByBit Challenges is a Nostr-native app that makes challenges social, verifiab
 ### As a Challenge Creator
 - I can create a challenge with a title, description, rules, and duration
 - I can set a verification method (my approval, community vote, automatic)
-- I can fund a prize pool in sats with distribution rules
 - I can design a custom badge for completers
 - When I create a challenge, it's published to Nostr so my followers see it
 
 ### As a Participant
 - I can browse open challenges and filter by category/prize/duration
 - I can join a challenge with one click
-- I can submit proof of completion (photo, text description)
-- I receive a badge when I complete the challenge
-- I receive sats if I win a prize
+- I can submit text proof of completion
+- I receive a badge (NIP-58) when I complete the challenge — it's part of my Nostr identity
 - My completions are published to Nostr so my followers see them
-
-### As a Follower (Feed Consumer)
-- I see when people I follow create, join, or complete challenges
-- I can zap impressive completions
-- I can join challenges I discover in my feed
 
 ## Challenge Types (MVP scope marked with *)
 
@@ -58,8 +52,8 @@ BitByBit Challenges is a Nostr-native app that makes challenges social, verifiab
 
 **Simplicity is critical.** The judges are bots that evaluate UI clarity. Every screen must be self-explanatory.
 
-- Maximum 3 tabs, minimal navigation depth
-- Challenge cards show all key info at a glance (title, prize, participants, time left)
+- 2 tabs only (Explore, My Challenges), minimal navigation depth
+- Challenge cards show all key info at a glance (title, participants, time left, badge)
 - Join/submit/verify flows take minimal taps
 - Progress is always visible (progress bars, countdowns, participant count)
 - Empty states guide the user to action
@@ -71,8 +65,7 @@ BitByBit Habits is a private, family-focused habit tracker (sponsor creates habi
 They share:
 - The BitByBit brand and organization
 - The same tech stack and code quality standards
-- Lightning Network for payments
-- The philosophy of rewarding real-world actions with sats
+- The philosophy of rewarding real-world actions
 
 They differ in:
 - **Habits** = private, family, ongoing routines, sponsor-kid relationship

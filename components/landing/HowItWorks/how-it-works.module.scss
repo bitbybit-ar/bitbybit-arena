@@ -2,7 +2,6 @@
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
 @use "@/styles/common-mixins" as *;
-@use "@/styles/cards" as *;
 @use "@/styles/media-mixins" as *;
 
 .section {
@@ -63,7 +62,7 @@
   font-size: $font-size-base;
   color: $static-white;
   margin-bottom: $spacing-16;
-  box-shadow: 0 2px 8px var(--card-shadow);
+  box-shadow: 0 2px 8px $card-shadow;
 
   &.purple {
     background: $color-primary;
@@ -77,14 +76,18 @@
 }
 
 .card {
-  @include card;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: 0 2px 8px $card-shadow;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   padding: $spacing-24;
   text-align: center;
   width: 100%;
 
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px var(--card-shadow-hover);
+    box-shadow: 0 8px 24px $card-shadow-hover;
   }
 }
 
