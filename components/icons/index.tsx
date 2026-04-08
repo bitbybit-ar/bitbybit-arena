@@ -14,6 +14,8 @@ export { FlagIcon } from "./FlagIcon";
 export { GithubIcon } from "./GithubIcon";
 export { HandshakeIcon } from "./HandshakeIcon";
 export { HeartIcon } from "./HeartIcon";
+export { KeyIcon } from "./KeyIcon";
+export { LinkIcon } from "./LinkIcon";
 export { MoonIcon } from "./MoonIcon";
 export { NostrichIcon } from "./NostrichIcon";
 export { SunIcon } from "./SunIcon";

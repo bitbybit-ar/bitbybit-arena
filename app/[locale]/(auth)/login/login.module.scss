@@ -26,18 +26,6 @@
   }
 }
 
-.iconCircle {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: alpha($color-primary, 10%);
-  color: $color-primary;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto $spacing-20;
-}
-
 .title {
   font-family: $font-display;
   font-size: $font-size-xl;
@@ -52,18 +40,26 @@
   line-height: $line-height-base;
 }
 
-.loginButton {
+.methods {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+}
+
+.methodButton {
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
   width: 100%;
-  padding: $spacing-12 $spacing-24;
+  padding: $spacing-12 $spacing-16;
   background: $color-primary;
   color: $static-white;
   border: none;
   border-radius: $border-radius-md;
   font-family: $font-body;
-  font-size: $font-size-base;
-  font-weight: $font-weight-bold;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  text-align: left;
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
@@ -76,35 +72,31 @@
   }
 }
 
-.noExtension {
-  text-align: center;
-}
-
-.noExtensionText {
-  font-weight: $font-weight-semibold;
-  margin-bottom: $spacing-8;
-}
-
-.installText {
+.methodSecondary {
+  background: transparent;
   color: $color-text-secondary;
-  font-size: $font-size-sm;
-  margin-bottom: $spacing-16;
+  border: 1px solid $color-border;
+
+  &:hover:not(:disabled) {
+    border-color: $color-text-secondary;
+    box-shadow: none;
+  }
 }
 
-.getAlbyLink {
-  display: inline-block;
-  padding: $spacing-8 $spacing-20;
-  background: $color-primary;
-  color: $static-white;
-  border-radius: $border-radius-md;
-  font-weight: $font-weight-semibold;
-  font-size: $font-size-sm;
-  text-decoration: none;
+.methodInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 
-  &:hover {
-    filter: brightness(1.1);
-    text-decoration: none;
-  }
+.methodName {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.methodDescription {
+  font-size: $font-size-xs;
+  opacity: 0.8;
 }
 
 .error {
@@ -113,9 +105,25 @@
   margin-top: $spacing-16;
 }
 
+.wotHint {
+  margin-top: $spacing-24;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.wotLink {
+  color: $color-primary;
+  text-decoration: none;
+  font-weight: $font-weight-semibold;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 .backLink {
   display: inline-block;
-  margin-top: $spacing-24;
+  margin-top: $spacing-16;
   color: $color-text-secondary;
   font-size: $font-size-sm;
   text-decoration: none;
