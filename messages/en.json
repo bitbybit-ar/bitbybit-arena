@@ -95,19 +95,18 @@
       "habits": "BitByBit Habits"
     }
   },
-  "nostrLogin": {
-    "title": "Sign in with Nostr",
-    "description": "Use your Nostr extension (Alby, nos2x, etc.) to sign in.",
-    "connecting": "Connecting...",
-    "noExtension": "No Nostr extension detected",
-    "installExtension": "Install an extension like Alby or nos2x to continue.",
-    "getAlby": "Get Alby",
-    "error": "Error connecting with Nostr",
-    "retry": "Retry"
-  },
   "login": {
-    "title": "Welcome to BitByBit Arena",
-    "subtitle": "Sign in with your Nostr identity to create and join challenges.",
+    "title": "Sign in with Nostr",
+    "subtitle": "Choose how to connect your Nostr identity to create and join challenges.",
+    "extensionTitle": "Browser Extension",
+    "extensionDescription": "Alby, nos2x, Nostr WoT or another extension",
+    "connectTitle": "Nostr Connect",
+    "connectDescription": "Connect with a remote signer (NIP-46)",
+    "nsecTitle": "Secret key (not recommended)",
+    "nsecDescription": "Paste your nsec directly",
+    "error": "Error connecting with Nostr",
+    "comingSoon": "Coming soon",
+    "wotHint": "Have you tried the",
     "backToHome": "Back to home"
   },
   "explore": {

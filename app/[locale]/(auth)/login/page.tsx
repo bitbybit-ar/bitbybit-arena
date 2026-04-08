@@ -4,60 +4,102 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useNostr } from "@/lib/hooks/useNostr";
-import { NostrichIcon } from "@/components/icons";
+import { BoltIcon, LinkIcon, KeyIcon } from "@/components/icons";
 import styles from "./login.module.scss";
 
 export default function LoginPage() {
   const t = useTranslations("login");
-  const tNostr = useTranslations("nostrLogin");
   const tCommon = useTranslations("common");
   const router = useRouter();
-  const { hasExtension, login, isLoading } = useNostr();
+  const { login, isLoading } = useNostr();
   const [error, setError] = useState<string | null>(null);
+  const [activeMethod, setActiveMethod] = useState<string | null>(null);
 
-  const handleLogin = async () => {
+  const handleExtensionLogin = async () => {
     setError(null);
+    setActiveMethod("extension");
     const result = await login();
     if (result.success) {
       router.push("/explore");
     } else {
-      setError(result.error || tNostr("error"));
+      setError(result.error || t("error"));
     }
+    setActiveMethod(null);
+  };
+
+  const handleNostrConnect = () => {
+    setError(null);
+    setActiveMethod("connect");
+    // TODO: Implement Nostr Connect (NIP-46)
+    setError(t("comingSoon"));
+    setActiveMethod(null);
+  };
+
+  const handleSecretKey = () => {
+    setError(null);
+    setActiveMethod("nsec");
+    // TODO: Implement nsec login
+    setError(t("comingSoon"));
+    setActiveMethod(null);
   };
 
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <div className={styles.iconCircle}>
-          <NostrichIcon size={32} />
-        </div>
         <h1 className={styles.title}>{t("title")}</h1>
         <p className={styles.subtitle}>{t("subtitle")}</p>
 
-        {hasExtension ? (
+        <div className={styles.methods}>
           <button
-            className={styles.loginButton}
-            onClick={handleLogin}
+            className={styles.methodButton}
+            onClick={handleExtensionLogin}
             disabled={isLoading}
           >
-            {isLoading ? tNostr("connecting") : tCommon("signInWithNostr")}
+            <BoltIcon size={20} />
+            <div className={styles.methodInfo}>
+              <span className={styles.methodName}>{t("extensionTitle")}</span>
+              <span className={styles.methodDescription}>{t("extensionDescription")}</span>
+            </div>
           </button>
-        ) : (
-          <div className={styles.noExtension}>
-            <p className={styles.noExtensionText}>{tNostr("noExtension")}</p>
-            <p className={styles.installText}>{tNostr("installExtension")}</p>
-            <a
-              href="https://getalby.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.getAlbyLink}
-            >
-              {tNostr("getAlby")}
-            </a>
-          </div>
-        )}
+
+          <button
+            className={styles.methodButton}
+            onClick={handleNostrConnect}
+            disabled={activeMethod === "connect"}
+          >
+            <LinkIcon size={20} />
+            <div className={styles.methodInfo}>
+              <span className={styles.methodName}>{t("connectTitle")}</span>
+              <span className={styles.methodDescription}>{t("connectDescription")}</span>
+            </div>
+          </button>
+
+          <button
+            className={`${styles.methodButton} ${styles.methodSecondary}`}
+            onClick={handleSecretKey}
+            disabled={activeMethod === "nsec"}
+          >
+            <KeyIcon size={20} />
+            <div className={styles.methodInfo}>
+              <span className={styles.methodName}>{t("nsecTitle")}</span>
+              <span className={styles.methodDescription}>{t("nsecDescription")}</span>
+            </div>
+          </button>
+        </div>
 
         {error && <p className={styles.error}>{error}</p>}
+
+        <p className={styles.wotHint}>
+          {t("wotHint")}{" "}
+          <a
+            href="https://nostr-wot.com/download"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.wotLink}
+          >
+            Nostr WoT Extension
+          </a>
+        </p>
 
         <a href="/" className={styles.backLink}>
           {t("backToHome")}
