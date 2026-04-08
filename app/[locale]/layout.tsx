@@ -23,9 +23,9 @@ const nunitoSans = Nunito_Sans({
   display: "swap",
 });
 
-const appName = "BitByBit Challenges";
+const appName = "BitByBit Arena";
 const appDescription =
-  "Create challenges, compete with others, and earn badges and sats on the Nostr network.";
+  "Create challenges, compete with others, and earn badges on your Nostr identity.";
 
 export async function generateMetadata({
   params,

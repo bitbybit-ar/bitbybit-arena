@@ -31,12 +31,12 @@ export function Footer() {
               <Block size="tiny" color="gold" />
               <Block size="tiny" color="green" />
             </div>
-            <span className={styles.brandText}>BitByBit Challenges</span>
+            <span className={styles.brandText}>BitByBit Arena</span>
           </div>
 
           <div className={styles.links}>
             <a
-              href="https://github.com/bitbybit-ar/bitbybit-challenges"
+              href="https://github.com/bitbybit-ar/bitbybit-arena"
               target="_blank"
               rel="noopener noreferrer"
               className={styles.link}

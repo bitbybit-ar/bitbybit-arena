@@ -1,8 +1,8 @@
-# CLAUDE.md - BitByBit Challenges
+# CLAUDE.md - BitByBit Arena
 
 ## Proyecto
 
-**BitByBit Challenges** es un cliente Nostr donde cualquier usuario puede crear desafios, competir con otros y ganar badges y sats via Lightning Network. Es el segundo proyecto de la organizacion BitByBit, despues del habit tracker.
+**BitByBit Arena** (arena.bitbybit.com.ar) es un cliente Nostr donde cualquier usuario puede crear desafios, competir con otros y ganar badges en su identidad Nostr. Es el segundo proyecto de la organizacion BitByBit, despues del habit tracker.
 
 ## Hackathon
 
@@ -29,7 +29,7 @@
 ## Estructura del proyecto
 
 ```
-bitbybit-challenges/
+bitbybit-arena/
   app/
     [locale]/                  <- Rutas con i18n (es, en)
       (auth)/                  <- Login con Nostr

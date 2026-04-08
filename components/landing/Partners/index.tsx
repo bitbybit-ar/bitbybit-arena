@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
 import { Bubble } from "@/components/common/Bubble";
@@ -10,12 +11,17 @@ const partners = [
   {
     name: "La Crypta",
     url: "https://lacrypta.ar",
-    logo: "https://github.com/lacrypta.png",
+    logo: "https://github.com/lacrypta.png?size=64",
   },
   {
-    name: "Nostr WoT",
-    url: "https://github.com/nicbus/wot-relay",
-    logo: "https://github.com/nicbus.png",
+    name: "OpenClaw",
+    url: "https://openclaw.com",
+    logo: "https://github.com/openclaw.png?size=64",
+  },
+  {
+    name: "Bitcoin",
+    url: "https://bitcoin.org",
+    logo: "https://github.com/bitcoin.png?size=64",
   },
 ];
 
@@ -39,12 +45,12 @@ export function Partners() {
               rel="noopener noreferrer"
               className={styles.partnerLink}
             >
-              <img
+              <Image
                 src={partner.logo}
                 alt={partner.name}
+                width={64}
+                height={64}
                 className={styles.partnerLogo}
-                width={48}
-                height={48}
               />
               <span className={styles.partnerName}>{partner.name}</span>
             </a>

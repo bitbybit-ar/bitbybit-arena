@@ -54,7 +54,7 @@ export function Navbar() {
               <Block size="tiny" color="green" />
             </div>
             <span className={styles.logoText}>
-              BitByBit <span className={styles.logoAccent}>Challenges</span>
+              BitByBit <span className={styles.logoAccent}>Arena</span>
             </span>
           </Link>
 

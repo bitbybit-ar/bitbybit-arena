@@ -1,6 +1,8 @@
-# BitByBit Challenges
+# BitByBit Arena
 
 **Nostr-native challenge platform** — create challenges, compete with others, earn badges that live on your Nostr identity.
+
+**Domain**: arena.bitbybit.com.ar
 
 Part of the [BitByBit](https://github.com/bitbybit-ar) ecosystem.
 

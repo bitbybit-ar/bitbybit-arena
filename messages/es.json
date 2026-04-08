@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "BitByBit Challenges",
+    "appName": "BitByBit Arena",
     "signIn": "Iniciar sesion",
     "signInWithNostr": "Iniciar sesion con Nostr",
     "signOut": "Cerrar sesion",
@@ -67,7 +67,7 @@
       "habitsRoutines": "Rutinas diarias",
       "habitsReward": "El sponsor premia al chico",
       "habitsLink": "Visitar bitbybit.com.ar",
-      "challengesTitle": "BitByBit Challenges",
+      "challengesTitle": "BitByBit Arena",
       "challengesPublic": "Publico y social",
       "challengesCompetitions": "Competencias con tiempo limite",
       "challengesReward": "La comunidad premia a todos",
@@ -106,7 +106,7 @@
     "retry": "Reintentar"
   },
   "login": {
-    "title": "Bienvenido a BitByBit Challenges",
+    "title": "Bienvenido a BitByBit Arena",
     "subtitle": "Inicia sesion con tu identidad Nostr para crear y unirte a desafios.",
     "backToHome": "Volver al inicio"
   },

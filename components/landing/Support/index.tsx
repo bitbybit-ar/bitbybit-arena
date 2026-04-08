@@ -67,7 +67,7 @@ export function Support() {
             </p>
 
             <a
-              href="https://github.com/bitbybit-ar/bitbybit-challenges"
+              href="https://github.com/bitbybit-ar/bitbybit-arena"
               target="_blank"
               rel="noopener noreferrer"
               className={styles.githubButton}
