@@ -76,7 +76,7 @@ export default async function LocaleLayout({
         <meta name="theme-color" content="#8B5CF6" />
         <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>
             <ToastProvider>
