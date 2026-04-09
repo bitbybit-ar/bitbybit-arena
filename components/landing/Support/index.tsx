@@ -1,14 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
 import { Block } from "@/components/common/Block";
 import { BoltIcon, GithubIcon } from "@/components/icons";
+import { ZapModal } from "@/components/landing/ZapModal";
 import styles from "./support.module.scss";
 
 export function Support() {
   const t = useTranslations("landing.support");
   const ref = useScrollReveal<HTMLDivElement>();
+  const [showZapModal, setShowZapModal] = useState(false);
 
   return (
     <section className={styles.section}>
@@ -24,7 +27,10 @@ export function Support() {
         <p className={styles.subtitle}>{t("subtitle")}</p>
 
         <div className={styles.actions}>
-          <button className={styles.zapButton}>
+          <button
+            className={styles.zapButton}
+            onClick={() => setShowZapModal(true)}
+          >
             <BoltIcon size={18} color="white" />
             {t("zapDevs")}
           </button>
@@ -39,6 +45,8 @@ export function Support() {
           </a>
         </div>
       </div>
+
+      {showZapModal && <ZapModal onClose={() => setShowZapModal(false)} />}
     </section>
   );
 }

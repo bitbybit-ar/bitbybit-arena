@@ -1,0 +1,196 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.description {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  margin-bottom: $spacing-20;
+  line-height: 1.5;
+}
+
+.label {
+  display: block;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-8;
+}
+
+.presets {
+  display: flex;
+  gap: $spacing-8;
+  flex-wrap: wrap;
+  margin-bottom: $spacing-12;
+}
+
+.presetBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-4;
+  padding: $spacing-8 $spacing-12;
+  background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: $color-primary;
+    color: $color-primary;
+  }
+
+  &.active {
+    background: $color-primary;
+    border-color: $color-primary;
+    color: $static-white;
+  }
+}
+
+.customInput,
+.commentInput {
+  width: 100%;
+  padding: $spacing-8 $spacing-12;
+  background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  outline: none;
+  transition: border-color 0.15s ease;
+
+  &::placeholder {
+    color: $color-text-secondary;
+  }
+
+  &:focus {
+    border-color: $color-primary;
+  }
+}
+
+.customInput {
+  margin-bottom: $spacing-16;
+}
+
+.commentInput {
+  margin-bottom: $spacing-20;
+}
+
+.zapBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-8;
+  width: 100%;
+  padding: $spacing-12;
+  background: $color-secondary;
+  color: $static-white;
+  border: none;
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.errorText {
+  color: $color-accent;
+  font-size: $font-size-sm;
+  margin-bottom: $spacing-12;
+}
+
+// Success state
+.successState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-16;
+  padding: $spacing-20 0;
+  text-align: center;
+}
+
+.successText {
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.closeBtn {
+  padding: $spacing-8 $spacing-32;
+  background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: $color-surface;
+  }
+}
+
+// Invoice fallback state
+.invoiceState {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+}
+
+.invoiceBox {
+  background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  padding: $spacing-12;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.invoiceText {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.copyBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-8;
+  width: 100%;
+  padding: $spacing-8;
+  background: $color-primary;
+  color: $static-white;
+  border: none;
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+}
