@@ -123,7 +123,7 @@
     "nsecDescription": "Pega tu nsec directamente",
     "error": "Error al conectar con Nostr",
     "comingSoon": "Proximamente",
-    "wotHint": "Probaste la extension",
+    "wotHint": "Probaste",
     "backToHome": "Volver al inicio",
     "nsecWarning": "Pegar tu clave privada en cualquier sitio web es riesgoso. Tu clave solo se usara para firmar un evento de login y NO sera almacenada ni enviada a ningun servidor.",
     "nsecPlaceholder": "nsec1... o clave hex",
