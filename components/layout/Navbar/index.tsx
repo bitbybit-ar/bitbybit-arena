@@ -26,7 +26,9 @@ export function Navbar() {
   const [visible, setVisible] = useState(true);
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const lastScrollY = useRef(0);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -48,7 +50,19 @@ export function Navbar() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
+
   const handleSignOut = async () => {
+    setMenuOpen(false);
     await fetch("/api/auth/signout", { method: "POST" });
     setUser(null);
     router.push("/");
@@ -100,15 +114,6 @@ export function Navbar() {
             >
               {locale === "es" ? "EN" : "ES"}
             </button>
-            {user && (
-              <Link
-                href={`/${locale}/settings`}
-                className={styles.toggle}
-                aria-label={t("settings")}
-              >
-                <SettingsIcon size={14} />
-              </Link>
-            )}
           </div>
 
           {user ? (
@@ -119,19 +124,47 @@ export function Navbar() {
               <Link href="/my-challenges" className={styles.navLink}>
                 {t("myChallenges") || "My Challenges"}
               </Link>
-              <button className={styles.avatar} onClick={handleSignOut} aria-label={t("signOut")}>
-                {user.avatar_url ? (
-                  <Image
-                    src={user.avatar_url}
-                    alt={user.display_name}
-                    width={36}
-                    height={36}
-                    className={styles.avatarImage}
-                  />
-                ) : (
-                  <UserIcon size={18} />
+              <div className={styles.avatarWrapper} ref={menuRef}>
+                <button
+                  className={styles.avatar}
+                  onClick={() => setMenuOpen((prev) => !prev)}
+                  aria-expanded={menuOpen}
+                  aria-haspopup="true"
+                >
+                  {user.avatar_url ? (
+                    <Image
+                      src={user.avatar_url}
+                      alt={user.display_name}
+                      width={36}
+                      height={36}
+                      className={styles.avatarImage}
+                    />
+                  ) : (
+                    <UserIcon size={18} />
+                  )}
+                </button>
+                {menuOpen && (
+                  <div className={styles.avatarMenu} role="menu">
+                    <Link
+                      href={`/${locale}/settings`}
+                      className={styles.menuItem}
+                      role="menuitem"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <SettingsIcon size={14} />
+                      {t("settings")}
+                    </Link>
+                    <button
+                      className={styles.menuItem}
+                      role="menuitem"
+                      onClick={handleSignOut}
+                    >
+                      <UserIcon size={14} />
+                      {t("signOut")}
+                    </button>
+                  </div>
                 )}
-              </button>
+              </div>
             </>
           ) : (
             <>

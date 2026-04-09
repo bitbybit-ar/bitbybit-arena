@@ -152,6 +152,10 @@
   }
 }
 
+.avatarWrapper {
+  position: relative;
+}
+
 .avatar {
   width: 36px;
   height: 36px;
@@ -165,10 +169,11 @@
   justify-content: center;
   overflow: hidden;
   color: $color-text-secondary;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 
   &:hover {
-    box-shadow: 0 0 0 2px alpha($color-nostr, 30%);
+    transform: scale(1.08);
+    box-shadow: 0 0 0 3px alpha($color-nostr, 25%);
   }
 }
 
@@ -177,4 +182,39 @@
   height: 100%;
   object-fit: cover;
   border-radius: $border-radius-full;
+}
+
+.avatarMenu {
+  position: absolute;
+  top: calc(100% + $spacing-8);
+  right: 0;
+  min-width: 160px;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  box-shadow: 0 4px 16px $card-shadow;
+  padding: $spacing-4 0;
+  z-index: 1001;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  width: 100%;
+  padding: $spacing-8 $spacing-16;
+  background: transparent;
+  border: none;
+  color: $color-text-secondary;
+  font-family: $font-body;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: alpha($color-primary, 8%);
+    color: $color-text-primary;
+  }
 }
