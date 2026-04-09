@@ -16,5 +16,7 @@ export { HeartIcon } from "./HeartIcon";
 export { KeyIcon } from "./KeyIcon";
 export { LinkIcon } from "./LinkIcon";
 export { MoonIcon } from "./MoonIcon";
+export { SettingsIcon } from "./SettingsIcon";
 export { SunIcon } from "./SunIcon";
 export { TrophyIcon } from "./TrophyIcon";
+export { UserIcon } from "./UserIcon";

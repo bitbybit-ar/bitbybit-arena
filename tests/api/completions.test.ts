@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   buildRequest, parseResponse, createMockSession, mockState,
   setSession, setDbRows, setMutationResult, setupDbMock,
-  makeChallenge, makeParticipant, makeCompletion,
+  makeChallenge,
 } from "../helpers";
 
 vi.mock("@/lib/auth", () => ({

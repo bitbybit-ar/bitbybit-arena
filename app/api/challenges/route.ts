@@ -2,15 +2,13 @@ import { NextRequest } from "next/server";
 import { eq, and, ilike, or, sql, desc, asc } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { BadRequestError } from "@/lib/api/errors";
-import { challenges, participants, users } from "@/lib/db/schema";
+import { challenges, users } from "@/lib/db/schema";
 import { slugify } from "@/lib/utils";
 import type { ChallengeType, VerificationType, PrizeDistribution } from "@/lib/types";
 
 const VALID_TYPES: ChallengeType[] = ["one_time", "streak", "competition", "race", "creative"];
 const VALID_VERIFICATION: VerificationType[] = ["creator_approval", "automatic"];
 const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "winner_takes_all", "split", "none"];
-const VALID_SORT = ["newest", "ending_soon", "most_participants", "most_active"] as const;
-
 // GET /api/challenges — list with search, filters, sort, pagination
 export const GET = apiHandler(
   async (req: NextRequest, { db }) => {

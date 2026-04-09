@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { eq, sql, or } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
 import { challenges, participants } from "@/lib/db/schema";
 
