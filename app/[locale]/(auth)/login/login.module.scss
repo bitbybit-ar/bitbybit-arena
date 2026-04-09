@@ -83,11 +83,6 @@
   }
 }
 
-.methodActive {
-  border-color: $color-primary;
-  box-shadow: 0 0 0 1px $color-primary;
-}
-
 .methodInfo {
   display: flex;
   flex-direction: column;
@@ -126,15 +121,7 @@
   }
 }
 
-// Nostr Connect panel
-.connectPanel {
-  padding: $spacing-16;
-  background: $color-bg;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-md;
-  text-align: center;
-}
-
+// Nostr Connect modal content
 .connectScanTitle {
   font-size: $font-size-sm;
   font-weight: $font-weight-semibold;
@@ -259,6 +246,12 @@
   }
 }
 
+.errorInModal {
+  color: $color-error;
+  font-size: $font-size-xs;
+  margin-bottom: $spacing-8;
+}
+
 .connectCompatible {
   font-size: $font-size-xs;
   color: $color-text-secondary;
@@ -295,15 +288,7 @@
   }
 }
 
-// nsec panel
-.nsecPanel {
-  padding: $spacing-16;
-  background: $color-bg;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-md;
-  text-align: left;
-}
-
+// nsec modal content
 .nsecWarning {
   font-size: $font-size-xs;
   color: $color-accent;
