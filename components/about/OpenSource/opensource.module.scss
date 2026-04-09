@@ -1,0 +1,63 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.section {
+  @include section-padding;
+  position: relative;
+}
+
+.container {
+  @include container;
+  text-align: center;
+}
+
+.title {
+  font-family: $font-display;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-extrabold;
+  margin-bottom: $spacing-12;
+}
+
+.description {
+  color: $color-text-secondary;
+  font-size: $font-size-base;
+  line-height: $line-height-base;
+  margin-bottom: $spacing-8;
+}
+
+.contribute {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  margin-bottom: $spacing-24;
+}
+
+.repos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-16;
+  flex-wrap: wrap;
+}
+
+.repoLink {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-8;
+  padding: $spacing-12 $spacing-20;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  color: $color-text-primary;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px $card-shadow-hover;
+  }
+}

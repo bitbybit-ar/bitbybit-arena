@@ -1,0 +1,58 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.section {
+  @include section-padding;
+  position: relative;
+  overflow: visible;
+}
+
+.container {
+  @include container;
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-48;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+.content {
+  flex: 1;
+}
+
+.title {
+  font-family: $font-display;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-extrabold;
+  margin-bottom: $spacing-24;
+}
+
+.paragraph {
+  color: $color-text-secondary;
+  font-size: $font-size-base;
+  line-height: $line-height-base;
+  margin-bottom: $spacing-16;
+
+  strong {
+    color: $color-text-primary;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.tower {
+  flex-shrink: 0;
+  width: 80px;
+  display: flex;
+  justify-content: center;
+  padding-top: $spacing-32;
+
+  @include mobile {
+    display: none;
+  }
+}
