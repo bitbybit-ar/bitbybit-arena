@@ -29,11 +29,6 @@ export default function LoginPage() {
   const [acceptedRisk, setAcceptedRisk] = useState(false);
   const [nsecLoading, setNsecLoading] = useState(false);
 
-  // Nostr Connect state
-  const [connectStatus, setConnectStatus] = useState<
-    "idle" | "scanning" | "expired"
-  >("idle");
-
   const handleExtensionLogin = async () => {
     setError(null);
     setActiveMethod("extension");
@@ -46,17 +41,11 @@ export default function LoginPage() {
     setActiveMethod(null);
   };
 
-  const handleNostrConnect = async () => {
+  const handleNostrConnect = () => {
     setError(null);
     setActiveMethod("connect");
-    setConnectStatus("scanning");
-
-    // NIP-46 requires a relay-based handshake with a remote signer.
-    // For MVP, show coming soon since it needs a generated keypair,
-    // relay subscription, and QR code rendering.
     // TODO: Full NIP-46 implementation with nostr-tools/nip46
     setError(t("comingSoon"));
-    setConnectStatus("idle");
     setActiveMethod(null);
   };
 
@@ -93,6 +82,7 @@ export default function LoginPage() {
       setNsecKey("");
       router.push("/explore");
     } catch {
+      setNsecKey("");
       setError(t("nsecInvalidKey"));
     } finally {
       setNsecLoading(false);
@@ -138,7 +128,7 @@ export default function LoginPage() {
               activeMethod === "connect" ? styles.methodActive : ""
             }`}
             onClick={handleNostrConnect}
-            disabled={connectStatus === "scanning"}
+            disabled={activeMethod === "connect"}
           >
             <LinkIcon size={20} />
             <div className={styles.methodInfo}>
@@ -173,6 +163,9 @@ export default function LoginPage() {
             <div className={styles.nsecPanel}>
               <p className={styles.nsecWarning}>{t("nsecWarning")}</p>
 
+              <label htmlFor="nsec-input" className={styles.nsecLabel}>
+                {t("nsecLabel")}
+              </label>
               <div className={styles.nsecInputWrapper}>
                 <input
                   id="nsec-input"
@@ -188,7 +181,7 @@ export default function LoginPage() {
                   type="button"
                   className={styles.nsecToggle}
                   onClick={() => setShowNsec(!showNsec)}
-                  aria-label={showNsec ? "Hide key" : "Show key"}
+                  aria-label={showNsec ? t("hideKey") : t("showKey")}
                 >
                   {showNsec ? (
                     <EyeOffIcon size={16} />

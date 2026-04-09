@@ -132,7 +132,10 @@
     "connectScanning": "Waiting for approval...",
     "connectExpired": "Timed out. Try again.",
     "connectRetry": "Retry",
-    "connectCompatible": "Compatible with: Amber, nsec.app, Damus"
+    "connectCompatible": "Compatible with: Amber, nsec.app, Damus",
+    "showKey": "Show key",
+    "hideKey": "Hide key",
+    "nsecLabel": "Private key"
   },
   "explore": {
     "title": "Explore Challenges",

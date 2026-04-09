@@ -132,7 +132,10 @@
     "connectScanning": "Esperando aprobacion...",
     "connectExpired": "Tiempo agotado. Intenta de nuevo.",
     "connectRetry": "Reintentar",
-    "connectCompatible": "Compatible con: Amber, nsec.app, Damus"
+    "connectCompatible": "Compatible con: Amber, nsec.app, Damus",
+    "showKey": "Mostrar clave",
+    "hideKey": "Ocultar clave",
+    "nsecLabel": "Clave privada"
   },
   "explore": {
     "title": "Explorar desafios",
