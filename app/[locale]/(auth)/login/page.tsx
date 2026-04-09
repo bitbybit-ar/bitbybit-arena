@@ -281,6 +281,7 @@ export default function LoginPage() {
           >
             Nostr WoT Extension
           </a>
+          ?
         </p>
 
         <a href="/" className={styles.backLink}>
