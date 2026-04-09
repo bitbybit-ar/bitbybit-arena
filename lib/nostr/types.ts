@@ -39,5 +39,9 @@ declare global {
       signEvent(event: UnsignedNostrEvent): Promise<NostrEvent>;
       getRelays?(): Promise<Record<string, { read: boolean; write: boolean }>>;
     };
+    webln?: {
+      enable(): Promise<void>;
+      sendPayment(paymentRequest: string): Promise<{ preimage: string }>;
+    };
   }
 }

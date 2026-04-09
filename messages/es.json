@@ -83,7 +83,22 @@
       "title": "Apoya a BitByBit",
       "subtitle": "Codigo abierto y hecho por la comunidad. Ayudanos a seguir construyendo.",
       "zapDevs": "Zapea a los devs",
-      "starOnGithub": "Dar estrella en GitHub"
+      "starOnGithub": "Dar estrella en GitHub",
+      "zapModal": {
+        "title": "Zapea a los devs",
+        "description": "Apoya al equipo de BitByBit con un zap Lightning.",
+        "amount": "Cantidad (sats)",
+        "customPlaceholder": "Cantidad personalizada...",
+        "comment": "Mensaje (opcional)",
+        "commentPlaceholder": "Sigan construyendo!",
+        "send": "Enviar zap",
+        "sending": "Enviando...",
+        "success": "Zap enviado! Gracias por el apoyo!",
+        "error": "Error al enviar el zap. Intenta de nuevo.",
+        "noWebln": "No se encontro una wallet Lightning. Copia la invoice manualmente.",
+        "copyInvoice": "Copiar invoice",
+        "copiedInvoice": "Invoice copiada!"
+      }
     },
     "footer": {
       "builtFor": "Construido para",
