@@ -14,6 +14,8 @@ import {
   signChallengeWithBunker,
 } from "@/lib/nostr/nip46-login";
 import type { BunkerSigner } from "nostr-tools/nip46";
+import { Block } from "@/components/common/Block";
+import { Bubble } from "@/components/common/Bubble";
 import {
   BoltIcon,
   LinkIcon,
@@ -21,6 +23,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   CopyIcon,
+  NostrichIcon,
 } from "@/components/icons";
 import styles from "./login.module.scss";
 
@@ -214,6 +217,32 @@ export default function LoginPage() {
 
   return (
     <div className={styles.page}>
+      {/* Floating decorative elements */}
+      <Block size="medium" color="purple" className={styles.floatBlock1}>
+        <BoltIcon size={22} color="white" />
+      </Block>
+      <Block size="small" color="gold" className={styles.floatBlock2}>
+        <KeyIcon size={16} color="white" />
+      </Block>
+      <Block size="medium" color="green" className={styles.floatBlock3}>
+        <NostrichIcon size={22} color="white" />
+      </Block>
+      <Bubble
+        size={120}
+        color="purple"
+        opacity={0.06}
+        position={{ top: "10%", left: "8%" }}
+        animation="float-slow"
+      />
+      <Bubble
+        size={80}
+        color="gold"
+        opacity={0.08}
+        position={{ bottom: "15%", right: "10%" }}
+        animation="drift"
+        delay={1}
+      />
+
       <div className={styles.card}>
         <h1 className={styles.title}>{t("title")}</h1>
         <p className={styles.subtitle}>{t("subtitle")}</p>

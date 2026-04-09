@@ -9,9 +9,13 @@
   align-items: center;
   justify-content: center;
   padding: $spacing-24;
+  position: relative;
+  overflow: hidden;
 }
 
 .card {
+  position: relative;
+  z-index: 1;
   background: $color-surface;
   border: 1px solid $color-border;
   border-radius: $border-radius-xl;
@@ -20,9 +24,21 @@
   max-width: 420px;
   width: 100%;
   text-align: center;
+  animation: cardFadeIn 0.5s ease both;
 
   @include mobile {
     padding: $spacing-24;
+  }
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -31,6 +47,7 @@
   font-size: $font-size-xl;
   font-weight: $font-weight-bold;
   margin-bottom: $spacing-8;
+  animation: fadeInUp 0.4s ease both 0.15s;
 }
 
 .subtitle {
@@ -38,12 +55,90 @@
   font-size: $font-size-sm;
   margin-bottom: $spacing-32;
   line-height: $line-height-base;
+  animation: fadeInUp 0.4s ease both 0.25s;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .methods {
   display: flex;
   flex-direction: column;
   gap: $spacing-12;
+
+  > * {
+    animation: fadeInUp 0.4s ease both;
+
+    &:nth-child(1) { animation-delay: 0.35s; }
+    &:nth-child(2) { animation-delay: 0.45s; }
+    &:nth-child(3) { animation-delay: 0.55s; }
+  }
+}
+
+// Floating blocks
+.floatBlock1,
+.floatBlock2,
+.floatBlock3 {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.25;
+}
+
+.floatBlock1 {
+  top: 12%;
+  right: 8%;
+  animation: login-drift-a 5s ease-in-out infinite;
+}
+
+.floatBlock2 {
+  bottom: 20%;
+  left: 6%;
+  animation: login-drift-b 5.5s ease-in-out infinite;
+  animation-delay: -1.5s;
+}
+
+.floatBlock3 {
+  top: 55%;
+  right: 4%;
+  animation: login-drift-a 6s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+@keyframes login-drift-a {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(14px, -18px); }
+}
+
+@keyframes login-drift-b {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-12px, 14px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .title,
+  .subtitle {
+    animation: none;
+  }
+
+  .methods > * {
+    animation: none;
+  }
+
+  .floatBlock1,
+  .floatBlock2,
+  .floatBlock3 {
+    animation: none;
+  }
 }
 
 .methodButton {
