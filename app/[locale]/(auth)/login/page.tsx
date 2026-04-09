@@ -156,7 +156,8 @@ export default function LoginPage() {
       await authenticateWithSigner(signer);
     } catch {
       setError(t("connectError"));
-      setConnectStatus("scanning");
+      // Restart QR scan so the modal isn't stuck with stale state
+      startNostrConnect();
     }
   };
 
