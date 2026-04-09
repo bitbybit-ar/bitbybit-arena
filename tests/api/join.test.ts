@@ -51,7 +51,6 @@ describe("POST /api/challenges/[id]/join", () => {
 
   it("rejects duplicate join", async () => {
     // First call returns challenge, second returns existing participant
-    let callCount = 0;
     mockState.dbRows = [makeChallenge({ id: "challenge-1" })];
 
     const res = await POST(buildRequest("POST", "/api/challenges/challenge-1/join"), routeCtx);

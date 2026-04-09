@@ -1,23 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
-  buildRequest, parseResponse, createMockSession, mockState,
+  buildRequest, createMockSession, mockState,
   setSession, setDbRows, setMutationResult, setupDbMock,
-  makeChallenge, makeParticipant,
+  makeChallenge,
 } from "../helpers";
-
-// Add makeBadge to helpers inline since it wasn't exported
-function localMakeBadge(overrides: Record<string, unknown> = {}) {
-  return {
-    id: "badge-1",
-    challenge_id: "challenge-1",
-    user_id: "user-participant",
-    badge_name: "Test Badge",
-    badge_image_url: null,
-    nostr_event_id: null,
-    awarded_at: new Date(),
-    ...overrides,
-  };
-}
 
 vi.mock("@/lib/auth", () => ({
   getSession: vi.fn(() => Promise.resolve(mockState.session)),

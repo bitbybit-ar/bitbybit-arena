@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { Modal } from "@/components/ui/modal";
 import { useNostr } from "@/lib/hooks/useNostr";
@@ -313,9 +314,9 @@ export default function LoginPage() {
           ?
         </p>
 
-        <a href="/" className={styles.backLink}>
+        <Link href="/" className={styles.backLink}>
           {t("backToHome")}
-        </a>
+        </Link>
       </div>
 
       {/* Nostr Connect Modal */}

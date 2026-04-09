@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Block } from "@/components/common/Block";
-import { MoonIcon, SunIcon } from "@/components/icons";
+import { MoonIcon, SunIcon, SettingsIcon, UserIcon } from "@/components/icons";
 import { useTheme } from "@/lib/theme-context";
 import styles from "./navbar.module.scss";
 
@@ -22,11 +23,18 @@ export function Navbar() {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+  const [visible, setVisible] = useState(true);
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      setScrolled(currentY > 20);
+      setVisible(currentY <= 20 || currentY < lastScrollY.current);
+      lastScrollY.current = currentY;
+    };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -52,10 +60,20 @@ export function Navbar() {
     router.push(`/${newLocale}${pathWithoutLocale}`);
   };
 
+  const logoHref = user ? `/${locale}/explore` : "/";
+
+  const navbarClasses = [
+    styles.navbar,
+    scrolled ? styles.scrolled : "",
+    !visible ? styles.hidden : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <nav className={`${styles.navbar} ${scrolled ? styles.scrolled : ""}`}>
+    <nav className={navbarClasses}>
       <div className={styles.inner}>
-        <Link href="/" className={styles.logo}>
+        <Link href={logoHref} className={styles.logo}>
           <div className={styles.logoBlocks}>
             <Block size="tiny" color="purple" />
             <Block size="tiny" color="gold" />
@@ -82,6 +100,15 @@ export function Navbar() {
             >
               {locale === "es" ? "EN" : "ES"}
             </button>
+            {user && (
+              <Link
+                href={`/${locale}/settings`}
+                className={styles.toggle}
+                aria-label={t("settings")}
+              >
+                <SettingsIcon size={14} />
+              </Link>
+            )}
           </div>
 
           {user ? (
@@ -92,12 +119,19 @@ export function Navbar() {
               <Link href="/my-challenges" className={styles.navLink}>
                 {t("myChallenges") || "My Challenges"}
               </Link>
-              <div className={styles.userMenu}>
-                <span className={styles.userName}>{user.display_name}</span>
-                <button className={styles.signOutButton} onClick={handleSignOut}>
-                  {t("signOut")}
-                </button>
-              </div>
+              <button className={styles.avatar} onClick={handleSignOut} aria-label={t("signOut")}>
+                {user.avatar_url ? (
+                  <Image
+                    src={user.avatar_url}
+                    alt={user.display_name}
+                    width={36}
+                    height={36}
+                    className={styles.avatarImage}
+                  />
+                ) : (
+                  <UserIcon size={18} />
+                )}
+              </button>
             </>
           ) : (
             <>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowRightIcon, CheckIcon, FlagIcon, BadgeIcon, BoltIcon } from "@/components/icons";
+import { ArrowRightIcon, BadgeIcon, BoltIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { Spinner } from "@/components/ui/spinner";
