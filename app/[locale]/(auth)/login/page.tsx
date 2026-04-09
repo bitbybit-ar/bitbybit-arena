@@ -139,6 +139,8 @@ export default function LoginPage() {
   const handleBunkerConnect = async () => {
     if (!bunkerURL.trim()) return;
     setError(null);
+    // Abort QR scanning flow before starting bunker connection
+    abortRef.current?.abort();
     setConnectStatus("connecting");
 
     try {
@@ -262,7 +264,11 @@ export default function LoginPage() {
                   <p className={styles.connectScanTitle}>
                     {t("connectScanTitle")}
                   </p>
-                  <div className={styles.qrWrapper}>
+                  <div
+                    className={styles.qrWrapper}
+                    role="img"
+                    aria-label={t("connectQrAlt")}
+                  >
                     <QRCodeSVG
                       value={connectURI}
                       size={180}
@@ -277,7 +283,7 @@ export default function LoginPage() {
                     onClick={handleCopyURI}
                   >
                     <CopyIcon size={14} />
-                    {copiedURI ? t("connectScanning") : "Copy URI"}
+                    {copiedURI ? t("connectCopiedURI") : t("connectCopyURI")}
                   </button>
                   <p className={styles.connectWaiting}>
                     {t("connectScanning")}
