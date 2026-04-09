@@ -122,7 +122,17 @@
     "error": "Error al conectar con Nostr",
     "comingSoon": "Proximamente",
     "wotHint": "Probaste la extension",
-    "backToHome": "Volver al inicio"
+    "backToHome": "Volver al inicio",
+    "nsecWarning": "Pegar tu clave privada en cualquier sitio web es riesgoso. Tu clave solo se usara para firmar un evento de login y NO sera almacenada ni enviada a ningun servidor.",
+    "nsecPlaceholder": "nsec1... o clave hex",
+    "nsecAcceptRisk": "Entiendo los riesgos",
+    "nsecSignIn": "Iniciar sesion",
+    "nsecSigningIn": "Firmando...",
+    "nsecInvalidKey": "Clave invalida. Usa formato nsec1 o hex de 64 caracteres.",
+    "connectScanning": "Esperando aprobacion...",
+    "connectExpired": "Tiempo agotado. Intenta de nuevo.",
+    "connectRetry": "Reintentar",
+    "connectCompatible": "Compatible con: Amber, nsec.app, Damus"
   },
   "explore": {
     "title": "Explorar desafios",

@@ -122,7 +122,17 @@
     "error": "Error connecting with Nostr",
     "comingSoon": "Coming soon",
     "wotHint": "Have you tried the",
-    "backToHome": "Back to home"
+    "backToHome": "Back to home",
+    "nsecWarning": "Pasting your private key in any website is risky. Your key will only be used to sign a login event and will NOT be stored or sent to any server.",
+    "nsecPlaceholder": "nsec1... or hex key",
+    "nsecAcceptRisk": "I understand the risks",
+    "nsecSignIn": "Sign in",
+    "nsecSigningIn": "Signing...",
+    "nsecInvalidKey": "Invalid key. Use nsec1 format or 64-character hex.",
+    "connectScanning": "Waiting for approval...",
+    "connectExpired": "Timed out. Try again.",
+    "connectRetry": "Retry",
+    "connectCompatible": "Compatible with: Amber, nsec.app, Damus"
   },
   "explore": {
     "title": "Explore Challenges",
