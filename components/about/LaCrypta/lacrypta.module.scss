@@ -1,0 +1,92 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.section {
+  @include section-padding;
+  position: relative;
+  overflow: visible;
+  background: $color-bg-2;
+}
+
+.container {
+  @include container;
+  text-align: center;
+}
+
+.title {
+  font-family: $font-display;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-extrabold;
+  margin-bottom: $spacing-24;
+}
+
+.card {
+  background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: 0 2px 8px $card-shadow;
+  padding: $spacing-32;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-16;
+}
+
+.logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.description {
+  color: $color-text-secondary;
+  font-size: $font-size-base;
+  line-height: $line-height-base;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-4;
+  color: $color-secondary;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// Floating block
+.floatBlock1 {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+  top: 15%;
+  right: 6%;
+  animation: lacrypta-drift 5.5s ease-in-out infinite;
+}
+
+@keyframes lacrypta-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(14px, -12px); }
+}
+
+.dissolveWrapper {
+  position: relative;
+  margin-top: $spacing-48;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floatBlock1 {
+    animation: none;
+  }
+}

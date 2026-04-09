@@ -203,6 +203,79 @@
     "emptyCreated": "You haven't created any challenges yet.",
     "emptyJoined": "You haven't joined any challenges yet."
   },
+  "about": {
+    "story": {
+      "title": "The BitByBit Story",
+      "p1": "BitByBit started during the FOUNDATIONS hackathon by La Crypta in March 2026. The idea was simple: what if kids could earn real bitcoin for building good habits? That became **BitByBit Habits** — a family habit tracker where sponsors reward kids with sats via Lightning Network.",
+      "p2": "The name \"BitByBit\" reflects the philosophy: small consistent actions, stacked over time, create big results. Like stacking sats, like building blocks.",
+      "p3": "For the second La Crypta hackathon (Nostr theme), we took the same idea — real rewards for real effort — and brought it to the open Nostr network. **BitByBit Arena** lets anyone create public challenges, compete with others, and earn badges and sats. No families, no permissions — just the open protocol.",
+      "p4": "Both projects share the same codebase quality, the same team, and the same belief: Bitcoin should reward action, not just speculation."
+    },
+    "projects": {
+      "title": "The Two Projects",
+      "habitsName": "BitByBit Habits",
+      "arenaName": "BitByBit Arena",
+      "hackathon": "Hackathon",
+      "habitsHackathon": "FOUNDATIONS (#1) — Lightning",
+      "arenaHackathon": "Hackathon #2 — Nostr",
+      "theme": "Theme",
+      "habitsTheme": "Private, family",
+      "arenaTheme": "Public, social",
+      "auth": "Auth",
+      "habitsAuth": "Email/password + Nostr",
+      "arenaAuth": "Nostr only",
+      "users": "Users",
+      "habitsUsers": "Sponsors + Kids",
+      "arenaUsers": "Any Nostr identity",
+      "rewards": "Rewards",
+      "habitsRewards": "Sponsor pays kid via NWC",
+      "arenaRewards": "Creator funds prize, community zaps",
+      "data": "Data",
+      "habitsData": "Private database",
+      "arenaData": "Public Nostr events + DB cache",
+      "status": "Status",
+      "habitsStatus": "v1.0.0 released",
+      "arenaStatus": "In development",
+      "link": "Link",
+      "habitsLink": "bitbybit.com.ar",
+      "arenaLink": "You're here"
+    },
+    "team": {
+      "title": "Who We Are",
+      "anix": {
+        "name": "Anix",
+        "role": "Lead Dev",
+        "bio": "Full-stack developer. Designed the architecture and wrote most of the code for both projects."
+      },
+      "llopo": {
+        "name": "Llopo",
+        "role": "Dev",
+        "bio": "Developer contributing to backend and Lightning integration."
+      },
+      "wander": {
+        "name": "Wander",
+        "role": "Dev / UX",
+        "bio": "Developer and UX. Worked on the user experience and frontend."
+      },
+      "leon": {
+        "name": "Leon",
+        "role": "PM",
+        "bio": "Project manager. Keeps the team on track and coordinates hackathon deliverables."
+      }
+    },
+    "lacrypta": {
+      "title": "La Crypta & Hackathons",
+      "description": "Both BitByBit projects were born at La Crypta hackathons — a Bitcoin community in Argentina that organizes events to build on Lightning and Nostr.",
+      "visitSite": "Visit hackaton.lacrypta.ar"
+    },
+    "openSource": {
+      "title": "Open Source",
+      "description": "BitByBit is fully open source. All code is public on GitHub.",
+      "contribute": "Contribute or open an issue — every bit helps.",
+      "arenaRepo": "Arena on GitHub",
+      "habitsRepo": "Habits on GitHub"
+    }
+  },
   "settings": {
     "title": "Settings",
     "profile": "Profile",

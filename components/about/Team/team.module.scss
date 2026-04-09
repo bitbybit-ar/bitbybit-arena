@@ -1,0 +1,133 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.section {
+  @include section-padding;
+  position: relative;
+  overflow: visible;
+}
+
+.container {
+  @include container;
+  text-align: center;
+}
+
+.title {
+  font-family: $font-display;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-extrabold;
+  margin-bottom: $spacing-32;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-24;
+  max-width: 700px;
+  margin: 0 auto;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+    max-width: 340px;
+  }
+}
+
+.card {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  box-shadow: 0 2px 8px $card-shadow;
+  padding: $spacing-32 $spacing-24;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px $card-shadow-hover;
+  }
+}
+
+.cardBorder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+
+  &.purple { background: $color-primary; }
+  &.gold { background: $color-secondary; }
+  &.green { background: $color-accent-alt; }
+  &.red { background: $color-accent; }
+}
+
+.avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: $spacing-12;
+}
+
+.name {
+  font-family: $font-display;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-8;
+}
+
+.role {
+  display: inline-block;
+  padding: $spacing-4 $spacing-12;
+  border-radius: $border-radius-full;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  margin-bottom: $spacing-12;
+}
+
+.role-purple {
+  background: alpha($color-primary, 10%);
+  color: $color-primary;
+}
+
+.role-gold {
+  background: alpha($color-secondary, 10%);
+  color: $color-secondary;
+}
+
+.role-green {
+  background: alpha($color-accent-alt, 10%);
+  color: $color-accent-alt;
+}
+
+.role-red {
+  background: alpha($color-accent, 10%);
+  color: $color-accent;
+}
+
+.bio {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  line-height: $line-height-base;
+  margin-bottom: $spacing-12;
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-12;
+}
+
+.iconLink {
+  color: $color-text-secondary;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: $color-primary;
+  }
+}
