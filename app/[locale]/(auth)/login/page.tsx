@@ -1,20 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import { useNostr } from "@/lib/hooks/useNostr";
 import { signChallengeWithNsec } from "@/lib/nostr/nsec-login";
+import {
+  createConnectSession,
+  waitForConnection,
+  connectWithBunkerURL,
+  signChallengeWithBunker,
+} from "@/lib/nostr/nip46-login";
+import type { BunkerSigner } from "nostr-tools/nip46";
 import {
   BoltIcon,
   LinkIcon,
   KeyIcon,
   EyeIcon,
   EyeOffIcon,
+  CopyIcon,
 } from "@/components/icons";
 import styles from "./login.module.scss";
 
 type LoginMethod = "extension" | "connect" | "nsec" | null;
+type ConnectStatus = "idle" | "scanning" | "connecting" | "expired";
 
 export default function LoginPage() {
   const t = useTranslations("login");
@@ -29,6 +39,20 @@ export default function LoginPage() {
   const [acceptedRisk, setAcceptedRisk] = useState(false);
   const [nsecLoading, setNsecLoading] = useState(false);
 
+  // Nostr Connect state
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
+  const [connectURI, setConnectURI] = useState("");
+  const [bunkerURL, setBunkerURL] = useState("");
+  const [copiedURI, setCopiedURI] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   const handleExtensionLogin = async () => {
     setError(null);
     setActiveMethod("extension");
@@ -41,12 +65,100 @@ export default function LoginPage() {
     setActiveMethod(null);
   };
 
-  const handleNostrConnect = () => {
+  /**
+   * Authenticate with a BunkerSigner by fetching a challenge and signing it.
+   */
+  const authenticateWithSigner = useCallback(
+    async (signer: BunkerSigner) => {
+      try {
+        // Get challenge from server
+        const challengeRes = await fetch("/api/auth/nostr", { method: "GET" });
+        if (!challengeRes.ok) {
+          setError(t("error"));
+          return;
+        }
+        const { data: challenge } = await challengeRes.json();
+
+        // Sign with remote signer
+        const { signedEvent } = await signChallengeWithBunker(
+          signer,
+          challenge
+        );
+
+        // Submit to server
+        const authRes = await fetch("/api/auth/nostr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ signedEvent }),
+        });
+
+        if (!authRes.ok) {
+          const body = await authRes.json().catch(() => ({}));
+          setError(body.error || t("error"));
+          return;
+        }
+
+        router.push("/explore");
+      } finally {
+        await signer.close();
+      }
+    },
+    [router, t]
+  );
+
+  /**
+   * Start the QR code flow: generate URI, wait for remote signer to connect.
+   */
+  const startNostrConnect = useCallback(async () => {
     setError(null);
     setActiveMethod("connect");
-    // TODO: Full NIP-46 implementation with nostr-tools/nip46
-    setError(t("comingSoon"));
-    setActiveMethod(null);
+
+    // Abort any previous connection attempt
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const session = createConnectSession();
+    setConnectURI(session.uri);
+    setConnectStatus("scanning");
+
+    try {
+      const signer = await waitForConnection(session, controller.signal);
+      setConnectStatus("connecting");
+      await authenticateWithSigner(signer);
+    } catch {
+      if (!controller.signal.aborted) {
+        setConnectStatus("expired");
+      }
+    }
+  }, [authenticateWithSigner]);
+
+  /**
+   * Connect via a pasted bunker:// URL.
+   */
+  const handleBunkerConnect = async () => {
+    if (!bunkerURL.trim()) return;
+    setError(null);
+    setConnectStatus("connecting");
+
+    try {
+      const signer = await connectWithBunkerURL(bunkerURL);
+      await authenticateWithSigner(signer);
+    } catch {
+      setError(t("connectError"));
+      setConnectStatus("idle");
+    }
+  };
+
+  const handleRetryConnect = () => {
+    setConnectStatus("idle");
+    startNostrConnect();
+  };
+
+  const handleCopyURI = async () => {
+    await navigator.clipboard.writeText(connectURI);
+    setCopiedURI(true);
+    setTimeout(() => setCopiedURI(false), 2000);
   };
 
   const handleNsecLogin = async () => {
@@ -54,7 +166,6 @@ export default function LoginPage() {
     setNsecLoading(true);
 
     try {
-      // Step 1: Get challenge from server
       const challengeRes = await fetch("/api/auth/nostr", { method: "GET" });
       if (!challengeRes.ok) {
         setError(t("error"));
@@ -62,10 +173,8 @@ export default function LoginPage() {
       }
       const { data: challenge } = await challengeRes.json();
 
-      // Step 2: Sign challenge client-side with nsec
       const { signedEvent } = signChallengeWithNsec(nsecKey, challenge);
 
-      // Step 3: Submit signed event for verification (same endpoint as extension)
       const authRes = await fetch("/api/auth/nostr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,7 +187,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Clear the key from state immediately after successful login
       setNsecKey("");
       router.push("/explore");
     } catch {
@@ -92,9 +200,14 @@ export default function LoginPage() {
   const handleMethodClick = (method: LoginMethod) => {
     setError(null);
     if (activeMethod === method) {
+      abortRef.current?.abort();
       setActiveMethod(null);
+      setConnectStatus("idle");
     } else {
       setActiveMethod(method);
+      if (method === "connect") {
+        startNostrConnect();
+      }
     }
   };
 
@@ -127,8 +240,8 @@ export default function LoginPage() {
             className={`${styles.methodButton} ${
               activeMethod === "connect" ? styles.methodActive : ""
             }`}
-            onClick={handleNostrConnect}
-            disabled={activeMethod === "connect"}
+            onClick={() => handleMethodClick("connect")}
+            disabled={connectStatus === "connecting"}
           >
             <LinkIcon size={20} />
             <div className={styles.methodInfo}>
@@ -140,6 +253,91 @@ export default function LoginPage() {
               </span>
             </div>
           </button>
+
+          {/* Nostr Connect expanded panel */}
+          {activeMethod === "connect" && (
+            <div className={styles.connectPanel}>
+              {connectStatus === "scanning" && (
+                <>
+                  <p className={styles.connectScanTitle}>
+                    {t("connectScanTitle")}
+                  </p>
+                  <div className={styles.qrWrapper}>
+                    <QRCodeSVG
+                      value={connectURI}
+                      size={180}
+                      level="M"
+                      bgColor="transparent"
+                      fgColor="currentColor"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.copyURIBtn}
+                    onClick={handleCopyURI}
+                  >
+                    <CopyIcon size={14} />
+                    {copiedURI ? t("connectScanning") : "Copy URI"}
+                  </button>
+                  <p className={styles.connectWaiting}>
+                    {t("connectScanning")}
+                  </p>
+
+                  <div className={styles.connectDivider}>
+                    <span>{t("connectOrPaste")}</span>
+                  </div>
+
+                  <label
+                    htmlFor="bunker-input"
+                    className={styles.connectBunkerLabel}
+                  >
+                    {t("connectBunkerLabel")}
+                  </label>
+                  <div className={styles.bunkerInputRow}>
+                    <input
+                      id="bunker-input"
+                      type="text"
+                      className={styles.bunkerInput}
+                      placeholder={t("connectBunkerPlaceholder")}
+                      value={bunkerURL}
+                      onChange={(e) => setBunkerURL(e.target.value)}
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <button
+                      className={styles.bunkerSubmit}
+                      onClick={handleBunkerConnect}
+                      disabled={!bunkerURL.trim()}
+                    >
+                      {t("connectBunkerSubmit")}
+                    </button>
+                  </div>
+
+                  <p className={styles.connectCompatible}>
+                    {t("connectCompatible")}
+                  </p>
+                </>
+              )}
+
+              {connectStatus === "connecting" && (
+                <p className={styles.connectWaiting}>
+                  {t("connectConnecting")}
+                </p>
+              )}
+
+              {connectStatus === "expired" && (
+                <div className={styles.connectExpired}>
+                  <p>{t("connectExpired")}</p>
+                  <button
+                    className={styles.connectRetryBtn}
+                    onClick={handleRetryConnect}
+                  >
+                    {t("connectRetry")}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Paste nsec */}
           <button

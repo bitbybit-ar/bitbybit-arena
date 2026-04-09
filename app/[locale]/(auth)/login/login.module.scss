@@ -126,6 +126,175 @@
   }
 }
 
+// Nostr Connect panel
+.connectPanel {
+  padding: $spacing-16;
+  background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  text-align: center;
+}
+
+.connectScanTitle {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-12;
+}
+
+.qrWrapper {
+  display: flex;
+  justify-content: center;
+  padding: $spacing-16;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  margin-bottom: $spacing-8;
+  color: $color-text-primary;
+}
+
+.copyURIBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-4;
+  padding: $spacing-4 $spacing-8;
+  background: none;
+  border: none;
+  font-family: $font-body;
+  font-size: $font-size-xs;
+  color: $color-primary;
+  cursor: pointer;
+  margin-bottom: $spacing-4;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.connectWaiting {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-12;
+}
+
+.connectDivider {
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
+  margin: $spacing-12 0;
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: $color-border;
+  }
+
+  span {
+    font-size: $font-size-xs;
+    color: $color-text-secondary;
+    white-space: nowrap;
+  }
+}
+
+.connectBunkerLabel {
+  display: block;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-4;
+  text-align: left;
+}
+
+.bunkerInputRow {
+  display: flex;
+  gap: $spacing-8;
+  margin-bottom: $spacing-12;
+}
+
+.bunkerInput {
+  flex: 1;
+  padding: $spacing-8 $spacing-12;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  font-family: monospace;
+  font-size: $font-size-xs;
+  color: $color-text-primary;
+  outline: none;
+  min-width: 0;
+  transition: border-color 0.15s ease;
+
+  &::placeholder {
+    font-family: $font-body;
+    color: $color-text-secondary;
+  }
+
+  &:focus {
+    border-color: $color-primary;
+  }
+}
+
+.bunkerSubmit {
+  padding: $spacing-8 $spacing-12;
+  background: $color-primary;
+  color: $static-white;
+  border: none;
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s ease;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.connectCompatible {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  margin-top: $spacing-4;
+}
+
+.connectExpired {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-12;
+  padding: $spacing-12 0;
+
+  p {
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+  }
+}
+
+.connectRetryBtn {
+  padding: $spacing-8 $spacing-24;
+  background: $color-primary;
+  color: $static-white;
+  border: none;
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+}
+
 // nsec panel
 .nsecPanel {
   padding: $spacing-16;
