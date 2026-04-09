@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
 import { Bubble } from "@/components/common/Bubble";
-import { GithubIcon, NostrichIcon } from "@/components/icons";
+import { GithubIcon, BoltIcon } from "@/components/icons";
 import styles from "./team.module.scss";
 
 interface TeamMember {
@@ -67,7 +67,7 @@ export function Team() {
                     className={styles.iconLink}
                     aria-label={`${t(`${member.key}.name` as `anix.name`)} Nostr`}
                   >
-                    <NostrichIcon size={18} />
+                    <BoltIcon size={18} />
                   </a>
                 )}
               </div>

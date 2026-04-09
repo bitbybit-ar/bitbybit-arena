@@ -23,7 +23,6 @@ import {
   EyeIcon,
   EyeOffIcon,
   CopyIcon,
-  NostrichIcon,
 } from "@/components/icons";
 import styles from "./login.module.scss";
 
@@ -225,7 +224,7 @@ export default function LoginPage() {
         <KeyIcon size={16} color="white" />
       </Block>
       <Block size="medium" color="green" className={styles.floatBlock3}>
-        <NostrichIcon size={22} color="white" />
+        <LinkIcon size={22} color="white" />
       </Block>
       <Bubble
         size={120}
