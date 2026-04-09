@@ -95,6 +95,8 @@
         "sending": "Enviando...",
         "success": "Zap enviado! Gracias por el apoyo!",
         "error": "Error al enviar el zap. Intenta de nuevo.",
+        "errorNoAddress": "La direccion Lightning no esta configurada todavia.",
+        "errorInvalidAddress": "No se pudo resolver la direccion Lightning. Puede que no este activa todavia.",
         "noWebln": "No se encontro una wallet Lightning. Copia la invoice manualmente.",
         "copyInvoice": "Copiar invoice",
         "copiedInvoice": "Invoice copiada!"

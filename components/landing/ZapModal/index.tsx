@@ -26,6 +26,7 @@ export function ZapModal({ onClose }: ZapModalProps) {
   const [status, setStatus] = useState<ZapStatus>("idle");
   const [invoice, setInvoice] = useState("");
   const [copied, setCopied] = useState(false);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
 
   const parsedCustom = Number(customAmount);
   const activeAmount = customAmount && !isNaN(parsedCustom) ? parsedCustom : amount;
@@ -33,7 +34,14 @@ export function ZapModal({ onClose }: ZapModalProps) {
   async function handleZap() {
     if (!activeAmount || activeAmount <= 0) return;
 
+    if (!LIGHTNING_ADDRESS) {
+      setErrorKey("errorNoAddress");
+      setStatus("error");
+      return;
+    }
+
     setStatus("sending");
+    setErrorKey(null);
 
     try {
       const endpoint = await fetchLnurlPayEndpoint(LIGHTNING_ADDRESS);
@@ -55,6 +63,7 @@ export function ZapModal({ onClose }: ZapModalProps) {
       setInvoice(pr);
       setStatus("no-webln");
     } catch {
+      setErrorKey("errorInvalidAddress");
       setStatus("error");
     }
   }
@@ -133,7 +142,9 @@ export function ZapModal({ onClose }: ZapModalProps) {
           />
 
           {status === "error" && (
-            <p className={styles.errorText}>{t("error")}</p>
+            <p className={styles.errorText}>
+              {errorKey ? t(errorKey) : t("error")}
+            </p>
           )}
 
           <button
