@@ -98,7 +98,8 @@
   }
 
   &:hover:not(:disabled) {
-    text-decoration: underline;
+    color: $color-primary;
+    opacity: 0.8;
   }
 
   &:active:not(:disabled) {
