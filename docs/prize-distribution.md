@@ -26,23 +26,24 @@ For challenges with a funded prize:
 3. Goal progress is visible on the challenge card
 4. When the challenge ends, the creator manually zaps winners
 
-**Important:** The app does NOT automate prize distribution. The creator is responsible for zapping winners from their own wallet. The app shows who won and how much they should receive.
+**Important:** The app does NOT custody sats or issue invoices. The creator triggers the payout from their own wallet — but the flow is now fully wired client-side: the creator clicks **"Pay winners"** on the detail page, and the app drives a WebLN payment loop for every winner (sign NIP-57 kind 9734 → resolve `lud16` → fetch invoice with the signed zap request attached → `window.webln.sendPayment`). See [docs/nostr-flows.md](./nostr-flows.md) for the full sequence.
 
 ## Distribution Rules
 
 The creator selects a rule when creating the challenge:
 
 ### First to Complete
-- Prize goes to the first N participants who complete
-- Creator zaps them after verification
-
-### Winner Takes All
-- Single winner gets the full prize
-- Winner determined by: most points, creator's choice, community vote
+- The earliest participant to reach `status='completed'` takes the full pot
+- `reward_zap_mode = "first_to_complete"`
 
 ### Split Among Completers
-- Prize divided equally among all completers
-- Creator zaps each completer their share
+- Prize divided equally among every completer; rounding remainder added to the first-place winner
+- `reward_zap_mode = "split"`
+
+### Tiered Podium
+- Top 3 by completion time, split 50% / 30% / 20%
+- If fewer than 3 completers exist, the weights renormalize over the available slots (the full pot is always paid out)
+- `reward_zap_mode = "tiered"`
 
 ### No Prize (Badge Only)
 - No sats involved, just a NIP-58 badge

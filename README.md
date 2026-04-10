@@ -32,6 +32,16 @@ That's it. Login → Join → Complete → Badge on your identity.
 5. Zap completions you like (NIP-57)→ optional, community-driven
 ```
 
+## Nostr-native flows (new)
+
+On top of the base flow, a challenge can opt into any combination of three Nostr-native features:
+
+- **Nostr-action proof** — the creator pins a target note id and participants prove completion by **liking that note on any Nostr client**. The server verifies the kind 7 reaction on relays and auto-approves the completion. No text review, no trust.
+- **Checkpoints** — split a challenge into sequential or parallel sub-tasks. Each checkpoint has its own verification type (including nostr_action). Sequential mode gates later checkpoints until earlier ones are approved.
+- **Zap rewards** — creators can publish a NIP-75 Zap Goal at creation so the community can fund the pot, and pay winners directly from their own Lightning wallet via a client-side NIP-57 + WebLN loop. No server-side custody, no invoices on our servers.
+
+See [docs/nostr-flows.md](docs/nostr-flows.md) for the full end-to-end sequence, data model, and file references.
+
 ## App Structure (2 tabs)
 
 1. **Explore** — Browse open challenges, search, filter + create new ones
@@ -70,3 +80,5 @@ That's it. Login → Join → Complete → Badge on your identity.
 - [Nostr Event Design](docs/nostr-events.md) — Custom event kinds, data model, and NIP usage
 - [Architecture](docs/architecture.md) — Technical stack, project structure, and design decisions
 - [Proof of Completion](docs/proof-of-completion.md) — How users prove they completed a challenge
+- [Prize Distribution](docs/prize-distribution.md) — Funding pots via NIP-75 and paying winners via NIP-57
+- [Nostr Flows](docs/nostr-flows.md) — Nostr-action proof, checkpoints, and zap rewards end-to-end
