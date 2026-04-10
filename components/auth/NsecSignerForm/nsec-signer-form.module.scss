@@ -1,0 +1,104 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.warning {
+  font-size: $font-size-xs;
+  color: $color-accent;
+  line-height: $line-height-base;
+  margin-bottom: $spacing-12;
+  padding: $spacing-8 $spacing-12;
+  background: alpha($color-accent, 8%);
+  border-radius: $border-radius-sm;
+}
+
+.label {
+  display: block;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-4;
+}
+
+.inputWrapper {
+  position: relative;
+  margin-bottom: $spacing-12;
+}
+
+.input {
+  width: 100%;
+  padding: $spacing-8 $spacing-32 $spacing-8 $spacing-12;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  font-family: monospace;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  outline: none;
+  transition: border-color 0.15s ease;
+
+  &::placeholder {
+    font-family: $font-body;
+    color: $color-text-secondary;
+  }
+
+  &:focus {
+    border-color: $color-primary;
+  }
+}
+
+.toggle {
+  position: absolute;
+  right: $spacing-8;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-4;
+  background: none;
+  border: none;
+  color: $color-text-secondary;
+  cursor: pointer;
+
+  &:hover {
+    color: $color-text-primary;
+  }
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-12;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    accent-color: $color-primary;
+  }
+}
+
+.submit {
+  width: 100%;
+  padding: $spacing-8 $spacing-16;
+  background: $color-primary;
+  color: $static-white;
+  border: none;
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

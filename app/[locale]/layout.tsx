@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { ToastProvider } from "@/components/ui/toast";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { SignerProviderClient } from "@/components/layout/SignerProviderClient";
 import "@/styles/globals.scss";
 
 const nunito = Nunito({
@@ -80,12 +81,14 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>
             <ToastProvider>
-              <a href="#main-content" className="skip-link">
-                Skip to content
-              </a>
-              <Navbar />
-              <main id="main-content">{children}</main>
-              <Footer />
+              <SignerProviderClient>
+                <a href="#main-content" className="skip-link">
+                  Skip to content
+                </a>
+                <Navbar />
+                <main id="main-content">{children}</main>
+                <Footer />
+              </SignerProviderClient>
             </ToastProvider>
           </ThemeProvider>
         </NextIntlClientProvider>

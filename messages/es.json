@@ -147,7 +147,48 @@
     "connectCompatible": "Compatible con: Amber, nsec.app, Damus",
     "showKey": "Mostrar clave",
     "hideKey": "Ocultar clave",
-    "nsecLabel": "Clave privada"
+    "nsecLabel": "Clave privada",
+    "orNew": "O sin extension",
+    "createIdentity": "Crear identidad nueva",
+    "creatingIdentity": "Generando claves...",
+    "createIdentityDescription": "Genera una identidad Nostr fresca en un click",
+    "createdTitle": "Identidad creada",
+    "createdIntro": "Guarda tu clave privada abajo. Es la unica forma de acceder a tu cuenta.",
+    "createdNsecLabel": "Tu clave privada (nsec)",
+    "createdCopy": "Copiar",
+    "createdCopied": "Copiada!",
+    "createdWarning": "Si perdes esta clave, perdes tu cuenta. No hay recuperacion posible.",
+    "createdExtensionTitle": "Para mejor experiencia, instala una extension",
+    "createdExtensionBody": "Sin extension tu clave vive solo en memoria: si recargas la pagina vas a tener que volver a iniciar sesion para firmar nuevos eventos en Nostr.",
+    "createdExtensionCta": "Instalar Nostr WoT",
+    "createdAckLabel": "Guarde mi clave y entiendo que no hay recuperacion",
+    "createdContinue": "Continuar a la Arena"
+  },
+  "reSignIn": {
+    "title": "Volver a desbloquear tu clave",
+    "intro": "Tu sesion sigue activa, pero necesitamos firmar este evento de Nostr con tu clave. Volve a conectar tu firmante para continuar.",
+    "extension": "Usar extension del navegador",
+    "extensionDescription": "Firma con NIP-07 (recomendado)",
+    "or": "o",
+    "nsecLabel": "Pega tu nsec de nuevo",
+    "attachKey": "Desbloquear",
+    "extensionRejected": "La extension rechazo la firma.",
+    "nsecInvalid": "Clave invalida. Usa formato nsec1 o hex de 64 caracteres.",
+    "mismatch": "Esta clave no corresponde a la cuenta con la que iniciaste sesion.",
+    "show": "Mostrar clave",
+    "hide": "Ocultar clave",
+    "needBunker": "Usas un signer remoto?",
+    "goToLogin": "Ir al login completo",
+    "back": "Volver",
+    "authFailed": "No pudimos validar la firma. Intenta de nuevo."
+  },
+  "signerRequired": {
+    "title": "Necesitas desbloquear tu clave",
+    "body": "Tu sesion sigue activa, pero no podemos firmar nuevos eventos en Nostr hasta que vuelvas a conectar tu firmante.",
+    "cta": "Desbloquear",
+    "anonTitle": "Inicia sesion con Nostr",
+    "anonBody": "Para crear o unirte a desafios necesitas una identidad Nostr. Usa tu extension, un signer remoto, tu nsec, o crea una cuenta nueva.",
+    "anonCta": "Iniciar sesion"
   },
   "explore": {
     "title": "Explorar desafios",
@@ -196,7 +237,8 @@
     "startsAtLabel": "Fecha de inicio",
     "endsAtLabel": "Fecha de fin",
     "creating": "Creando...",
-    "success": "Desafio creado!"
+    "success": "Desafio creado!",
+    "needSigner": "Necesitas desbloquear tu clave Nostr antes de crear un desafio."
   },
   "challenge": {
     "by": "por",

@@ -8,6 +8,7 @@ import Image from "next/image";
 import { Block } from "@/components/common/Block";
 import { MoonIcon, SunIcon, SettingsIcon, UserIcon } from "@/components/icons";
 import { useTheme } from "@/lib/theme-context";
+import { useSignerContext } from "@/lib/signer-context";
 import styles from "./navbar.module.scss";
 
 interface SessionUser {
@@ -29,6 +30,7 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const lastScrollY = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { clearSigner } = useSignerContext();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -64,6 +66,7 @@ export function Navbar() {
   const handleSignOut = async () => {
     setMenuOpen(false);
     await fetch("/api/auth/signout", { method: "POST" });
+    await clearSigner();
     setUser(null);
     router.push("/");
   };

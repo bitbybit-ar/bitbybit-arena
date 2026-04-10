@@ -1,0 +1,65 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
+  padding: $spacing-12 $spacing-16;
+  background: alpha($color-secondary, 12%);
+  border: 1px solid alpha($color-secondary, 35%);
+  border-radius: $border-radius-md;
+  margin-bottom: $spacing-16;
+}
+
+.iconBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: $border-radius-full;
+  background: alpha($color-secondary, 20%);
+  color: $color-secondary;
+  flex-shrink: 0;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  display: block;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: 2px;
+}
+
+.body {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  line-height: $line-height-base;
+  margin: 0;
+}
+
+.cta {
+  padding: $spacing-8 $spacing-12;
+  background: $color-secondary;
+  color: $static-white;
+  border: none;
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: filter 0.15s ease;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+}
