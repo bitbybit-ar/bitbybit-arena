@@ -48,6 +48,7 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
   const [endsAt, setEndsAt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,7 +110,7 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
               ? nostrActionTarget.trim().toLowerCase()
               : undefined,
           prize_amount_sats: prizeAmountSats ? Number(prizeAmountSats) : undefined,
-          reward_zap_mode:
+          prize_distribution:
             prizeAmountSats && Number(prizeAmountSats) > 0
               ? rewardZapMode
               : undefined,
@@ -161,30 +162,29 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
       }
 
       // Optionally publish a NIP-75 Zap Goal and PUT the event id back.
-      if (
-        publishZapGoal &&
-        prizeAmountSats &&
-        Number(prizeAmountSats) > 0 &&
-        signer?.pubkey
-      ) {
-        try {
-          const goalEvent = buildZapGoalEvent({
-            challengeSlug: json.data.slug,
-            creatorPubkey: signer.pubkey,
-            amountSats: Number(prizeAmountSats),
-            title: `Prize pot: ${title}`,
-            relays: DEFAULT_RELAYS,
-            closedAt: endsAt || undefined,
-          });
-          const signedGoal = await signWithPrompt(goalEvent);
-          await publishSignedEvent(signedGoal);
-          await fetch(`/api/challenges/${json.data.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ zap_goal_event_id: signedGoal.id }),
-          });
-        } catch {
-          // Non-blocking: challenge is still created without the goal event
+      if (publishZapGoal && prizeAmountSats && Number(prizeAmountSats) > 0) {
+        if (!signer?.pubkey) {
+          setWarning(t("zapGoalSkippedNoSigner"));
+        } else {
+          try {
+            const goalEvent = buildZapGoalEvent({
+              challengeSlug: json.data.slug,
+              creatorPubkey: signer.pubkey,
+              amountSats: Number(prizeAmountSats),
+              title: `Prize pot: ${title}`,
+              relays: DEFAULT_RELAYS,
+              closedAt: endsAt || undefined,
+            });
+            const signedGoal = await signWithPrompt(goalEvent);
+            await publishSignedEvent(signedGoal);
+            await fetch(`/api/challenges/${json.data.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ zap_goal_event_id: signedGoal.id }),
+            });
+          } catch {
+            setWarning(t("zapGoalPublishFailed"));
+          }
         }
       }
 
@@ -460,6 +460,7 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
         </div>
 
         {error && <p className={styles.error}>{error}</p>}
+        {warning && <p className={styles.warning}>{warning}</p>}
 
         <FormButton type="submit" loading={loading} loadingText={t("creating")}>
           {t("title")}

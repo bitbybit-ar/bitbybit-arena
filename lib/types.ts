@@ -32,9 +32,8 @@ export type PrizeDistribution =
   | "first_to_complete"
   | "winner_takes_all"
   | "split"
+  | "tiered"
   | "none";
-
-export type RewardZapMode = "first_to_complete" | "split" | "tiered";
 
 export interface Challenge {
   id: string;
@@ -51,7 +50,6 @@ export interface Challenge {
   nostr_action_target_event_id: string | null;
   checkpoint_mode: CheckpointMode;
   zap_goal_event_id: string | null;
-  reward_zap_mode: RewardZapMode | null;
   rewards_paid_at: string | null;
   prize_amount_sats: number;
   prize_distribution: PrizeDistribution | null;

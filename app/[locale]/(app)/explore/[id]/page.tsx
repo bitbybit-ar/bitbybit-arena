@@ -57,7 +57,13 @@ interface ChallengeDetail {
   creator_id: string;
   slug: string;
   prize_amount_sats: number;
-  reward_zap_mode: "first_to_complete" | "split" | "tiered" | null;
+  prize_distribution:
+    | "first_to_complete"
+    | "winner_takes_all"
+    | "split"
+    | "tiered"
+    | "none"
+    | null;
   zap_goal_event_id: string | null;
   rewards_paid_at: string | null;
   creator: { id: string; display_name: string; username: string; nostr_pubkey: string; lightning_address?: string };
@@ -773,7 +779,8 @@ export default function ChallengeDetailPage() {
         {/* Reward zaps */}
         {isCreator &&
           challenge.prize_amount_sats > 0 &&
-          challenge.reward_zap_mode &&
+          challenge.prize_distribution &&
+          challenge.prize_distribution !== "none" &&
           !challenge.rewards_paid_at && (
             <div className={styles.section}>
               <h2 className={styles.sectionTitle}>{t("rewardSectionTitle")}</h2>
@@ -781,7 +788,7 @@ export default function ChallengeDetailPage() {
                 {t("rewardInstructions", {
                   amount: challenge.prize_amount_sats,
                   mode: tCreate(
-                    `rewardZapModes.${challenge.reward_zap_mode}`
+                    `rewardZapModes.${challenge.prize_distribution}`
                   ),
                 })}
               </p>

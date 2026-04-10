@@ -85,7 +85,7 @@ describe("Integration: Zap rewards", () => {
     it("first_to_complete: returns the earliest completer with the full pot", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 5000,
-        reward_zap_mode: "first_to_complete",
+        prize_distribution: "first_to_complete",
         status: "open",
       });
       const pA = await seedParticipant(challenge.id, winnerA.id, {
@@ -114,7 +114,7 @@ describe("Integration: Zap rewards", () => {
     it("split: divides the pot evenly among all completers, remainder to the first", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1001,
-        reward_zap_mode: "split",
+        prize_distribution: "split",
         status: "open",
       });
       const pA = await seedParticipant(challenge.id, winnerA.id, { status: "active" });
@@ -144,7 +144,7 @@ describe("Integration: Zap rewards", () => {
     it("tiered: 50/30/20 to top 3 by completion time", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 10000,
-        reward_zap_mode: "tiered",
+        prize_distribution: "tiered",
         status: "open",
       });
       const pA = await seedParticipant(challenge.id, winnerA.id, { status: "active" });
@@ -169,7 +169,7 @@ describe("Integration: Zap rewards", () => {
     it("falls back to kind:0 metadata when the users row has no lud16", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1000,
-        reward_zap_mode: "first_to_complete",
+        prize_distribution: "first_to_complete",
         status: "open",
       });
       const nolnUser = await seedUser({
@@ -197,7 +197,7 @@ describe("Integration: Zap rewards", () => {
     it("400 when a winner has no lightning address anywhere", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1000,
-        reward_zap_mode: "first_to_complete",
+        prize_distribution: "first_to_complete",
         status: "open",
       });
       const nolnUser = await seedUser({
@@ -222,7 +222,7 @@ describe("Integration: Zap rewards", () => {
     it("403 for non-creators", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1000,
-        reward_zap_mode: "first_to_complete",
+        prize_distribution: "first_to_complete",
         status: "open",
       });
       const p = await seedParticipant(challenge.id, winnerA.id, {
@@ -241,7 +241,7 @@ describe("Integration: Zap rewards", () => {
     it("400 when no one has completed", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1000,
-        reward_zap_mode: "first_to_complete",
+        prize_distribution: "first_to_complete",
         status: "open",
       });
       await seedParticipant(challenge.id, winnerA.id, { status: "active" });
@@ -258,7 +258,7 @@ describe("Integration: Zap rewards", () => {
     it("sets rewards_paid_at without a body", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1000,
-        reward_zap_mode: "first_to_complete",
+        prize_distribution: "first_to_complete",
         status: "open",
       });
       setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
@@ -279,7 +279,7 @@ describe("Integration: Zap rewards", () => {
     it("stores a receipt id on the winner's latest approved completion", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1000,
-        reward_zap_mode: "first_to_complete",
+        prize_distribution: "first_to_complete",
         status: "open",
       });
       const p = await seedParticipant(challenge.id, winnerA.id, {
@@ -311,7 +311,7 @@ describe("Integration: Zap rewards", () => {
     it("400 when receipt_event_id is not 64-hex", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1000,
-        reward_zap_mode: "first_to_complete",
+        prize_distribution: "first_to_complete",
         status: "open",
       });
       setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
@@ -328,7 +328,7 @@ describe("Integration: Zap rewards", () => {
     it("403 for non-creators", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1000,
-        reward_zap_mode: "first_to_complete",
+        prize_distribution: "first_to_complete",
         status: "open",
       });
       setSession(makeSession(winnerA.id, { nostr_pubkey: winnerA.nostr_pubkey }));

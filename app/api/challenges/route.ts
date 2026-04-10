@@ -9,14 +9,13 @@ import type {
   VerificationType,
   PrizeDistribution,
   CheckpointMode,
-  RewardZapMode,
 } from "@/lib/types";
 
 const VALID_TYPES: ChallengeType[] = ["one_time", "streak", "competition", "race", "creative"];
 const VALID_VERIFICATION: VerificationType[] = ["creator_approval", "automatic", "nostr_action"];
-const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "winner_takes_all", "split", "none"];
+const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "winner_takes_all", "split", "tiered", "none"];
+const PAYOUT_DISTRIBUTIONS: PrizeDistribution[] = ["first_to_complete", "split", "tiered"];
 const VALID_CHECKPOINT_MODE: CheckpointMode[] = ["none", "sequential", "parallel"];
-const VALID_REWARD_ZAP_MODE: RewardZapMode[] = ["first_to_complete", "split", "tiered"];
 const HEX_64 = /^[0-9a-f]{64}$/i;
 
 interface CheckpointInput {
@@ -160,7 +159,7 @@ export const GET = apiHandler(
 export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
   const body = await req.json();
 
-  const { title, description, type, category, goal, unit, verification_type, nostr_action_target_event_id, checkpoint_mode, checkpoints: checkpointsInput, prize_amount_sats, prize_distribution, reward_zap_mode, zap_goal_event_id, badge_name, starts_at, ends_at } = body;
+  const { title, description, type, category, goal, unit, verification_type, nostr_action_target_event_id, checkpoint_mode, checkpoints: checkpointsInput, prize_amount_sats, prize_distribution, zap_goal_event_id, badge_name, starts_at, ends_at } = body;
 
   if (!title || typeof title !== "string" || title.trim().length < 3) {
     throw new BadRequestError("Title must be at least 3 characters");
@@ -175,16 +174,12 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
     throw new BadRequestError(`Invalid verification type. Must be one of: ${VALID_VERIFICATION.join(", ")}`);
   }
   if (prize_distribution && !VALID_DISTRIBUTION.includes(prize_distribution)) {
-    throw new BadRequestError(`Invalid prize distribution. Must be one of: ${VALID_DISTRIBUTION.join(", ")}`);
+    throw new BadRequestError(`Invalid prize_distribution. Must be one of: ${VALID_DISTRIBUTION.join(", ")}`);
   }
-  if (
-    reward_zap_mode !== undefined &&
-    reward_zap_mode !== null &&
-    !VALID_REWARD_ZAP_MODE.includes(reward_zap_mode as RewardZapMode)
-  ) {
-    throw new BadRequestError(
-      `Invalid reward_zap_mode. Must be one of: ${VALID_REWARD_ZAP_MODE.join(", ")}`
-    );
+  if (prize_amount_sats !== undefined && prize_amount_sats !== null) {
+    if (typeof prize_amount_sats !== "number" || prize_amount_sats < 0) {
+      throw new BadRequestError("prize_amount_sats must be a non-negative number");
+    }
   }
   let resolvedZapGoalEventId: string | null = null;
   if (zap_goal_event_id !== undefined && zap_goal_event_id !== null) {
@@ -198,9 +193,12 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
     }
     resolvedZapGoalEventId = zap_goal_event_id.toLowerCase();
   }
-  if ((prize_amount_sats ?? 0) > 0 && !reward_zap_mode) {
+  if (
+    (prize_amount_sats ?? 0) > 0 &&
+    !PAYOUT_DISTRIBUTIONS.includes(prize_distribution as PrizeDistribution)
+  ) {
     throw new BadRequestError(
-      "reward_zap_mode is required when prize_amount_sats is set"
+      `prize_distribution must be one of ${PAYOUT_DISTRIBUTIONS.join(", ")} when prize_amount_sats > 0`
     );
   }
 
@@ -247,7 +245,6 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
     checkpoint_mode: resolvedMode,
     prize_amount_sats: prize_amount_sats || 0,
     prize_distribution: prize_distribution || "none",
-    reward_zap_mode: (reward_zap_mode as RewardZapMode | undefined) ?? null,
     zap_goal_event_id: resolvedZapGoalEventId,
     badge_name: badge_name || null,
     starts_at: starts_at ? new Date(starts_at) : null,

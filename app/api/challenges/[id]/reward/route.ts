@@ -13,7 +13,14 @@ import {
   users,
 } from "@/lib/db/schema";
 import { fetchNostrMetadataServer } from "@/lib/nostr/server-metadata";
-import type { RewardZapMode } from "@/lib/types";
+import type { PrizeDistribution } from "@/lib/types";
+
+const PAYOUT_DISTRIBUTIONS: PrizeDistribution[] = [
+  "first_to_complete",
+  "winner_takes_all",
+  "split",
+  "tiered",
+];
 
 interface WinnerPayload {
   user_id: string;
@@ -38,7 +45,7 @@ function tieredSplit(total: number, winners: number): number[] {
 
 // POST /api/challenges/[id]/reward — creator-only.
 // Returns the list of winners with their lightning addresses and the
-// amount each should receive, derived from challenge.reward_zap_mode.
+// amount each should receive, derived from challenge.prize_distribution.
 // The client then signs a NIP-57 zap request per winner, fetches an
 // invoice, pays via WebLN, and PATCHes back to record each receipt.
 export const POST = apiHandler(async (_req: NextRequest, { session, db, params }) => {
@@ -54,8 +61,11 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
   if (!challenge.prize_amount_sats || challenge.prize_amount_sats <= 0) {
     throw new BadRequestError("This challenge has no prize configured");
   }
-  if (!challenge.reward_zap_mode) {
-    throw new BadRequestError("Challenge is missing reward_zap_mode");
+  const distribution = challenge.prize_distribution as PrizeDistribution | null;
+  if (!distribution || !PAYOUT_DISTRIBUTIONS.includes(distribution)) {
+    throw new BadRequestError(
+      "Challenge has no payout-eligible prize_distribution"
+    );
   }
 
   // Winners are participants with status='completed', ordered by earliest
@@ -83,14 +93,13 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
     throw new BadRequestError("No completed participants to reward");
   }
 
-  const mode = challenge.reward_zap_mode as RewardZapMode;
   let selected: typeof completers = [];
   let amounts: number[] = [];
 
-  if (mode === "first_to_complete") {
+  if (distribution === "first_to_complete" || distribution === "winner_takes_all") {
     selected = completers.slice(0, 1);
     amounts = [challenge.prize_amount_sats];
-  } else if (mode === "split") {
+  } else if (distribution === "split") {
     selected = completers;
     const per = Math.floor(challenge.prize_amount_sats / completers.length);
     amounts = selected.map(() => per);
@@ -133,7 +142,7 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
 
   return {
     challenge_id: challenge.id,
-    reward_zap_mode: mode,
+    prize_distribution: distribution,
     total_prize_sats: challenge.prize_amount_sats,
     winners,
   };

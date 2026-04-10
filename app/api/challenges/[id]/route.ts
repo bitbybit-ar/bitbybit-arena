@@ -14,9 +14,12 @@ import type { ChallengeType, VerificationType, PrizeDistribution } from "@/lib/t
 
 const VALID_TYPES: ChallengeType[] = ["one_time", "streak", "competition", "race", "creative"];
 const VALID_VERIFICATION: VerificationType[] = ["creator_approval", "automatic", "nostr_action"];
-const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "winner_takes_all", "split", "none"];
+const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "winner_takes_all", "split", "tiered", "none"];
 const VALID_STATUSES = ["open", "in_progress", "completed", "cancelled"];
 const HEX_64 = /^[0-9a-f]{64}$/i;
+const MAX_CATEGORY_LEN = 50;
+const MAX_UNIT_LEN = 30;
+const MAX_BADGE_NAME_LEN = 100;
 
 // GET /api/challenges/[id] — get single challenge with creator and participant count
 export const GET = apiHandler(
@@ -131,13 +134,58 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db, params }) 
     if (!VALID_DISTRIBUTION.includes(body.prize_distribution)) throw new BadRequestError("Invalid prize distribution");
     updates.prize_distribution = body.prize_distribution;
   }
-  if (body.category !== undefined) updates.category = body.category;
-  if (body.goal !== undefined) updates.goal = body.goal;
-  if (body.unit !== undefined) updates.unit = body.unit;
-  if (body.prize_amount_sats !== undefined) updates.prize_amount_sats = body.prize_amount_sats;
-  if (body.badge_name !== undefined) updates.badge_name = body.badge_name;
-  if (body.starts_at !== undefined) updates.starts_at = body.starts_at ? new Date(body.starts_at) : null;
-  if (body.ends_at !== undefined) updates.ends_at = body.ends_at ? new Date(body.ends_at) : null;
+  if (body.category !== undefined) {
+    if (body.category !== null && (typeof body.category !== "string" || body.category.length > MAX_CATEGORY_LEN)) {
+      throw new BadRequestError(`category must be a string of at most ${MAX_CATEGORY_LEN} characters`);
+    }
+    updates.category = body.category;
+  }
+  if (body.goal !== undefined) {
+    if (body.goal !== null && (!Number.isInteger(body.goal) || body.goal < 0)) {
+      throw new BadRequestError("goal must be a non-negative integer");
+    }
+    updates.goal = body.goal;
+  }
+  if (body.unit !== undefined) {
+    if (body.unit !== null && (typeof body.unit !== "string" || body.unit.length > MAX_UNIT_LEN)) {
+      throw new BadRequestError(`unit must be a string of at most ${MAX_UNIT_LEN} characters`);
+    }
+    updates.unit = body.unit;
+  }
+  if (body.prize_amount_sats !== undefined) {
+    if (typeof body.prize_amount_sats !== "number" || body.prize_amount_sats < 0) {
+      throw new BadRequestError("prize_amount_sats must be a non-negative number");
+    }
+    updates.prize_amount_sats = body.prize_amount_sats;
+  }
+  if (body.badge_name !== undefined) {
+    if (body.badge_name !== null && (typeof body.badge_name !== "string" || body.badge_name.length > MAX_BADGE_NAME_LEN)) {
+      throw new BadRequestError(`badge_name must be a string of at most ${MAX_BADGE_NAME_LEN} characters`);
+    }
+    updates.badge_name = body.badge_name;
+  }
+  if (body.starts_at !== undefined) {
+    if (body.starts_at !== null) {
+      const d = new Date(body.starts_at);
+      if (Number.isNaN(d.getTime())) {
+        throw new BadRequestError("starts_at must be a valid date");
+      }
+      updates.starts_at = d;
+    } else {
+      updates.starts_at = null;
+    }
+  }
+  if (body.ends_at !== undefined) {
+    if (body.ends_at !== null) {
+      const d = new Date(body.ends_at);
+      if (Number.isNaN(d.getTime())) {
+        throw new BadRequestError("ends_at must be a valid date");
+      }
+      updates.ends_at = d;
+    } else {
+      updates.ends_at = null;
+    }
+  }
   if (body.zap_goal_event_id !== undefined) {
     if (body.zap_goal_event_id === null) {
       updates.zap_goal_event_id = null;

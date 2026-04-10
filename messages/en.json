@@ -259,10 +259,13 @@
     "rewardZapModeLabel": "How the prize is distributed",
     "rewardZapModes": {
       "first_to_complete": "First to complete takes all",
+      "winner_takes_all": "Winner takes all",
       "split": "Split evenly among all completers",
       "tiered": "Podium (50% / 30% / 20%)"
     },
     "publishZapGoalLabel": "Publish a Zap Goal (NIP-75) on Nostr so others can fund the prize",
+    "zapGoalSkippedNoSigner": "The challenge was created but we couldn't publish the Zap Goal: your Nostr signer isn't active. You can publish it later from the challenge page.",
+    "zapGoalPublishFailed": "The challenge was created but we couldn't publish the Zap Goal to the relays. Try again later.",
     "badgeNameLabel": "Badge name",
     "badgeNamePlaceholder": "E.g., 30-Day Zen Master",
     "startsAtLabel": "Start date",

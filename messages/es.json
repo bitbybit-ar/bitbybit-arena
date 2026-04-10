@@ -259,10 +259,13 @@
     "rewardZapModeLabel": "Cómo se reparte el premio",
     "rewardZapModes": {
       "first_to_complete": "El primero que termina se lleva todo",
+      "winner_takes_all": "El ganador se lleva todo",
       "split": "División pareja entre todos los que terminan",
       "tiered": "Podio (50% / 30% / 20%)"
     },
     "publishZapGoalLabel": "Publicar Zap Goal (NIP-75) en Nostr para que otros financien el premio",
+    "zapGoalSkippedNoSigner": "El desafío se creó pero no pudimos publicar el Zap Goal: tu firmante Nostr no está activo. Podés publicarlo más tarde desde la página del desafío.",
+    "zapGoalPublishFailed": "El desafío se creó pero no pudimos publicar el Zap Goal en los relays. Intentá de nuevo más tarde.",
     "badgeNameLabel": "Nombre del badge",
     "badgeNamePlaceholder": "Ej: Maestro Zen 30 Días",
     "startsAtLabel": "Fecha de inicio",
