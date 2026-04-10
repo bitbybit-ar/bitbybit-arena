@@ -116,7 +116,7 @@
     "title": "Sign in with Nostr",
     "subtitle": "Choose how to connect your Nostr identity to create and join challenges.",
     "extensionTitle": "Browser Extension",
-    "extensionDescription": "Alby, nos2x, Nostr WoT or another extension",
+    "extensionDescription": "Nostr WoT, Alby, nos2x or another extension",
     "connectTitle": "Nostr Connect",
     "connectDescription": "Connect with a remote signer (NIP-46)",
     "nsecTitle": "Secret key (not recommended)",
@@ -147,7 +147,10 @@
     "connectCompatible": "Compatible with: Amber, nsec.app, Damus",
     "showKey": "Show key",
     "hideKey": "Hide key",
-    "nsecLabel": "Private key"
+    "nsecLabel": "Private key",
+    "noAccount": "Don't have a Nostr account?",
+    "joinNostrTitle": "Join Nostr",
+    "joinNostrDescription": "Create a new account using WoT Extension"
   },
   "explore": {
     "title": "Explore Challenges",

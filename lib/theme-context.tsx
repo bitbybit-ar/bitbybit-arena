@@ -13,6 +13,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       attribute="data-theme"
       defaultTheme="light"
       enableSystem
+      enableColorScheme={false}
     >
       {children}
     </NextThemesProvider>

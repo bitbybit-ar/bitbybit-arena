@@ -18,14 +18,17 @@ import type { BunkerSigner } from "nostr-tools/nip46";
 import { Block } from "@/components/common/Block";
 import { Bubble } from "@/components/common/Bubble";
 import {
+  ArrowLeftIcon,
   BoltIcon,
   LinkIcon,
   KeyIcon,
   EyeIcon,
   EyeOffIcon,
   CopyIcon,
+  WotIcon,
+  ExternalLinkIcon,
 } from "@/components/icons";
-import styles from "./login.module.scss";
+import styles from "./signin.module.scss";
 
 type ConnectStatus = "idle" | "scanning" | "connecting" | "expired";
 
@@ -301,20 +304,29 @@ export default function LoginPage() {
 
         {error && <p className={styles.error}>{error}</p>}
 
-        <p className={styles.wotHint}>
-          {t("wotHint")}{" "}
-          <a
-            href="https://nostr-wot.com/download"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.wotLink}
-          >
-            Nostr WoT Extension
-          </a>
-          ?
-        </p>
+        <div className={styles.divider} />
 
+        <p className={styles.noAccountText}>{t("noAccount")}</p>
+
+        <a
+          href="https://nostr-wot.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.joinNostrButton}
+        >
+          <WotIcon size={24} />
+          <div className={styles.methodInfo}>
+            <span className={styles.methodName}>{t("joinNostrTitle")}</span>
+            <span className={styles.methodDescription}>{t("joinNostrDescription")}</span>
+          </div>
+          <ExternalLinkIcon size={16} className={styles.externalIcon} />
+        </a>
+
+      </div>
+
+      <div className={styles.backLinkWrapper}>
         <Link href="/" className={styles.backLink}>
+          <ArrowLeftIcon size={16} />
           {t("backToHome")}
         </Link>
       </div>
@@ -459,6 +471,19 @@ export default function LoginPage() {
           >
             {nsecLoading ? t("nsecSigningIn") : t("nsecSignIn")}
           </button>
+
+          <p className={styles.wotHint}>
+            {t("wotHint")}{" "}
+            <a
+              href="https://nostr-wot.com/download"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.wotLink}
+            >
+              Nostr WoT Extension
+            </a>
+            ?
+          </p>
         </Modal>
       )}
     </div>

@@ -26,7 +26,7 @@ function getLoginUrl(request: NextRequest): URL {
   const locale = LOCALES.includes(segments[1] as (typeof LOCALES)[number])
     ? segments[1]
     : routing.defaultLocale;
-  return new URL(`/${locale}/login`, request.url);
+  return new URL(`/${locale}/signin`, request.url);
 }
 
 export default async function proxy(request: NextRequest) {

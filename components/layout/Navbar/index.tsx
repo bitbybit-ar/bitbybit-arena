@@ -171,7 +171,7 @@ export function Navbar() {
               <Link href="/explore" className={styles.navLink}>
                 {t("explore") || "Explore"}
               </Link>
-              <Link href="/login" className={styles.signInButton}>
+              <Link href="/signin" className={styles.signInButton}>
                 {t("signIn")}
               </Link>
             </>

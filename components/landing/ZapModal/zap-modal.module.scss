@@ -157,6 +157,15 @@
   gap: $spacing-12;
 }
 
+.qrWrapper {
+  display: flex;
+  justify-content: center;
+  padding: $spacing-16;
+  background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+}
+
 .invoiceBox {
   background: $color-bg;
   border: 1px solid $color-border;

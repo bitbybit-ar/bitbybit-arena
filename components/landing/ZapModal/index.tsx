@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { QRCodeSVG } from "qrcode.react";
 import { Modal } from "@/components/ui/modal";
 import { BoltIcon, CopyIcon } from "@/components/icons";
 import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
@@ -87,6 +88,15 @@ export function ZapModal({ onClose }: ZapModalProps) {
       ) : status === "no-webln" ? (
         <div className={styles.invoiceState}>
           <p className={styles.description}>{t("noWebln")}</p>
+          <div className={styles.qrWrapper}>
+            <QRCodeSVG
+              value={invoice}
+              size={200}
+              bgColor="transparent"
+              fgColor="var(--color-text-primary)"
+              level="M"
+            />
+          </div>
           <div className={styles.invoiceBox}>
             <code className={styles.invoiceText}>{invoice}</code>
           </div>
