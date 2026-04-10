@@ -141,41 +141,16 @@
   }
 }
 
+// Layout override for the login method buttons: the shared Button
+// `fullWidth` centers its children, but each method shows an icon
+// plus a two-line label, so we pin the content to the left and widen
+// the gap. Visuals come from the Button variant (primary, ghost,
+// secondary) — this class only adjusts flex alignment and padding.
 .methodButton {
-  display: flex;
-  align-items: center;
-  gap: $spacing-12;
-  width: 100%;
-  padding: $spacing-12 $spacing-16;
-  background: $color-primary;
-  color: $static-white;
-  border: none;
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  justify-content: flex-start;
   text-align: left;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px alpha($color-primary, 30%);
-  }
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-}
-
-.methodSecondary {
-  background: transparent;
-  color: $color-text-secondary;
-  border: 1px solid $color-border;
-
-  &:hover:not(:disabled) {
-    border-color: $color-text-secondary;
-    box-shadow: none;
-  }
+  gap: $spacing-12;
+  padding: $spacing-12 $spacing-16;
 }
 
 .methodInfo {
@@ -471,29 +446,6 @@
   }
 }
 
-.nsecSubmit {
-  width: 100%;
-  padding: $spacing-8 $spacing-16;
-  background: $color-primary;
-  color: $static-white;
-  border: none;
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
-  cursor: pointer;
-  transition: filter 0.15s ease;
-
-  &:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
 // Create new identity
 .createDivider {
   display: flex;
@@ -514,33 +466,6 @@
     color: $color-text-secondary;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-  }
-}
-
-.createButton {
-  display: flex;
-  align-items: center;
-  gap: $spacing-12;
-  width: 100%;
-  padding: $spacing-12 $spacing-16;
-  background: alpha($color-secondary, 14%);
-  color: $color-text-primary;
-  border: 1px solid alpha($color-secondary, 40%);
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  cursor: pointer;
-  text-align: left;
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    border-color: $color-secondary;
-    box-shadow: 0 4px 20px alpha($color-secondary, 25%);
-  }
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
   }
 }
 
@@ -636,6 +561,7 @@
   background: alpha($color-secondary, 10%);
   border: 1px solid alpha($color-secondary, 30%);
   border-radius: $border-radius-md;
+  margin-top: $spacing-16;
   margin-bottom: $spacing-12;
   text-align: left;
 

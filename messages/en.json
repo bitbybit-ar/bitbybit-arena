@@ -149,7 +149,7 @@
     "showKey": "Show key",
     "hideKey": "Hide key",
     "nsecLabel": "Private key",
-    "orNew": "Or no extension",
+    "orNew": "New to Nostr?",
     "createIdentity": "Create new identity",
     "creatingIdentity": "Generating keys...",
     "createIdentityDescription": "Generate a fresh Nostr identity in one click",
@@ -162,6 +162,8 @@
     "createdExtensionTitle": "For the best experience, install an extension",
     "createdExtensionBody": "Without an extension your key lives only in memory: if you reload the page you'll need to sign in again to publish new Nostr events.",
     "createdExtensionCta": "Install Nostr WoT",
+    "nsecExtensionTitle": "Better yet, use an extension",
+    "nsecExtensionBody": "For security and session continuity: an extension keeps your key protected and your session alive across reloads. Pasting your nsec here leaves it in memory, so you'll have to sign in again every time you reload.",
     "createdAckLabel": "I've saved my key and I understand there is no recovery",
     "createdContinue": "Continue to the Arena"
   },

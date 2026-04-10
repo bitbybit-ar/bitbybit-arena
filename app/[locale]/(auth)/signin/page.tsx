@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
+import { Button } from "@/components/ui/button";
 import { createNewIdentity } from "@/lib/nostr/create-account";
 import { useSignerContext } from "@/lib/signer-context";
 import { makeNsecSigner } from "@/lib/nostr/signers";
@@ -135,14 +136,14 @@ export default function SignInPage() {
       <Bubble
         size={120}
         color="purple"
-        opacity={0.06}
+        opacity={0.2}
         position={{ top: "10%", left: "8%" }}
         animation="float-slow"
       />
       <Bubble
         size={80}
         color="gold"
-        opacity={0.08}
+        opacity={0.2}
         position={{ bottom: "15%", right: "10%" }}
         animation="drift"
         delay={1}
@@ -158,8 +159,10 @@ export default function SignInPage() {
             onError={handleError}
           />
 
-          <button
+          <Button
             type="button"
+            variant="primary"
+            fullWidth
             className={styles.methodButton}
             onClick={() => setPanel("nip46")}
           >
@@ -170,11 +173,13 @@ export default function SignInPage() {
                 {t("connectDescription")}
               </span>
             </div>
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
-            className={`${styles.methodButton} ${styles.methodSecondary}`}
+            variant="ghost"
+            fullWidth
+            className={styles.methodButton}
             onClick={() => setPanel("nsec")}
           >
             <KeyIcon size={20} />
@@ -184,15 +189,18 @@ export default function SignInPage() {
                 {t("nsecDescription")}
               </span>
             </div>
-          </button>
+          </Button>
         </div>
 
         <div className={styles.createDivider}>
           <span>{t("orNew")}</span>
         </div>
 
-        <button
-          className={styles.createButton}
+        <Button
+          type="button"
+          variant="secondary"
+          fullWidth
+          className={styles.methodButton}
           onClick={handleCreateAccount}
           disabled={creating}
         >
@@ -205,7 +213,7 @@ export default function SignInPage() {
               {t("createIdentityDescription")}
             </span>
           </div>
-        </button>
+        </Button>
 
         {error && panel === "picker" && <p className={styles.error}>{error}</p>}
 
@@ -250,6 +258,20 @@ export default function SignInPage() {
             submitLabel={t("nsecSignIn")}
             submittingLabel={t("nsecSigningIn")}
           />
+
+          <div className={styles.createdExtensionUpsell}>
+            <strong>{t("nsecExtensionTitle")}</strong>
+            <p>{t("nsecExtensionBody")}</p>
+            <a
+              href="https://nostr-wot.com/download"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.createdExtensionLink}
+            >
+              {t("createdExtensionCta")}
+            </a>
+          </div>
+
           {error && <p className={styles.error}>{error}</p>}
         </Modal>
       )}
@@ -306,13 +328,15 @@ export default function SignInPage() {
             <span>{t("createdAckLabel")}</span>
           </label>
 
-          <button
-            className={styles.nsecSubmit}
+          <Button
+            type="button"
+            variant="primary"
+            fullWidth
             onClick={handleContinueAfterCreate}
             disabled={!savedAcknowledged}
           >
             {t("createdContinue")}
-          </button>
+          </Button>
         </Modal>
       )}
     </div>

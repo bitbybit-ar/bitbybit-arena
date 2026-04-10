@@ -149,7 +149,7 @@
     "showKey": "Mostrar clave",
     "hideKey": "Ocultar clave",
     "nsecLabel": "Clave privada",
-    "orNew": "O sin extensión",
+    "orNew": "¿Nuevo en Nostr?",
     "createIdentity": "Crear identidad nueva",
     "creatingIdentity": "Generando claves...",
     "createIdentityDescription": "Generá una identidad Nostr fresca en un click",
@@ -162,6 +162,8 @@
     "createdExtensionTitle": "Para mejor experiencia, instalá una extensión",
     "createdExtensionBody": "Sin extensión tu clave vive solo en memoria: si recargás la página vas a tener que volver a iniciar sesión para firmar nuevos eventos en Nostr.",
     "createdExtensionCta": "Instalar Nostr WoT",
+    "nsecExtensionTitle": "Mejor usá una extensión",
+    "nsecExtensionBody": "Por seguridad y continuidad: una extensión mantiene tu clave protegida y tu sesión activa entre recargas. Pegar la nsec acá la deja en memoria y tenés que volver a iniciar sesión cada vez que recargues.",
     "createdAckLabel": "Guardé mi clave y entiendo que no hay recuperación",
     "createdContinue": "Continuar a la Arena"
   },
