@@ -24,6 +24,14 @@
     transition-duration: 0.1s;
   }
 
+  // Visible focus ring for keyboard users. `focus-visible` keeps
+  // mouse clicks quiet while still showing the ring when the user
+  // tabs to the button.
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 3px;
+  }
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -67,6 +75,25 @@
   &:active:not(:disabled) {
     box-shadow:
       0 2px 6px alpha($color-secondary, 20%),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 2px 4px rgba(0, 0, 0, 0.22);
+  }
+}
+
+.variant-success {
+  @include ceramic-surface($color-accent-alt, 28%);
+  color: $static-white;
+
+  &:hover:not(:disabled) {
+    box-shadow:
+      0 8px 24px alpha($color-accent-alt, 35%),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  &:active:not(:disabled) {
+    box-shadow:
+      0 2px 6px alpha($color-accent-alt, 20%),
       inset 0 -1px 0 rgba(255, 255, 255, 0.3),
       inset 0 2px 4px rgba(0, 0, 0, 0.22);
   }

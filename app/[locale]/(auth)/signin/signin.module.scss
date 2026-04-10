@@ -125,22 +125,23 @@
 
 // Layout override for the login method buttons: the shared Button
 // `fullWidth` centers its children, but each method shows an icon
-// plus a two-line label, so we pin the content to the left and widen
-// the gap. Visuals come from the Button variant (primary, ghost,
-// secondary) — this class only adjusts flex alignment and padding.
-.methodButton {
+// Layout override for the "Create identity" CTA: the shared
+// `fullWidth` Button centers its children, but this CTA shows an
+// icon plus a two-line label, so we pin the content to the left.
+// Visuals come from the Button secondary variant.
+.createButton {
   @include method-button-layout;
 }
 
-.methodInfo {
+.createInfo {
   @include method-button-stack;
 }
 
-.methodName {
+.createName {
   @include method-button-title;
 }
 
-.methodDescription {
+.createDescription {
   @include method-button-subtitle;
 }
 

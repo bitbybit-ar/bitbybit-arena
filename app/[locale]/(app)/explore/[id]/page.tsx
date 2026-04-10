@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import { ArrowRightIcon, BadgeIcon, BoltIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";

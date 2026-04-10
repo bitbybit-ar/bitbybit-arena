@@ -11,11 +11,16 @@ import {
   type SignerHandle,
   makeNsecSigner,
 } from "@/lib/nostr/signers";
+import {
+  type AuthError,
+  loginError,
+  reSignInError,
+} from "@/lib/nostr/auth-errors";
 import styles from "./nsec-signer-form.module.scss";
 
 interface NsecSignerFormProps {
   onSigner: (signer: SignerHandle) => void | Promise<void>;
-  onError?: (key: string) => void;
+  onError?: (error: AuthError) => void;
   /** When provided, the derived pubkey must match this value. */
   expectedPubkey?: string;
   /** Show the "I understand the risks" checkbox (login flow). */
@@ -66,14 +71,14 @@ export function NsecSignerForm({
       const secretKey = parseSecretKey(nsecKey);
       const pubkey = getPublicKey(secretKey);
       if (expectedPubkey && pubkey !== expectedPubkey) {
-        onError?.("mismatch");
+        onError?.(reSignInError("mismatch"));
         return;
       }
       setNsecKey("");
       await onSigner(makeNsecSigner(secretKey, pubkey));
     } catch {
       setNsecKey("");
-      onError?.("nsecInvalidKey");
+      onError?.(loginError("nsecInvalidKey"));
     } finally {
       setBusy(false);
     }

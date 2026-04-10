@@ -2,11 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { Link } from "@/i18n/routing";
 import { FlagIcon } from "@/components/icons";
 import { Spinner } from "@/components/ui/spinner";
 import { Tag } from "@/components/ui/tag";
+import { Tabs, panelIdFor } from "@/components/ui/tabs";
 import styles from "./my-challenges.module.scss";
+
+const TABS_ID = "my-challenges-tabs";
+type Tab = "joined" | "created";
 
 interface MyChallengeItem {
   id: string;
@@ -21,10 +25,9 @@ export default function MyChallengesPage() {
   const t = useTranslations("myChallenges");
   const tCommon = useTranslations("common");
   const tCreate = useTranslations("createChallenge");
-  const router = useRouter();
   const [data, setData] = useState<{ created: MyChallengeItem[]; joined: MyChallengeItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"created" | "joined">("joined");
+  const [tab, setTab] = useState<Tab>("joined");
 
   useEffect(() => {
     fetch("/api/my-challenges")
@@ -38,39 +41,49 @@ export default function MyChallengesPage() {
 
   const items = tab === "created" ? data?.created : data?.joined;
 
+  const tabItems = [
+    { value: "joined" as const, label: `${t("joined")} (${data?.joined.length ?? 0})` },
+    { value: "created" as const, label: `${t("created")} (${data?.created.length ?? 0})` },
+  ];
+
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>{t("title")}</h1>
-      <div className={styles.tabs}>
-        <button className={`${styles.tab} ${tab === "joined" ? styles.tabActive : ""}`} onClick={() => setTab("joined")}>
-          {t("joined")} ({data?.joined.length ?? 0})
-        </button>
-        <button className={`${styles.tab} ${tab === "created" ? styles.tabActive : ""}`} onClick={() => setTab("created")}>
-          {t("created")} ({data?.created.length ?? 0})
-        </button>
+      <Tabs
+        id={TABS_ID}
+        tabs={tabItems}
+        value={tab}
+        onChange={setTab}
+        ariaLabel={t("title")}
+      />
+      <div {...{ id: panelIdFor(TABS_ID, tab), role: "tabpanel" as const, "aria-labelledby": `${TABS_ID}-tab-${tab}` }}>
+        {!items || items.length === 0 ? (
+          <div className={styles.emptyState}>
+            <FlagIcon size={48} />
+            <p>{tab === "created" ? t("emptyCreated") : t("emptyJoined")}</p>
+          </div>
+        ) : (
+          <div className={styles.list}>
+            {items.map((item) => (
+              <Link
+                key={item.id}
+                href={`/explore/${item.id}`}
+                className={styles.card}
+              >
+                <div className={styles.cardTop}>
+                  <Tag variant={typeVariant(item.type)}>{tCreate(`types.${item.type}`)}</Tag>
+                  <Tag variant={statusVariant(item.status)}>{tCommon(statusKey(item.status))}</Tag>
+                </div>
+                <h3 className={styles.cardTitle}>{item.title}</h3>
+                <div className={styles.cardMeta}>
+                  <span>{item.participant_count} {tCommon("participants")}</span>
+                  {item.participation?.status === "completed" && <span className={styles.completed}>{tCommon("completed")}</span>}
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
-      {!items || items.length === 0 ? (
-        <div className={styles.emptyState}>
-          <FlagIcon size={48} />
-          <p>{tab === "created" ? t("emptyCreated") : t("emptyJoined")}</p>
-        </div>
-      ) : (
-        <div className={styles.list}>
-          {items.map((item) => (
-            <button key={item.id} className={styles.card} onClick={() => router.push(`/explore/${item.id}`)}>
-              <div className={styles.cardTop}>
-                <Tag variant={typeVariant(item.type)}>{tCreate(`types.${item.type}`)}</Tag>
-                <Tag variant={statusVariant(item.status)}>{tCommon(statusKey(item.status))}</Tag>
-              </div>
-              <h3 className={styles.cardTitle}>{item.title}</h3>
-              <div className={styles.cardMeta}>
-                <span>{item.participant_count} {tCommon("participants")}</span>
-                {item.participation?.status === "completed" && <span className={styles.completed}>{tCommon("completed")}</span>}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

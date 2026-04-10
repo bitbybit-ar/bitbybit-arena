@@ -13,6 +13,11 @@ import {
   type SignerHandle,
   makeNip46Signer,
 } from "@/lib/nostr/signers";
+import {
+  type AuthError,
+  loginError,
+  reSignInError,
+} from "@/lib/nostr/auth-errors";
 import { Button } from "@/components/ui/button";
 import { CopyIcon } from "@/components/icons";
 import { BlockTower } from "@/components/common/BlockTower";
@@ -20,7 +25,7 @@ import styles from "./nostr-connect-panel.module.scss";
 
 interface NostrConnectPanelProps {
   onSigner: (signer: SignerHandle) => void | Promise<void>;
-  onError?: (key: string) => void;
+  onError?: (error: AuthError) => void;
   /** When provided, rejects signers whose pubkey doesn't match. */
   expectedPubkey?: string;
 }
@@ -54,7 +59,7 @@ export function NostrConnectPanel({
         const pubkey = await bunker.getPublicKey();
         if (expectedPubkey && pubkey !== expectedPubkey) {
           await bunker.close();
-          onError?.("mismatch");
+          onError?.(reSignInError("mismatch"));
           return;
         }
         await onSigner(makeNip46Signer(bunker, pubkey));
@@ -64,7 +69,7 @@ export function NostrConnectPanel({
         } catch {
           /* ignore */
         }
-        onError?.("connectError");
+        onError?.(loginError("connectError"));
       }
     },
     [expectedPubkey, onSigner, onError]

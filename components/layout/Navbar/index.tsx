@@ -95,9 +95,6 @@ export function Navbar() {
               >
                 {t("explore") || "Explore"}
               </Button>
-              <Link href="/my-challenges" className={styles.navLink}>
-                {t("myChallenges") || "My Challenges"}
-              </Link>
               <div className={styles.avatarWrapper} ref={menuRef}>
                 <button
                   className={styles.avatar}
