@@ -149,9 +149,47 @@
     "showKey": "Show key",
     "hideKey": "Hide key",
     "nsecLabel": "Private key",
-    "noAccount": "Don't have a Nostr account?",
-    "joinNostrTitle": "Join Nostr",
-    "joinNostrDescription": "Create a new account using WoT Extension"
+    "orNew": "Or no extension",
+    "createIdentity": "Create new identity",
+    "creatingIdentity": "Generating keys...",
+    "createIdentityDescription": "Generate a fresh Nostr identity in one click",
+    "createdTitle": "Identity created",
+    "createdIntro": "Save your private key below. This is the only way to access your account.",
+    "createdNsecLabel": "Your private key (nsec)",
+    "createdCopy": "Copy",
+    "createdCopied": "Copied!",
+    "createdWarning": "If you lose this key, you lose your account. There is no recovery.",
+    "createdExtensionTitle": "For the best experience, install an extension",
+    "createdExtensionBody": "Without an extension your key lives only in memory: if you reload the page you'll need to sign in again to publish new Nostr events.",
+    "createdExtensionCta": "Install Nostr WoT",
+    "createdAckLabel": "I've saved my key and I understand there is no recovery",
+    "createdContinue": "Continue to the Arena"
+  },
+  "reSignIn": {
+    "title": "Unlock your key",
+    "intro": "Your session is still active, but we need to sign this Nostr event with your key. Reconnect your signer to continue.",
+    "extension": "Use browser extension",
+    "extensionDescription": "Sign with NIP-07 (recommended)",
+    "or": "or",
+    "nsecLabel": "Paste your nsec again",
+    "attachKey": "Unlock",
+    "extensionRejected": "The extension rejected the request.",
+    "nsecInvalid": "Invalid key. Use nsec1 format or 64-character hex.",
+    "mismatch": "This key doesn't match the account you signed in with.",
+    "show": "Show key",
+    "hide": "Hide key",
+    "needBunker": "Using a remote signer?",
+    "goToLogin": "Go to full login",
+    "back": "Back",
+    "authFailed": "We couldn't validate the signature. Try again."
+  },
+  "signerRequired": {
+    "title": "You need to unlock your key",
+    "body": "Your session is still active, but we can't sign new Nostr events until you reconnect your signer.",
+    "cta": "Unlock",
+    "anonTitle": "Sign in with Nostr",
+    "anonBody": "To create or join challenges you need a Nostr identity. Use your extension, a remote signer, your nsec, or create a new account.",
+    "anonCta": "Sign in"
   },
   "explore": {
     "title": "Explore Challenges",
@@ -200,7 +238,8 @@
     "startsAtLabel": "Start date",
     "endsAtLabel": "End date",
     "creating": "Creating...",
-    "success": "Challenge created!"
+    "success": "Challenge created!",
+    "needSigner": "You need to unlock your Nostr key before creating a challenge."
   },
   "challenge": {
     "by": "by",

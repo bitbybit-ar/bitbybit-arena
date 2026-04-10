@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { Spinner } from "@/components/ui/spinner";
 import { buildJoinEvent, buildCompletionEvent, buildBadgeAwardEvent } from "@/lib/nostr/events";
-import { signAndPublish } from "@/lib/nostr/publish";
+import { publishSignedEvent } from "@/lib/nostr/publish";
 import { useSession } from "@/lib/contexts/session-context";
+import { useSignerContext } from "@/lib/signer-context";
+import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
 import styles from "./challenge-detail.module.scss";
 
 interface ChallengeDetail {
@@ -55,6 +57,7 @@ export default function ChallengeDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { user: sessionUser } = useSession();
+  const { needsSigner, signWithPrompt, requestReSignIn } = useSignerContext();
   const challengeId = params.id as string;
 
   const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
@@ -85,14 +88,20 @@ export default function ChallengeDetailPage() {
       if (compJson.success) setCompletions(compJson.data);
       if (partJson.success) setParticipants(partJson.data);
 
+      // Creator/participant flags are derived from the authoritative
+      // session in SessionProvider, not from an extra fetch here.
       if (sessionUser && cJson.success) {
-        const userId = sessionUser.user_id;
-        setIsCreator(cJson.data.creator_id === userId);
+        setIsCreator(cJson.data.creator_id === sessionUser.user_id);
         setIsParticipant(
-          partJson.success && partJson.data.some(
-            (p: ParticipantItem) => p.user_id === userId && p.status === "active"
-          )
+          partJson.success &&
+            partJson.data.some(
+              (p: ParticipantItem) =>
+                p.user_id === sessionUser.user_id && p.status === "active"
+            )
         );
+      } else {
+        setIsCreator(false);
+        setIsParticipant(false);
       }
     } catch {
       // silently fail
@@ -104,12 +113,21 @@ export default function ChallengeDetailPage() {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const handleJoin = async () => {
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return;
+      }
+    }
     setActionLoading("join");
     await fetch(`/api/challenges/${challengeId}/join`, { method: "POST" });
-    // Publish join event to Nostr (best-effort)
     if (challenge) {
       try {
-        await signAndPublish(buildJoinEvent(challenge.creator.nostr_pubkey, challenge.slug));
+        const signed = await signWithPrompt(
+          buildJoinEvent(challenge.creator.nostr_pubkey, challenge.slug)
+        );
+        await publishSignedEvent(signed);
       } catch { /* non-blocking */ }
     }
     await fetchAll();
@@ -117,6 +135,13 @@ export default function ChallengeDetailPage() {
   };
 
   const handleWithdraw = async () => {
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return;
+      }
+    }
     setActionLoading("withdraw");
     await fetch(`/api/challenges/${challengeId}/join`, { method: "DELETE" });
     await fetchAll();
@@ -125,20 +150,29 @@ export default function ChallengeDetailPage() {
 
   const handleSubmitProof = async () => {
     if (!proofContent.trim()) return;
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return;
+      }
+    }
     setActionLoading("proof");
     await fetch(`/api/challenges/${challengeId}/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: proofContent }),
     });
-    // Publish completion event to Nostr (best-effort)
     if (challenge) {
       try {
-        await signAndPublish(buildCompletionEvent({
-          creatorPubkey: challenge.creator.nostr_pubkey,
-          challengeSlug: challenge.slug,
-          content: proofContent,
-        }));
+        const signed = await signWithPrompt(
+          buildCompletionEvent({
+            creatorPubkey: challenge.creator.nostr_pubkey,
+            challengeSlug: challenge.slug,
+            content: proofContent,
+          })
+        );
+        await publishSignedEvent(signed);
       } catch { /* non-blocking */ }
     }
     setProofContent("");
@@ -159,23 +193,32 @@ export default function ChallengeDetailPage() {
 
   const handleAwardBadges = async () => {
     if (selectedWinners.size === 0 || !challenge) return;
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return;
+      }
+    }
     setActionLoading("award");
     await fetch(`/api/challenges/${challengeId}/award`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_ids: Array.from(selectedWinners) }),
     });
-    // Publish badge award events to Nostr (best-effort)
     try {
       const winners = participants.filter((p) => selectedWinners.has(p.user_id));
       for (const winner of winners) {
         if (winner.user.nostr_pubkey) {
-          await signAndPublish(buildBadgeAwardEvent({
-            badgeName: challenge.badge_name || challenge.title,
-            challengeSlug: challenge.slug,
-            creatorPubkey: challenge.creator.nostr_pubkey,
-            recipientPubkey: winner.user.nostr_pubkey,
-          }));
+          const signed = await signWithPrompt(
+            buildBadgeAwardEvent({
+              badgeName: challenge.badge_name || challenge.title,
+              challengeSlug: challenge.slug,
+              creatorPubkey: challenge.creator.nostr_pubkey,
+              recipientPubkey: winner.user.nostr_pubkey,
+            })
+          );
+          await publishSignedEvent(signed);
         }
       }
     } catch { /* non-blocking */ }
@@ -256,6 +299,8 @@ export default function ChallengeDetailPage() {
               <span>{challenge.participant_count}</span>
             </div>
           </div>
+
+          <SignerRequiredNotice />
 
           {/* Actions */}
           {!isCreator && !isParticipant && challenge.status === "open" && (

@@ -1,189 +1,77 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { QRCodeSVG } from "qrcode.react";
 import { Modal } from "@/components/ui/modal";
-import { useNostr } from "@/lib/hooks/useNostr";
-import { useSession } from "@/lib/contexts/session-context";
-import { useClipboard } from "@/lib/hooks/useClipboard";
-import { signChallengeWithNsec } from "@/lib/nostr/nsec-login";
-import {
-  createConnectSession,
-  waitForConnection,
-  connectWithBunkerURL,
-  signChallengeWithBunker,
-} from "@/lib/nostr/nip46-login";
-import type { BunkerSigner } from "nostr-tools/nip46";
+import { createNewIdentity } from "@/lib/nostr/create-account";
+import { useSignerContext } from "@/lib/signer-context";
+import { makeNsecSigner } from "@/lib/nostr/signers";
+import type { SignerHandle } from "@/lib/nostr/signers";
+import { ExtensionSignerButton } from "@/components/auth/ExtensionSignerButton";
+import { NsecSignerForm } from "@/components/auth/NsecSignerForm";
+import { NostrConnectPanel } from "@/components/auth/NostrConnectPanel";
 import { Block } from "@/components/common/Block";
-import { BlockTower } from "@/components/common/BlockTower";
 import { Bubble } from "@/components/common/Bubble";
 import {
   ArrowLeftIcon,
   BoltIcon,
   LinkIcon,
   KeyIcon,
-  EyeIcon,
-  EyeOffIcon,
   CopyIcon,
-  WotIcon,
-  ExternalLinkIcon,
+  CheckIcon,
+  FlagIcon,
 } from "@/components/icons";
 import styles from "./signin.module.scss";
 
-type ConnectStatus = "idle" | "scanning" | "connecting" | "expired";
+type Panel = "picker" | "nsec" | "nip46";
 
-export default function LoginPage() {
+export default function SignInPage() {
   const t = useTranslations("login");
+  const tReSign = useTranslations("reSignIn");
   const router = useRouter();
-  const { login, isLoading } = useNostr();
-  const { refresh } = useSession();
+  const { completeLoginWithSigner, setSigner } = useSignerContext();
+
+  const [panel, setPanel] = useState<Panel>("picker");
   const [error, setError] = useState<string | null>(null);
 
-  // nsec state
-  const [showNsecModal, setShowNsecModal] = useState(false);
-  const [nsecKey, setNsecKey] = useState("");
-  const [showNsec, setShowNsec] = useState(false);
-  const [acceptedRisk, setAcceptedRisk] = useState(false);
-  const [nsecLoading, setNsecLoading] = useState(false);
+  // Create account state
+  const [creating, setCreating] = useState(false);
+  const [createdNsec, setCreatedNsec] = useState<string | null>(null);
+  const [copiedNsec, setCopiedNsec] = useState(false);
+  const [savedAcknowledged, setSavedAcknowledged] = useState(false);
 
-  // Nostr Connect state
-  const [showConnectModal, setShowConnectModal] = useState(false);
-  const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
-  const [connectURI, setConnectURI] = useState("");
-  const [bunkerURL, setBunkerURL] = useState("");
-  const { copied: copiedURI, copy: copyURI } = useClipboard();
-  const abortRef = useRef<AbortController | null>(null);
-
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
-
-  const handleExtensionLogin = async () => {
+  const handleSignerFromChild = async (signer: SignerHandle) => {
     setError(null);
-    const result = await login();
-    if (result.success) {
-      await refresh();
-      router.push("/explore");
-    } else {
-      setError(result.error || t("error"));
+    const ok = await completeLoginWithSigner(signer);
+    if (!ok) {
+      setError(t("error"));
+      return;
     }
+    router.push("/explore");
   };
 
-  /**
-   * Authenticate with a BunkerSigner by fetching a challenge and signing it.
-   */
-  const authenticateWithSigner = useCallback(
-    async (signer: BunkerSigner) => {
-      try {
-        // Get challenge from server
-        const challengeRes = await fetch("/api/auth/nostr", { method: "GET" });
-        if (!challengeRes.ok) {
-          setError(t("error"));
-          return;
-        }
-        const { data: challenge } = await challengeRes.json();
-
-        // Sign with remote signer
-        const { signedEvent } = await signChallengeWithBunker(
-          signer,
-          challenge
-        );
-
-        // Submit to server
-        const authRes = await fetch("/api/auth/nostr", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ signedEvent }),
-        });
-
-        if (!authRes.ok) {
-          const body = await authRes.json().catch(() => ({}));
-          setError(body.error || t("error"));
-          return;
-        }
-
-        await refresh();
-      router.push("/explore");
-      } finally {
-        await signer.close();
-      }
-    },
-    [router, t]
-  );
-
-  /**
-   * Start the QR code flow: generate URI, wait for remote signer to connect.
-   */
-  const startNostrConnect = useCallback(async () => {
-    setError(null);
-    setShowConnectModal(true);
-
-    // Abort any previous connection attempt
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    const session = createConnectSession();
-    setConnectURI(session.uri);
-    setConnectStatus("scanning");
-
+  const handleError = (key: string) => {
+    // Shared auth components emit keys from either the `login` namespace
+    // (no_extension, nostr_signing_rejected, nsecInvalidKey) or the
+    // `reSignIn` namespace (extensionRejected, mismatch, authFailed).
     try {
-      const signer = await waitForConnection(session, controller.signal);
-      setConnectStatus("connecting");
-      await authenticateWithSigner(signer);
+      setError(t(key));
+      return;
     } catch {
-      if (!controller.signal.aborted) {
-        setConnectStatus("expired");
-      }
+      /* fallthrough */
     }
-  }, [authenticateWithSigner]);
-
-  const handleCloseConnectModal = () => {
-    abortRef.current?.abort();
-    setShowConnectModal(false);
-    setConnectStatus("idle");
-    setBunkerURL("");
-  };
-
-  /**
-   * Connect via a pasted bunker:// URL.
-   */
-  const handleBunkerConnect = async () => {
-    if (!bunkerURL.trim()) return;
-    setError(null);
-    // Abort QR scanning flow before starting bunker connection
-    abortRef.current?.abort();
-    setConnectStatus("connecting");
-
     try {
-      const signer = await connectWithBunkerURL(bunkerURL);
-      await authenticateWithSigner(signer);
+      setError(tReSign(key));
     } catch {
-      setError(t("connectError"));
-      // Restart QR scan so the modal isn't stuck with stale state
-      startNostrConnect();
+      setError(t("error"));
     }
   };
 
-  const handleRetryConnect = () => {
-    setConnectStatus("idle");
-    startNostrConnect();
-  };
-
-  const handleCopyURI = async () => {
-    await copyURI(connectURI);
-  };
-
-  const handleNsecLogin = async () => {
+  const handleCreateAccount = async () => {
     setError(null);
-    setNsecLoading(true);
-
+    setCreating(true);
     try {
       const challengeRes = await fetch("/api/auth/nostr", { method: "GET" });
       if (!challengeRes.ok) {
@@ -192,36 +80,44 @@ export default function LoginPage() {
       }
       const { data: challenge } = await challengeRes.json();
 
-      const { signedEvent } = signChallengeWithNsec(nsecKey, challenge);
+      const identity = createNewIdentity(challenge);
 
       const authRes = await fetch("/api/auth/nostr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signedEvent }),
+        body: JSON.stringify({ signedEvent: identity.signedEvent }),
       });
-
       if (!authRes.ok) {
         const body = await authRes.json().catch(() => ({}));
         setError(body.error || t("error"));
         return;
       }
 
-      setNsecKey("");
-      await refresh();
-      router.push("/explore");
+      setSigner(makeNsecSigner(identity.secretKey, identity.pubkey));
+      setCreatedNsec(identity.nsec);
     } catch {
-      setNsecKey("");
-      setError(t("nsecInvalidKey"));
+      setError(t("error"));
     } finally {
-      setNsecLoading(false);
+      setCreating(false);
     }
   };
 
-  const handleCloseNsecModal = () => {
-    setShowNsecModal(false);
-    setNsecKey("");
-    setShowNsec(false);
-    setAcceptedRisk(false);
+  const handleCopyNsec = async () => {
+    if (!createdNsec) return;
+    await navigator.clipboard.writeText(createdNsec);
+    setCopiedNsec(true);
+    setTimeout(() => setCopiedNsec(false), 2000);
+  };
+
+  const handleContinueAfterCreate = () => {
+    setCreatedNsec(null);
+    setSavedAcknowledged(false);
+    router.push("/explore");
+  };
+
+  const closePanel = () => {
+    setPanel("picker");
+    setError(null);
   };
 
   return (
@@ -257,45 +153,29 @@ export default function LoginPage() {
         <p className={styles.subtitle}>{t("subtitle")}</p>
 
         <div className={styles.methods}>
-          {/* Browser Extension (NIP-07) */}
-          <button
-            className={styles.methodButton}
-            onClick={handleExtensionLogin}
-            disabled={isLoading}
-          >
-            <BoltIcon size={20} />
-            <div className={styles.methodInfo}>
-              <span className={styles.methodName}>
-                {t("extensionTitle")}
-              </span>
-              <span className={styles.methodDescription}>
-                {t("extensionDescription")}
-              </span>
-            </div>
-          </button>
+          <ExtensionSignerButton
+            onSigner={handleSignerFromChild}
+            onError={handleError}
+          />
 
-          {/* Nostr Connect (NIP-46) */}
           <button
+            type="button"
             className={styles.methodButton}
-            onClick={startNostrConnect}
-            disabled={connectStatus === "connecting"}
+            onClick={() => setPanel("nip46")}
           >
             <LinkIcon size={20} />
             <div className={styles.methodInfo}>
-              <span className={styles.methodName}>
-                {t("connectTitle")}
-              </span>
+              <span className={styles.methodName}>{t("connectTitle")}</span>
               <span className={styles.methodDescription}>
                 {t("connectDescription")}
               </span>
             </div>
           </button>
 
-          {/* Paste nsec */}
           <button
+            type="button"
             className={`${styles.methodButton} ${styles.methodSecondary}`}
-            onClick={() => setShowNsecModal(true)}
-            disabled={nsecLoading}
+            onClick={() => setPanel("nsec")}
           >
             <KeyIcon size={20} />
             <div className={styles.methodInfo}>
@@ -307,26 +187,40 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {error && <p className={styles.error}>{error}</p>}
+        <div className={styles.createDivider}>
+          <span>{t("orNew")}</span>
+        </div>
 
-        <div className={styles.divider} />
-
-        <p className={styles.noAccountText}>{t("noAccount")}</p>
-
-        <a
-          href="https://nostr-wot.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.joinNostrButton}
+        <button
+          className={styles.createButton}
+          onClick={handleCreateAccount}
+          disabled={creating}
         >
-          <WotIcon size={24} />
+          <BoltIcon size={20} />
           <div className={styles.methodInfo}>
-            <span className={styles.methodName}>{t("joinNostrTitle")}</span>
-            <span className={styles.methodDescription}>{t("joinNostrDescription")}</span>
+            <span className={styles.methodName}>
+              {creating ? t("creatingIdentity") : t("createIdentity")}
+            </span>
+            <span className={styles.methodDescription}>
+              {t("createIdentityDescription")}
+            </span>
           </div>
-          <ExternalLinkIcon size={16} className={styles.externalIcon} />
-        </a>
+        </button>
 
+        {error && panel === "picker" && <p className={styles.error}>{error}</p>}
+
+        <p className={styles.wotHint}>
+          {t("wotHint")}{" "}
+          <a
+            href="https://nostr-wot.com/download"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.wotLink}
+          >
+            Nostr WoT Extension
+          </a>
+          ?
+        </p>
       </div>
 
       <div className={styles.backLinkWrapper}>
@@ -336,162 +230,89 @@ export default function LoginPage() {
         </Link>
       </div>
 
-      {/* Nostr Connect Modal */}
-      {showConnectModal && (
-        <Modal onClose={handleCloseConnectModal} title={t("connectTitle")} size="sm">
-          {connectStatus === "scanning" && (
-            <>
-              <p className={styles.connectScanTitle}>
-                {t("connectScanTitle")}
-              </p>
-              <div
-                className={styles.qrWrapper}
-                role="img"
-                aria-label={t("connectQrAlt")}
-              >
-                <QRCodeSVG
-                  value={connectURI}
-                  size={180}
-                  level="M"
-                  bgColor="transparent"
-                  fgColor="currentColor"
-                />
-              </div>
-              <button
-                type="button"
-                className={styles.copyURIBtn}
-                onClick={handleCopyURI}
-              >
-                <CopyIcon size={14} />
-                {copiedURI ? t("connectCopiedURI") : t("connectCopyURI")}
-              </button>
-              <p className={styles.connectWaiting}>
-                {t("connectScanning")}
-              </p>
-
-              <div className={styles.connectDivider}>
-                <span>{t("connectOrPaste")}</span>
-              </div>
-
-              <label
-                htmlFor="bunker-input"
-                className={styles.connectBunkerLabel}
-              >
-                {t("connectBunkerLabel")}
-              </label>
-              <div className={styles.bunkerInputRow}>
-                <input
-                  id="bunker-input"
-                  type="text"
-                  className={styles.bunkerInput}
-                  placeholder={t("connectBunkerPlaceholder")}
-                  value={bunkerURL}
-                  onChange={(e) => setBunkerURL(e.target.value)}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <button
-                  className={styles.bunkerSubmit}
-                  onClick={handleBunkerConnect}
-                  disabled={!bunkerURL.trim()}
-                >
-                  {t("connectBunkerSubmit")}
-                </button>
-              </div>
-
-              {error && <p className={styles.errorInModal}>{error}</p>}
-
-              <p className={styles.connectCompatible}>
-                {t("connectCompatible")}
-              </p>
-            </>
-          )}
-
-          {connectStatus === "connecting" && (
-            <div className={styles.connectingState}>
-              <BlockTower maxBlocks={3} blockSize="medium" />
-              <p className={styles.connectWaiting}>
-                {t("connectConnecting")}
-              </p>
-            </div>
-          )}
-
-          {connectStatus === "expired" && (
-            <div className={styles.connectExpired}>
-              <p>{t("connectExpired")}</p>
-              <button
-                className={styles.connectRetryBtn}
-                onClick={handleRetryConnect}
-              >
-                {t("connectRetry")}
-              </button>
-            </div>
-          )}
+      {panel === "nip46" && (
+        <Modal onClose={closePanel} title={t("connectTitle")} size="sm">
+          <NostrConnectPanel
+            onSigner={handleSignerFromChild}
+            onError={handleError}
+          />
+          {error && <p className={styles.error}>{error}</p>}
         </Modal>
       )}
 
-      {/* nsec Modal */}
-      {showNsecModal && (
-        <Modal onClose={handleCloseNsecModal} title={t("nsecTitle")} size="sm">
-          <p className={styles.nsecWarning}>{t("nsecWarning")}</p>
+      {panel === "nsec" && (
+        <Modal onClose={closePanel} title={t("nsecTitle")} size="sm">
+          <NsecSignerForm
+            onSigner={handleSignerFromChild}
+            onError={handleError}
+            showWarning
+            requireAcceptRisk
+            submitLabel={t("nsecSignIn")}
+            submittingLabel={t("nsecSigningIn")}
+          />
+          {error && <p className={styles.error}>{error}</p>}
+        </Modal>
+      )}
 
-          <label htmlFor="nsec-input" className={styles.nsecLabel}>
-            {t("nsecLabel")}
-          </label>
-          <div className={styles.nsecInputWrapper}>
-            <input
-              id="nsec-input"
-              type={showNsec ? "text" : "password"}
-              className={styles.nsecInput}
-              placeholder={t("nsecPlaceholder")}
-              value={nsecKey}
-              onChange={(e) => setNsecKey(e.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-            />
+      {createdNsec && (
+        <Modal
+          onClose={handleContinueAfterCreate}
+          title={t("createdTitle")}
+          size="sm"
+        >
+          <div className={styles.createdSuccess}>
+            <CheckIcon size={32} />
+          </div>
+          <p className={styles.createdIntro}>{t("createdIntro")}</p>
+
+          <label className={styles.createdLabel}>{t("createdNsecLabel")}</label>
+          <div className={styles.createdNsecBox}>
+            <code className={styles.createdNsec}>{createdNsec}</code>
             <button
               type="button"
-              className={styles.nsecToggle}
-              onClick={() => setShowNsec(!showNsec)}
-              aria-label={showNsec ? t("hideKey") : t("showKey")}
+              className={styles.createdCopyBtn}
+              onClick={handleCopyNsec}
+              aria-label={t("createdCopy")}
             >
-              {showNsec ? (
-                <EyeOffIcon size={16} />
-              ) : (
-                <EyeIcon size={16} />
-              )}
+              <CopyIcon size={14} />
+              {copiedNsec ? t("createdCopied") : t("createdCopy")}
             </button>
           </div>
 
-          <label className={styles.nsecCheckbox}>
-            <input
-              type="checkbox"
-              checked={acceptedRisk}
-              onChange={(e) => setAcceptedRisk(e.target.checked)}
-            />
-            <span>{t("nsecAcceptRisk")}</span>
-          </label>
+          <div className={styles.createdWarning}>
+            <FlagIcon size={16} />
+            <span>{t("createdWarning")}</span>
+          </div>
 
-          <button
-            className={styles.nsecSubmit}
-            onClick={handleNsecLogin}
-            disabled={!nsecKey.trim() || !acceptedRisk || nsecLoading}
-          >
-            {nsecLoading ? t("nsecSigningIn") : t("nsecSignIn")}
-          </button>
-
-          <p className={styles.wotHint}>
-            {t("wotHint")}{" "}
+          <div className={styles.createdExtensionUpsell}>
+            <strong>{t("createdExtensionTitle")}</strong>
+            <p>{t("createdExtensionBody")}</p>
             <a
               href="https://nostr-wot.com/download"
               target="_blank"
               rel="noopener noreferrer"
-              className={styles.wotLink}
+              className={styles.createdExtensionLink}
             >
-              Nostr WoT Extension
+              {t("createdExtensionCta")}
             </a>
-            ?
-          </p>
+          </div>
+
+          <label className={styles.createdAck}>
+            <input
+              type="checkbox"
+              checked={savedAcknowledged}
+              onChange={(e) => setSavedAcknowledged(e.target.checked)}
+            />
+            <span>{t("createdAckLabel")}</span>
+          </label>
+
+          <button
+            className={styles.nsecSubmit}
+            onClick={handleContinueAfterCreate}
+            disabled={!savedAcknowledged}
+          >
+            {t("createdContinue")}
+          </button>
         </Modal>
       )}
     </div>

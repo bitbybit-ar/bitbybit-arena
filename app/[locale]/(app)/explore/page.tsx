@@ -7,6 +7,7 @@ import { FlagIcon } from "@/components/icons";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
+import { useSignerContext } from "@/lib/signer-context";
 import { CreateChallengeModal } from "./CreateChallengeModal";
 import styles from "./explore.module.scss";
 
@@ -32,6 +33,7 @@ export default function ExplorePage() {
   const tCommon = useTranslations("common");
   const tCreate = useTranslations("createChallenge");
   const router = useRouter();
+  const { needsSigner, requestReSignIn } = useSignerContext();
 
   const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,13 +72,26 @@ export default function ExplorePage() {
     fetchChallenges();
   };
 
+  const handleCreateClick = async () => {
+    // Anonymous or reattach users: prompt to sign in first so we don't end
+    // up stacking CreateChallengeModal on top of ReSignInModal.
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return; // user cancelled
+      }
+    }
+    setShowCreate(true);
+  };
+
   const typeOptions = ["one_time", "streak", "competition", "race", "creative"];
 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <h1 className={styles.title}>{t("title")}</h1>
-        <Button onClick={() => setShowCreate(true)} size="sm">
+        <Button onClick={handleCreateClick} size="sm">
           {t("createNew")}
         </Button>
       </div>

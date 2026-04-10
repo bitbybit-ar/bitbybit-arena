@@ -1,29 +1,19 @@
-import type { UnsignedNostrEvent, NostrEvent } from "./types";
+import type { NostrEvent } from "./types";
 import { DEFAULT_RELAYS } from "./relays";
 
 /**
- * Sign an event using NIP-07 browser extension and publish to relays.
- * Returns the signed event or null if signing was rejected.
+ * Publish an already-signed Nostr event to relays.
+ *
+ * Signing is deferred to the SignerProvider so callers can use any signer
+ * type (NIP-07 extension, in-memory nsec, NIP-46 bunker) without caring
+ * which one is active.
  */
-export async function signAndPublish(
-  unsignedEvent: UnsignedNostrEvent,
+export async function publishSignedEvent(
+  signedEvent: NostrEvent,
   relayUrls?: string[]
-): Promise<NostrEvent | null> {
-  if (!window.nostr) {
-    throw new Error("No Nostr extension found");
-  }
-
-  let signedEvent: NostrEvent;
-  try {
-    signedEvent = await window.nostr.signEvent(unsignedEvent);
-  } catch {
-    return null; // User rejected signing
-  }
-
+): Promise<void> {
   const urls = relayUrls ?? DEFAULT_RELAYS;
   await publishToRelays(signedEvent, urls);
-
-  return signedEvent;
 }
 
 /**

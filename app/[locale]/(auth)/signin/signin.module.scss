@@ -495,47 +495,191 @@
   }
 }
 
-// Join Nostr section
-.divider {
-  height: 1px;
-  background: $color-border;
-  margin: $spacing-20 0 $spacing-16;
+// Create new identity
+.createDivider {
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
+  margin: $spacing-20 0 $spacing-12;
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: $color-border;
+  }
+
+  span {
+    font-size: $font-size-xs;
+    color: $color-text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 }
 
-.noAccountText {
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
-  color: $color-text-primary;
-  margin-bottom: $spacing-12;
-}
-
-.joinNostrButton {
+.createButton {
   display: flex;
   align-items: center;
   gap: $spacing-12;
   width: 100%;
   padding: $spacing-12 $spacing-16;
-  background: $color-accent-alt;
-  color: $static-white;
-  border: none;
+  background: alpha($color-secondary, 14%);
+  color: $color-text-primary;
+  border: 1px solid alpha($color-secondary, 40%);
   border-radius: $border-radius-md;
   font-family: $font-body;
   cursor: pointer;
   text-align: left;
-  text-decoration: none;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 
-  &:hover {
+  &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 20px alpha($color-accent-alt, 30%);
-    text-decoration: none;
+    border-color: $color-secondary;
+    box-shadow: 0 4px 20px alpha($color-secondary, 25%);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
   }
 }
 
-.externalIcon {
-  margin-left: auto;
-  opacity: 0.7;
-  flex-shrink: 0;
+// Created account success modal
+.createdSuccess {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto $spacing-12;
+  border-radius: $border-radius-full;
+  background: alpha($color-success, 15%);
+  color: $color-success;
+}
+
+.createdIntro {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  text-align: center;
+  margin-bottom: $spacing-16;
+  line-height: $line-height-base;
+}
+
+.createdLabel {
+  display: block;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-4;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.createdNsecBox {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+  padding: $spacing-12;
+  background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  margin-bottom: $spacing-12;
+}
+
+.createdNsec {
+  font-family: monospace;
+  font-size: $font-size-xs;
+  color: $color-text-primary;
+  word-break: break-all;
+  user-select: all;
+}
+
+.createdCopyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-4;
+  align-self: flex-end;
+  padding: $spacing-4 $spacing-8;
+  background: none;
+  border: none;
+  font-family: $font-body;
+  font-size: $font-size-xs;
+  color: $color-primary;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.createdWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-8;
+  padding: $spacing-12;
+  background: alpha($color-error, 10%);
+  border: 1px solid alpha($color-error, 30%);
+  border-radius: $border-radius-md;
+  color: $color-error;
+  font-size: $font-size-xs;
+  line-height: $line-height-base;
+  margin-bottom: $spacing-12;
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+}
+
+.createdExtensionUpsell {
+  padding: $spacing-12;
+  background: alpha($color-secondary, 10%);
+  border: 1px solid alpha($color-secondary, 30%);
+  border-radius: $border-radius-md;
+  margin-bottom: $spacing-12;
+  text-align: left;
+
+  strong {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+    margin-bottom: $spacing-4;
+  }
+
+  p {
+    font-size: $font-size-xs;
+    color: $color-text-secondary;
+    line-height: $line-height-base;
+    margin-bottom: $spacing-8;
+  }
+}
+
+.createdExtensionLink {
+  display: inline-block;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $color-secondary;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.createdAck {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-12;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    accent-color: $color-primary;
+  }
 }
 
 .backLinkWrapper {

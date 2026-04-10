@@ -9,6 +9,7 @@ import { Block } from "@/components/common/Block";
 import { MoonIcon, SunIcon, SettingsIcon, UserIcon } from "@/components/icons";
 import { useTheme } from "@/lib/contexts/theme-context";
 import { useSession } from "@/lib/contexts/session-context";
+import { useSignerContext } from "@/lib/signer-context";
 import { useScrollVisibility } from "@/lib/hooks/useScrollVisibility";
 import { useClickOutside } from "@/lib/hooks/useClickOutside";
 import styles from "./navbar.module.scss";
@@ -16,7 +17,8 @@ import styles from "./navbar.module.scss";
 export function Navbar() {
   const t = useTranslations("common");
   const { theme, toggleTheme } = useTheme();
-  const { user, clear } = useSession();
+  const { user } = useSession();
+  const { clearSigner } = useSignerContext();
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -30,7 +32,9 @@ export function Navbar() {
   const handleSignOut = async () => {
     setMenuOpen(false);
     await fetch("/api/auth/signout", { method: "POST" });
-    clear();
+    // clearSigner closes the in-memory signer AND clears the session
+    // state via SessionProvider.clear().
+    await clearSigner();
     router.push("/");
   };
 

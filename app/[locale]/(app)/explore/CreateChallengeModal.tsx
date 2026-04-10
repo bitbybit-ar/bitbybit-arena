@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/modal";
 import { FormInput, FormTextarea, FormSelect, FormButton } from "@/components/ui/form";
 import { buildChallengeEvent } from "@/lib/nostr/events";
-import { signAndPublish } from "@/lib/nostr/publish";
+import { publishSignedEvent } from "@/lib/nostr/publish";
+import { useSignerContext } from "@/lib/signer-context";
 import styles from "./create-challenge.module.scss";
 
 interface CreateChallengeModalProps {
@@ -15,6 +16,7 @@ interface CreateChallengeModalProps {
 
 export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModalProps) {
   const t = useTranslations("createChallenge");
+  const { needsSigner, signWithPrompt, requestReSignIn } = useSignerContext();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -31,6 +33,16 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Ensure we have both a valid session cookie AND an in-memory signer
+    // before hitting /api/challenges. Covers anonymous users (login flow)
+    // and reattach users (session still valid, key needs to come back).
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return; // user cancelled the modal
+      }
+    }
     setLoading(true);
     setError(null);
 
@@ -58,7 +70,8 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
         return;
       }
 
-      // Publish challenge event to Nostr relays (best-effort)
+      // Publish challenge event to Nostr relays. Sign via the active
+      // SignerProvider signer; opens ReSignInModal if no signer is loaded.
       try {
         const challengeEvent = buildChallengeEvent({
           slug: json.data.slug,
@@ -73,7 +86,8 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
           startsAt: startsAt || undefined,
           endsAt: endsAt || undefined,
         });
-        await signAndPublish(challengeEvent);
+        const signed = await signWithPrompt(challengeEvent);
+        await publishSignedEvent(signed);
       } catch {
         // Non-blocking: challenge is created in DB even if Nostr publish fails
       }
