@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Block } from "@/components/common/Block";
 import { PixelIcon } from "@/components/common/PixelIcon";
 import { PixelDissolve } from "@/components/common/PixelDissolve";
+import { Button } from "@/components/ui/button";
 import { FlagIcon, TrophyIcon, BoltIcon, BadgeIcon } from "@/components/icons";
 import styles from "./hero.module.scss";
 
@@ -45,8 +46,12 @@ export function Hero() {
           <p className={styles.subtitle}>{t("subtitle")}</p>
 
           <div className={styles.ctas}>
-            <button className={styles.ctaPrimary}>{t("exploreCta")}</button>
-            <button className={styles.ctaOutline}>{t("createCta")}</button>
+            <Button href="/explore" variant="primary">
+              {t("exploreCta")}
+            </Button>
+            <Button href="/explore" variant="outline">
+              {t("createCta")}
+            </Button>
           </div>
         </div>
 

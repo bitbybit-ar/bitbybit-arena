@@ -80,25 +80,3 @@
   }
 }
 
-.submit {
-  width: 100%;
-  padding: $spacing-8 $spacing-16;
-  background: $color-primary;
-  color: $static-white;
-  border: none;
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
-  cursor: pointer;
-  transition: filter 0.15s ease;
-
-  &:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}

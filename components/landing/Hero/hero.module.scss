@@ -112,43 +112,6 @@
   }
 }
 
-.ctaPrimary {
-  padding: $spacing-12 $spacing-32;
-  background: $color-primary;
-  color: $static-white;
-  border: none;
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  font-size: $font-size-base;
-  font-weight: $font-weight-semibold;
-  cursor: pointer;
-  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.1);
-    box-shadow: 0 8px 24px alpha($color-primary, 25%);
-  }
-}
-
-.ctaOutline {
-  padding: $spacing-12 $spacing-32;
-  background: transparent;
-  color: $color-text-primary;
-  border: 2px solid $color-border;
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  font-size: $font-size-base;
-  font-weight: $font-weight-semibold;
-  cursor: pointer;
-  transition: border-color 0.2s ease, color 0.2s ease;
-
-  &:hover {
-    border-color: $color-primary;
-    color: $color-primary;
-  }
-}
-
 .visual {
   flex-shrink: 0;
   animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both;

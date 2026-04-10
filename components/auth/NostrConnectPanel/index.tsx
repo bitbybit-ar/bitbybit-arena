@@ -13,6 +13,7 @@ import {
   type SignerHandle,
   makeNip46Signer,
 } from "@/lib/nostr/signers";
+import { Button } from "@/components/ui/button";
 import { CopyIcon } from "@/components/icons";
 import { BlockTower } from "@/components/common/BlockTower";
 import styles from "./nostr-connect-panel.module.scss";
@@ -129,13 +130,9 @@ export function NostrConnectPanel({
     return (
       <div className={styles.expired}>
         <p>{t("connectExpired")}</p>
-        <button
-          type="button"
-          className={styles.retryBtn}
-          onClick={startScan}
-        >
+        <Button type="button" variant="primary" size="sm" onClick={startScan}>
           {t("connectRetry")}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -184,14 +181,15 @@ export function NostrConnectPanel({
           autoComplete="off"
           spellCheck={false}
         />
-        <button
+        <Button
           type="button"
-          className={styles.bunkerSubmit}
+          variant="primary"
+          size="sm"
           onClick={handleBunkerConnect}
           disabled={!bunkerUrl.trim()}
         >
           {t("connectBunkerSubmit")}
-        </button>
+        </Button>
       </div>
 
       {localError && <p className={styles.errorInModal}>{localError}</p>}

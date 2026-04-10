@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
 import { BoltIcon } from "@/components/icons";
 import {
   type SignerHandle,
@@ -22,8 +23,6 @@ interface ExtensionSignerButtonProps {
   expectedPubkey?: string;
   /** Hide the button entirely when no NIP-07 extension is detected. */
   hideIfUnavailable?: boolean;
-  /** Optional secondary visual variant. */
-  variant?: "primary" | "secondary";
   className?: string;
 }
 
@@ -37,7 +36,6 @@ export function ExtensionSignerButton({
   onError,
   expectedPubkey,
   hideIfUnavailable = false,
-  variant = "primary",
   className,
 }: ExtensionSignerButtonProps) {
   const t = useTranslations("login");
@@ -79,18 +77,12 @@ export function ExtensionSignerButton({
     }
   };
 
-  const buttonClasses = [
-    styles.button,
-    variant === "secondary" ? styles.secondary : "",
-    className || "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
   return (
-    <button
+    <Button
       type="button"
-      className={buttonClasses}
+      variant="primary"
+      fullWidth
+      className={[styles.extensionButton, className].filter(Boolean).join(" ")}
       onClick={handleClick}
       disabled={busy || !hasExtension}
     >
@@ -99,6 +91,6 @@ export function ExtensionSignerButton({
         <span className={styles.name}>{t("extensionTitle")}</span>
         <span className={styles.description}>{t("extensionDescription")}</span>
       </div>
-    </button>
+    </Button>
   );
 }

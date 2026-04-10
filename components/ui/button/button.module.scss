@@ -109,3 +109,13 @@
   padding: $spacing-16 $spacing-40;
   font-size: $font-size-md;
 }
+
+// Full-width modifier — stretches to the container and centers children,
+// so icon + label combos (auth buttons, form submits) align cleanly.
+.fullWidth {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-8;
+}
