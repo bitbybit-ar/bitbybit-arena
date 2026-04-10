@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Block } from "@/components/common/Block";
+import { Button } from "@/components/ui/button";
 import { MoonIcon, SunIcon, SettingsIcon, UserIcon } from "@/components/icons";
 import { useTheme } from "@/lib/contexts/theme-context";
 import { useSession } from "@/lib/contexts/session-context";
@@ -141,9 +142,9 @@ export function Navbar() {
               <Link href="/explore" className={styles.navLink}>
                 {t("explore") || "Explore"}
               </Link>
-              <Link href="/signin" className={styles.signInButton}>
+              <Button href="/signin" variant="primary" size="sm">
                 {t("signIn")}
-              </Link>
+              </Button>
             </>
           )}
         </div>

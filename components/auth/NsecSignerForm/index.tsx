@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { decode } from "nostr-tools/nip19";
 import { getPublicKey } from "nostr-tools/pure";
 import { hexToBytes } from "nostr-tools/utils";
+import { Button } from "@/components/ui/button";
 import { EyeIcon, EyeOffIcon } from "@/components/icons";
 import {
   type SignerHandle,
@@ -119,14 +120,16 @@ export function NsecSignerForm({
         </label>
       )}
 
-      <button
+      <Button
         type="button"
-        className={styles.submit}
+        variant="primary"
+        size="sm"
+        fullWidth
         onClick={handleSubmit}
         disabled={!nsecKey.trim() || !acceptedRisk || busy}
       >
         {busy ? submittingLabel : submitLabel}
-      </button>
+      </Button>
     </>
   );
 }

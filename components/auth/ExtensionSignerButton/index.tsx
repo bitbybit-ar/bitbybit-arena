@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
 import { BoltIcon } from "@/components/icons";
 import {
   type SignerHandle,
@@ -79,18 +80,12 @@ export function ExtensionSignerButton({
     }
   };
 
-  const buttonClasses = [
-    styles.button,
-    variant === "secondary" ? styles.secondary : "",
-    className || "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
   return (
-    <button
+    <Button
       type="button"
-      className={buttonClasses}
+      variant={variant === "secondary" ? "outline" : "primary"}
+      fullWidth
+      className={[styles.extensionButton, className].filter(Boolean).join(" ")}
       onClick={handleClick}
       disabled={busy || !hasExtension}
     >
@@ -99,6 +94,6 @@ export function ExtensionSignerButton({
         <span className={styles.name}>{t("extensionTitle")}</span>
         <span className={styles.description}>{t("extensionDescription")}</span>
       </div>
-    </button>
+    </Button>
   );
 }

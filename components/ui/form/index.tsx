@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { EyeIcon, EyeOffIcon } from "@/components/icons";
 import styles from "./form.module.scss";
 
@@ -167,6 +168,8 @@ export function FormTextarea({
 }
 
 // ── FormButton ─────────────────────────────────────────────
+// Thin wrapper around the shared Button: full-width layout plus loading
+// state. Variant and sizing come from Button itself.
 
 interface FormButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
@@ -184,15 +187,14 @@ export function FormButton({
   ...buttonProps
 }: FormButtonProps) {
   return (
-    <button
-      className={cn(
-        variant === "primary" ? styles.submitButton : styles.outlineButton,
-        className
-      )}
+    <Button
+      variant={variant}
+      fullWidth
+      className={cn(styles.formButton, className)}
       disabled={disabled || loading}
       {...buttonProps}
     >
       {loading ? (loadingText ?? children) : children}
-    </button>
+    </Button>
   );
 }

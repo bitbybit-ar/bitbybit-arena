@@ -103,24 +103,6 @@
   }
 }
 
-.signInButton {
-  background: $color-primary;
-  color: $static-white;
-  border: none;
-  border-radius: $border-radius-md;
-  padding: $spacing-8 $spacing-20;
-  font-family: $font-body;
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
-  cursor: pointer;
-  transition: transform 0.2s ease, filter 0.2s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.1);
-  }
-}
-
 .toggleGroup {
   display: flex;
   align-items: center;
