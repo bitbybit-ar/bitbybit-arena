@@ -1,3 +1,7 @@
+// IMPORTANT: every test file that imports from this module must declare
+// `@vitest-environment node` in a top-of-file docblock. The global vitest
+// environment is jsdom (for component tests), but @neondatabase/serverless
+// detects `window` and prints a browser-SQL warning if loaded under jsdom.
 import { config } from "dotenv";
 import { resolve } from "path";
 import { neon } from "@neondatabase/serverless";
