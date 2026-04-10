@@ -25,6 +25,7 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
   const [goal, setGoal] = useState("");
   const [unit, setUnit] = useState("");
   const [verification, setVerification] = useState("creator_approval");
+  const [nostrActionTarget, setNostrActionTarget] = useState("");
   const [badgeName, setBadgeName] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
@@ -43,6 +44,13 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
         return; // user cancelled the modal
       }
     }
+    if (verification === "nostr_action") {
+      if (!/^[0-9a-f]{64}$/i.test(nostrActionTarget.trim())) {
+        setError(t("nostrActionTargetError"));
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
 
@@ -58,6 +66,10 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
           goal: goal ? Number(goal) : undefined,
           unit: unit || undefined,
           verification_type: verification,
+          nostr_action_target_event_id:
+            verification === "nostr_action"
+              ? nostrActionTarget.trim().toLowerCase()
+              : undefined,
           badge_name: badgeName || undefined,
           starts_at: startsAt || undefined,
           ends_at: endsAt || undefined,
@@ -168,7 +180,18 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
         >
           <option value="creator_approval">{t("verificationTypes.creator_approval")}</option>
           <option value="automatic">{t("verificationTypes.automatic")}</option>
+          <option value="nostr_action">{t("verificationTypes.nostr_action")}</option>
         </FormSelect>
+
+        {verification === "nostr_action" && (
+          <FormInput
+            label={t("nostrActionTargetLabel")}
+            placeholder={t("nostrActionTargetPlaceholder")}
+            value={nostrActionTarget}
+            onChange={setNostrActionTarget}
+            required
+          />
+        )}
 
         <FormInput
           label={t("badgeNameLabel")}

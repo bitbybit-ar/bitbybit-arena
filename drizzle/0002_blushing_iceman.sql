@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "completions_proof_event_unique_idx" ON "completions" USING btree ("challenge_id","user_id","proof_event_id") WHERE proof_event_id IS NOT NULL;

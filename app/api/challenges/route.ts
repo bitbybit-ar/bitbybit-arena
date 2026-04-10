@@ -7,8 +7,9 @@ import { slugify } from "@/lib/utils";
 import type { ChallengeType, VerificationType, PrizeDistribution } from "@/lib/types";
 
 const VALID_TYPES: ChallengeType[] = ["one_time", "streak", "competition", "race", "creative"];
-const VALID_VERIFICATION: VerificationType[] = ["creator_approval", "automatic"];
+const VALID_VERIFICATION: VerificationType[] = ["creator_approval", "automatic", "nostr_action"];
 const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "winner_takes_all", "split", "none"];
+const HEX_64 = /^[0-9a-f]{64}$/i;
 // GET /api/challenges — list with search, filters, sort, pagination
 export const GET = apiHandler(
   async (req: NextRequest, { db }) => {
@@ -99,7 +100,7 @@ export const GET = apiHandler(
 export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
   const body = await req.json();
 
-  const { title, description, type, category, goal, unit, verification_type, prize_amount_sats, prize_distribution, badge_name, starts_at, ends_at } = body;
+  const { title, description, type, category, goal, unit, verification_type, nostr_action_target_event_id, prize_amount_sats, prize_distribution, badge_name, starts_at, ends_at } = body;
 
   if (!title || typeof title !== "string" || title.trim().length < 3) {
     throw new BadRequestError("Title must be at least 3 characters");
@@ -117,6 +118,15 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
     throw new BadRequestError(`Invalid prize distribution. Must be one of: ${VALID_DISTRIBUTION.join(", ")}`);
   }
 
+  const resolvedVerification: VerificationType = verification_type || "creator_approval";
+  let resolvedTargetEventId: string | null = null;
+  if (resolvedVerification === "nostr_action") {
+    if (typeof nostr_action_target_event_id !== "string" || !HEX_64.test(nostr_action_target_event_id)) {
+      throw new BadRequestError("nostr_action_target_event_id must be a 64-character hex event id");
+    }
+    resolvedTargetEventId = nostr_action_target_event_id.toLowerCase();
+  }
+
   const slug = slugify(title);
 
   const [challenge] = await db
@@ -130,7 +140,8 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
       category: category || null,
       goal: goal || null,
       unit: unit || null,
-      verification_type: verification_type || "creator_approval",
+      verification_type: resolvedVerification,
+      nostr_action_target_event_id: resolvedTargetEventId,
       prize_amount_sats: prize_amount_sats || 0,
       prize_distribution: prize_distribution || "none",
       badge_name: badge_name || null,

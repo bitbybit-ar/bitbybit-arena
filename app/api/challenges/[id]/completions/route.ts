@@ -3,6 +3,18 @@ import { eq, and } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { NotFoundError, BadRequestError, ForbiddenError } from "@/lib/api/errors";
 import { challenges, participants, completions, users } from "@/lib/db/schema";
+import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
+
+function isUniqueViolation(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const maybeCode = (err as { code?: unknown }).code;
+  if (maybeCode === "23505") return true;
+  const cause = (err as { cause?: unknown }).cause;
+  if (cause && typeof cause === "object") {
+    return (cause as { code?: unknown }).code === "23505";
+  }
+  return false;
+}
 
 // GET /api/challenges/[id]/completions — list completions
 export const GET = apiHandler(
@@ -64,29 +76,60 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
 
   if (!participation) throw new ForbiddenError("You must join this challenge first");
 
-  const body = await req.json();
-  const { content, step } = body;
+  const body = await req.json().catch(() => ({}));
+  const { content, step } = body as { content?: unknown; step?: unknown };
 
-  if (!content || typeof content !== "string" || content.trim().length < 5) {
-    throw new BadRequestError("Proof content must be at least 5 characters");
+  let proofEventId: string | null = null;
+  let resolvedContent: string | null = null;
+  let autoApprove = false;
+
+  if (challenge.verification_type === "nostr_action") {
+    if (!challenge.nostr_action_target_event_id) {
+      throw new BadRequestError("Challenge is missing a target event id");
+    }
+    const result = await verifyLikeForTarget({
+      likerPubkey: session!.nostr_pubkey,
+      targetEventId: challenge.nostr_action_target_event_id,
+    });
+    if (!result.valid || !result.proofEventId) {
+      throw new BadRequestError("Like not found on Nostr relays for the target event");
+    }
+    proofEventId = result.proofEventId;
+    autoApprove = true;
+  } else {
+    if (!content || typeof content !== "string" || content.trim().length < 5) {
+      throw new BadRequestError("Proof content must be at least 5 characters");
+    }
+    resolvedContent = content.trim();
+    autoApprove = challenge.verification_type === "automatic";
   }
 
-  // For automatic verification, auto-approve
-  const autoApprove = challenge.verification_type === "automatic";
+  let completion;
+  try {
+    [completion] = await db
+      .insert(completions)
+      .values({
+        challenge_id: params.id,
+        user_id: session!.user_id,
+        content: resolvedContent,
+        proof_event_id: proofEventId,
+        step: typeof step === "number" ? step : null,
+        status: autoApprove ? "approved" : "pending",
+        reviewed_at: autoApprove ? new Date() : null,
+      })
+      .returning();
+  } catch (err) {
+    // Postgres unique_violation: the partial unique index on
+    // (challenge_id, user_id, proof_event_id) caught a duplicate proof
+    // for the same like event. Close the race between two concurrent
+    // "Verify my like" clicks. Drizzle wraps Neon errors in a
+    // DrizzleQueryError so we check both the wrapper and its cause.
+    if (isUniqueViolation(err)) {
+      throw new BadRequestError("This like has already been submitted as a proof");
+    }
+    throw err;
+  }
 
-  const [completion] = await db
-    .insert(completions)
-    .values({
-      challenge_id: params.id,
-      user_id: session!.user_id,
-      content: content.trim(),
-      step: step || null,
-      status: autoApprove ? "approved" : "pending",
-      reviewed_at: autoApprove ? new Date() : null,
-    })
-    .returning();
-
-  // If auto-approved, update participant progress
   if (autoApprove) {
     const newProgress = participation.progress + 1;
     const isComplete = challenge.goal ? newProgress >= challenge.goal : true;

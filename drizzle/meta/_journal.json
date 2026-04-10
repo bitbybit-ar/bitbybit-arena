@@ -8,6 +8,20 @@
       "when": 1775829206719,
       "tag": "0000_jittery_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1775845641462,
+      "tag": "0001_messy_baron_strucker",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775852474590,
+      "tag": "0002_blushing_iceman",
+      "breakpoints": true
     }
   ]
 }

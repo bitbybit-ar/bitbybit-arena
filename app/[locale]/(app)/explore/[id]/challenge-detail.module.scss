@@ -258,3 +258,26 @@
   color: $color-text-secondary;
   font-size: $font-size-xs;
 }
+
+.targetEventId {
+  font-family: monospace;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  word-break: break-all;
+  margin: $spacing-8 0;
+
+  a {
+    color: $color-primary;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.error {
+  color: $color-error;
+  font-size: $font-size-sm;
+  margin-top: $spacing-8;
+}

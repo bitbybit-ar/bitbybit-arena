@@ -23,7 +23,8 @@ export type ChallengeStatus = "open" | "in_progress" | "completed" | "cancelled"
 
 export type VerificationType =
   | "creator_approval"
-  | "automatic";
+  | "automatic"
+  | "nostr_action";
 
 export type PrizeDistribution =
   | "first_to_complete"
@@ -43,6 +44,7 @@ export interface Challenge {
   goal: number | null;
   unit: string | null;
   verification_type: VerificationType;
+  nostr_action_target_event_id: string | null;
   prize_amount_sats: number;
   prize_distribution: PrizeDistribution | null;
   badge_name: string | null;
@@ -64,7 +66,8 @@ export interface Completion {
   challenge_id: string;
   user_id: string;
   step: number | null;
-  content: string;
+  content: string | null;
+  proof_event_id: string | null;
   status: CompletionStatus;
   reviewed_by: string | null;
   submitted_at: string;

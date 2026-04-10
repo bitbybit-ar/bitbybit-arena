@@ -10,6 +10,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // --- Users (Nostr-only auth) ---
 export const users = pgTable(
@@ -53,7 +54,10 @@ export const challenges = pgTable(
     unit: varchar("unit", { length: 30 }), // days, completions, points
     verification_type: varchar("verification_type", { length: 20 })
       .notNull()
-      .default("creator_approval"), // creator_approval, automatic
+      .default("creator_approval"), // creator_approval, automatic, nostr_action
+    nostr_action_target_event_id: varchar("nostr_action_target_event_id", {
+      length: 64,
+    }),
     prize_amount_sats: integer("prize_amount_sats").default(0),
     prize_distribution: varchar("prize_distribution", { length: 30 }), // first_to_complete, winner_takes_all, tiered, split, none
     badge_nostr_event_id: varchar("badge_nostr_event_id", { length: 64 }),
@@ -115,7 +119,8 @@ export const completions = pgTable(
       .references(() => users.id),
     nostr_event_id: varchar("nostr_event_id", { length: 64 }),
     step: integer("step"), // which step in a streak/multi-step challenge
-    content: text("content").notNull(), // text description (text-only for MVP)
+    content: text("content"), // text description; null when verification_type='nostr_action'
+    proof_event_id: varchar("proof_event_id", { length: 64 }), // nostr event id that proves the completion (e.g. kind:7 like)
     status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
     reviewed_by: uuid("reviewed_by").references(() => users.id),
     reviewed_at: timestamp("reviewed_at"),
@@ -125,6 +130,9 @@ export const completions = pgTable(
     index("completions_challenge_idx").on(table.challenge_id),
     index("completions_user_idx").on(table.user_id),
     index("completions_status_idx").on(table.status),
+    uniqueIndex("completions_proof_event_unique_idx")
+      .on(table.challenge_id, table.user_id, table.proof_event_id)
+      .where(sql`proof_event_id IS NOT NULL`),
   ]
 );
 

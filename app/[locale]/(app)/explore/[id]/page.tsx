@@ -21,6 +21,7 @@ interface ChallengeDetail {
   type: string;
   status: string;
   verification_type: string;
+  nostr_action_target_event_id: string | null;
   goal: number | null;
   unit: string | null;
   category: string | null;
@@ -36,7 +37,8 @@ interface ChallengeDetail {
 
 interface CompletionItem {
   id: string;
-  content: string;
+  content: string | null;
+  proof_event_id: string | null;
   status: string;
   submitted_at: string;
   user: { id: string; display_name: string; username: string; nostr_pubkey?: string };
@@ -69,6 +71,7 @@ export default function ChallengeDetailPage() {
   const [proofContent, setProofContent] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedWinners, setSelectedWinners] = useState<Set<string>>(new Set());
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -178,6 +181,28 @@ export default function ChallengeDetailPage() {
     setProofContent("");
     await fetchAll();
     setActionLoading(null);
+  };
+
+  const handleVerifyLike = async () => {
+    setVerifyError(null);
+    setActionLoading("verifyLike");
+    try {
+      const res = await fetch(`/api/challenges/${challengeId}/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setVerifyError(json.error || t("proofNotFound"));
+      } else {
+        await fetchAll();
+      }
+    } catch {
+      setVerifyError(t("proofNotFound"));
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleVerify = async (completionId: string, status: "approved" | "rejected") => {
@@ -319,7 +344,37 @@ export default function ChallengeDetailPage() {
         </div>
 
         {/* Submit proof */}
-        {isParticipant && (
+        {isParticipant && challenge.verification_type === "nostr_action" && (
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>{t("verifyLikeTitle")}</h2>
+            <p className={styles.emptyText}>
+              {t("verifyLikeInstructions")}
+            </p>
+            {challenge.nostr_action_target_event_id && (
+              <p className={styles.targetEventId}>
+                <a
+                  href={`https://njump.me/${challenge.nostr_action_target_event_id}`}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  {challenge.nostr_action_target_event_id.slice(0, 16)}…
+                </a>
+              </p>
+            )}
+            <Button
+              size="sm"
+              onClick={handleVerifyLike}
+              disabled={actionLoading === "verifyLike"}
+            >
+              {actionLoading === "verifyLike"
+                ? t("verifying")
+                : t("verifyLikeButton")}
+            </Button>
+            {verifyError && <p className={styles.error}>{verifyError}</p>}
+          </div>
+        )}
+
+        {isParticipant && challenge.verification_type !== "nostr_action" && (
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>{t("submitProof")}</h2>
             <textarea
@@ -354,7 +409,20 @@ export default function ChallengeDetailPage() {
                       {tCommon(comp.status)}
                     </Tag>
                   </div>
-                  <p className={styles.completionContent}>{comp.content}</p>
+                  {comp.content && (
+                    <p className={styles.completionContent}>{comp.content}</p>
+                  )}
+                  {comp.proof_event_id && (
+                    <p className={styles.completionContent}>
+                      <a
+                        href={`https://njump.me/${comp.proof_event_id}`}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
+                        {t("proofFound")}: {comp.proof_event_id.slice(0, 16)}…
+                      </a>
+                    </p>
+                  )}
                   {comp.user.nostr_pubkey && challenge.creator.lightning_address && (
                     <button
                       className={styles.zapButton}
