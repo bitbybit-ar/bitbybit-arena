@@ -184,6 +184,12 @@ npm run test:coverage # Tests con cobertura
 npx tsc --noEmit     # Type-check sin compilar
 ```
 
+### Testing
+
+- Unit y component tests corren bajo `jsdom` (default global en `vitest.config.ts`)
+- Integration tests (`tests/integration/**`) deben declarar `@vitest-environment node` en un docblock al inicio del archivo. Razon: `@neondatabase/serverless` detecta `window` y tira un warning de "SQL from the browser" si corre bajo jsdom
+- `tests/integration/setup.ts` centraliza la conexion a la DB de tests (`.env.test`) y expone `cleanDb()` y `testDb`
+
 ## Git workflow
 
 - **Never push directly to `main`**. Always create a feature branch and open a PR.

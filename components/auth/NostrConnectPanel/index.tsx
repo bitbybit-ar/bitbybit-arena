@@ -14,6 +14,7 @@ import {
   makeNip46Signer,
 } from "@/lib/nostr/signers";
 import { CopyIcon } from "@/components/icons";
+import { BlockTower } from "@/components/common/BlockTower";
 import styles from "./nostr-connect-panel.module.scss";
 
 interface NostrConnectPanelProps {
@@ -116,7 +117,12 @@ export function NostrConnectPanel({
   };
 
   if (status === "connecting") {
-    return <p className={styles.waiting}>{t("connectConnecting")}</p>;
+    return (
+      <div className={styles.connectingState}>
+        <BlockTower maxBlocks={3} blockSize="medium" />
+        <p className={styles.waiting}>{t("connectConnecting")}</p>
+      </div>
+    );
   }
 
   if (status === "expired") {

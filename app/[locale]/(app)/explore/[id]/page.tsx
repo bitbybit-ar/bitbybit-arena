@@ -9,6 +9,7 @@ import { Tag } from "@/components/ui/tag";
 import { Spinner } from "@/components/ui/spinner";
 import { buildJoinEvent, buildCompletionEvent, buildBadgeAwardEvent } from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
+import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
 import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
 import styles from "./challenge-detail.module.scss";
@@ -55,9 +56,9 @@ export default function ChallengeDetailPage() {
   const tCreate = useTranslations("createChallenge");
   const router = useRouter();
   const params = useParams();
+  const { user: sessionUser } = useSession();
+  const { needsSigner, signWithPrompt, requestReSignIn } = useSignerContext();
   const challengeId = params.id as string;
-  const { session, needsSigner, signWithPrompt, requestReSignIn } =
-    useSignerContext();
 
   const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
   const [completions, setCompletions] = useState<CompletionItem[]>([]);
@@ -88,14 +89,14 @@ export default function ChallengeDetailPage() {
       if (partJson.success) setParticipants(partJson.data);
 
       // Creator/participant flags are derived from the authoritative
-      // session in SignerContext, not from an extra fetch here.
-      if (session && cJson.success) {
-        setIsCreator(cJson.data.creator_id === session.user_id);
+      // session in SessionProvider, not from an extra fetch here.
+      if (sessionUser && cJson.success) {
+        setIsCreator(cJson.data.creator_id === sessionUser.user_id);
         setIsParticipant(
           partJson.success &&
             partJson.data.some(
               (p: ParticipantItem) =>
-                p.user_id === session.user_id && p.status === "active"
+                p.user_id === sessionUser.user_id && p.status === "active"
             )
         );
       } else {
@@ -107,7 +108,7 @@ export default function ChallengeDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [challengeId, session]);
+  }, [challengeId, sessionUser]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 

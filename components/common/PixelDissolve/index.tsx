@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { Block } from "@/components/common/Block";
 import styles from "./pixel-dissolve.module.scss";
 
@@ -10,8 +13,7 @@ interface PixelDissolveProps {
 
 const COLORS: BlockColor[] = ["purple", "gold", "green", "red"];
 
-// Predefined scatter pattern — positions as % from left, top offset, opacity
-// Top values are fixed to avoid hydration mismatch (no Math.random())
+// Predefined scatter pattern — fixed positions as % from left, top offset, opacity
 const PARTICLES = [
   { left: 5, top: 32, opacity: 0.06 },
   { left: 12, top: 8, opacity: 0.1 },
@@ -34,6 +36,16 @@ const PARTICLES = [
 ];
 
 export function PixelDissolve({ color, className = "" }: PixelDissolveProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Render nothing on the server — avoids hydration mismatch entirely.
+  // This is purely decorative (aria-hidden), so no SEO or a11y impact.
+  if (!mounted) return null;
+
   return (
     <div className={`${styles.dissolve} ${className}`} aria-hidden="true">
       {PARTICLES.map((p, i) => (

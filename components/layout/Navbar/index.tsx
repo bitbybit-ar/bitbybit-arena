@@ -1,54 +1,39 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Block } from "@/components/common/Block";
 import { MoonIcon, SunIcon, SettingsIcon, UserIcon } from "@/components/icons";
-import { useTheme } from "@/lib/theme-context";
+import { useTheme } from "@/lib/contexts/theme-context";
+import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
+import { useScrollVisibility } from "@/lib/hooks/useScrollVisibility";
+import { useClickOutside } from "@/lib/hooks/useClickOutside";
 import styles from "./navbar.module.scss";
 
 export function Navbar() {
   const t = useTranslations("common");
   const { theme, toggleTheme } = useTheme();
+  const { user } = useSession();
+  const { clearSigner } = useSignerContext();
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const [visible, setVisible] = useState(true);
-  const [scrolled, setScrolled] = useState(false);
+  const { visible, scrolled } = useScrollVisibility();
   const [menuOpen, setMenuOpen] = useState(false);
-  const lastScrollY = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { session: user, clearSigner } = useSignerContext();
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentY = window.scrollY;
-      setScrolled(currentY > 20);
-      setVisible(currentY <= 20 || currentY < lastScrollY.current);
-      lastScrollY.current = currentY;
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  useClickOutside(menuRef, closeMenu, menuOpen);
 
   const handleSignOut = async () => {
     setMenuOpen(false);
     await fetch("/api/auth/signout", { method: "POST" });
+    // clearSigner closes the in-memory signer AND clears the session
+    // state via SessionProvider.clear().
     await clearSigner();
     router.push("/");
   };
@@ -156,7 +141,7 @@ export function Navbar() {
               <Link href="/explore" className={styles.navLink}>
                 {t("explore") || "Explore"}
               </Link>
-              <Link href="/login" className={styles.signInButton}>
+              <Link href="/signin" className={styles.signInButton}>
                 {t("signIn")}
               </Link>
             </>

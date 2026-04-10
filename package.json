@@ -17,6 +17,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@getalby/sdk": "^7.0.0",
     "@neondatabase/serverless": "^1.0.2",
     "@noble/hashes": "^2.0.1",
     "@noble/secp256k1": "^3.0.0",

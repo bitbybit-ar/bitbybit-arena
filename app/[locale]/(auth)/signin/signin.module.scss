@@ -6,6 +6,7 @@
 .page {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: $spacing-24;
@@ -201,9 +202,10 @@
 }
 
 .wotHint {
-  margin-top: $spacing-24;
+  margin-top: $spacing-16;
   font-size: $font-size-xs;
   color: $color-text-secondary;
+  text-align: center;
 }
 
 .wotLink {
@@ -351,6 +353,14 @@
   font-size: $font-size-xs;
   color: $color-text-secondary;
   margin-top: $spacing-4;
+}
+
+.connectingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-16;
+  padding: $spacing-24 0;
 }
 
 .connectExpired {
@@ -672,9 +682,18 @@
   }
 }
 
+.backLinkWrapper {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  margin-top: $spacing-12;
+}
+
 .backLink {
-  display: inline-block;
-  margin-top: $spacing-16;
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-4;
   color: $color-text-secondary;
   font-size: $font-size-sm;
   text-decoration: none;

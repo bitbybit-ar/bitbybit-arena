@@ -44,6 +44,14 @@
   margin-bottom: $spacing-12;
 }
 
+.connectingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-16;
+  padding: $spacing-16 0;
+}
+
 .divider {
   display: flex;
   align-items: center;

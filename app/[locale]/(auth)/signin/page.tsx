@@ -15,6 +15,7 @@ import { NostrConnectPanel } from "@/components/auth/NostrConnectPanel";
 import { Block } from "@/components/common/Block";
 import { Bubble } from "@/components/common/Bubble";
 import {
+  ArrowLeftIcon,
   BoltIcon,
   LinkIcon,
   KeyIcon,
@@ -22,16 +23,15 @@ import {
   CheckIcon,
   FlagIcon,
 } from "@/components/icons";
-import styles from "./login.module.scss";
+import styles from "./signin.module.scss";
 
 type Panel = "picker" | "nsec" | "nip46";
 
-export default function LoginPage() {
+export default function SignInPage() {
   const t = useTranslations("login");
   const tReSign = useTranslations("reSignIn");
   const router = useRouter();
-  const { completeLoginWithSigner, setSigner, refreshSession } =
-    useSignerContext();
+  const { completeLoginWithSigner, setSigner } = useSignerContext();
 
   const [panel, setPanel] = useState<Panel>("picker");
   const [error, setError] = useState<string | null>(null);
@@ -53,9 +53,9 @@ export default function LoginPage() {
   };
 
   const handleError = (key: string) => {
-    // Shared auth components can emit keys from either the `login` namespace
-    // (no_extension, nostr_signing_rejected, nsecInvalidKey) or the `reSignIn`
-    // namespace (extensionRejected, mismatch, authFailed). Try both.
+    // Shared auth components emit keys from either the `login` namespace
+    // (no_extension, nostr_signing_rejected, nsecInvalidKey) or the
+    // `reSignIn` namespace (extensionRejected, mismatch, authFailed).
     try {
       setError(t(key));
       return;
@@ -94,7 +94,6 @@ export default function LoginPage() {
       }
 
       setSigner(makeNsecSigner(identity.secretKey, identity.pubkey));
-      await refreshSession();
       setCreatedNsec(identity.nsec);
     } catch {
       setError(t("error"));
@@ -222,8 +221,11 @@ export default function LoginPage() {
           </a>
           ?
         </p>
+      </div>
 
+      <div className={styles.backLinkWrapper}>
         <Link href="/" className={styles.backLink}>
+          <ArrowLeftIcon size={16} />
           {t("backToHome")}
         </Link>
       </div>

@@ -3,10 +3,9 @@
 /**
  * SignerProvider — tracks the in-memory Nostr signer for the current session.
  *
- * The session cookie (httpOnly JWT) is the source of truth for "is this user
- * authenticated against Arena's API". The signer here is independent: it's
- * the thing that can sign new Nostr events (challenge publishes, joins,
- * completions, badge awards) on behalf of the user.
+ * Session state lives in `@/lib/contexts/session-context` (SessionProvider).
+ * This context layers on top to track *how the user can sign new events*,
+ * independently of whether their session cookie is valid.
  *
  * On reload:
  *  - Extension users auto-restore (window.nostr is always available).
@@ -24,23 +23,16 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import { useSession, type SessionUser } from "@/lib/contexts/session-context";
 import type { NostrEvent, UnsignedNostrEvent } from "@/lib/nostr/types";
 import {
   type SignerHandle,
   makeExtensionSigner,
 } from "@/lib/nostr/signers";
 
-interface SessionInfo {
-  user_id: string;
-  nostr_pubkey: string;
-  display_name: string;
-  username: string;
-  avatar_url: string | null;
-}
-
 interface SignerContextValue {
-  /** httpOnly cookie session — null if user is signed out. */
-  session: SessionInfo | null;
+  /** Reexported from SessionProvider so consumers only need one context. */
+  session: SessionUser | null;
   /** True until the initial session fetch resolves. */
   sessionLoading: boolean;
   /** In-memory signer, or null if signing is currently impossible. */
@@ -58,7 +50,6 @@ interface SignerContextValue {
   needsSigner: boolean;
   setSigner: (signer: SignerHandle) => void;
   clearSigner: () => Promise<void>;
-  refreshSession: () => Promise<void>;
   /**
    * Run the NIP-42 challenge/response flow using the given signer and,
    * on success, store the signer and refresh the session. Returns true
@@ -105,41 +96,11 @@ export function SignerProvider({
   children,
   renderReSignInModal,
 }: SignerProviderProps) {
-  const [session, setSession] = useState<SessionInfo | null>(null);
-  const [sessionLoading, setSessionLoading] = useState(true);
+  const { user: session, loading: sessionLoading, refresh, clear } =
+    useSession();
   const [signer, setSignerState] = useState<SignerHandle | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const pendingPromptRef = useRef<PendingPrompt | null>(null);
-
-  const refreshSession = useCallback(async () => {
-    try {
-      const res = await fetch("/api/auth/session");
-      if (!res.ok) {
-        setSession(null);
-        return;
-      }
-      const json = await res.json();
-      if (json.success && json.data?.user_id) {
-        setSession({
-          user_id: json.data.user_id,
-          nostr_pubkey: json.data.nostr_pubkey,
-          display_name: json.data.display_name,
-          username: json.data.username,
-          avatar_url: json.data.avatar_url ?? null,
-        });
-      } else {
-        setSession(null);
-      }
-    } catch {
-      setSession(null);
-    } finally {
-      setSessionLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    refreshSession();
-  }, [refreshSession]);
 
   // Auto-restore extension signer when session is valid and window.nostr is
   // present. The extension is the only signer that survives reloads, because
@@ -182,28 +143,8 @@ export function SignerProvider({
       prev?.close?.();
       return null;
     });
-    setSession(null);
-  }, []);
-
-  const closePrompt = useCallback((err?: Error) => {
-    setModalOpen(false);
-    if (pendingPromptRef.current && err) {
-      pendingPromptRef.current.reject(err);
-    }
-    pendingPromptRef.current = null;
-  }, []);
-
-  const requestReSignIn = useCallback((): Promise<SignerHandle> => {
-    return new Promise<SignerHandle>((resolve, reject) => {
-      // Reject any prior pending call so callers don't leak. The single
-      // modal can only service one prompt at a time.
-      pendingPromptRef.current?.reject(
-        new Error("re_sign_in_superseded")
-      );
-      pendingPromptRef.current = { resolve, reject };
-      setModalOpen(true);
-    });
-  }, []);
+    clear();
+  }, [clear]);
 
   const completeLoginWithSigner = useCallback(
     async (next: SignerHandle): Promise<boolean> => {
@@ -227,13 +168,13 @@ export function SignerProvider({
         if (!authRes.ok) return false;
 
         setSigner(next);
-        await refreshSession();
+        await refresh();
         return true;
       } catch {
         return false;
       }
     },
-    [setSigner, refreshSession]
+    [setSigner, refresh]
   );
 
   const handleModalSigner = useCallback((next: SignerHandle) => {
@@ -244,6 +185,24 @@ export function SignerProvider({
     pendingPromptRef.current = null;
     setModalOpen(false);
     pending?.resolve(next);
+  }, []);
+
+  const closePrompt = useCallback((err?: Error) => {
+    setModalOpen(false);
+    if (pendingPromptRef.current && err) {
+      pendingPromptRef.current.reject(err);
+    }
+    pendingPromptRef.current = null;
+  }, []);
+
+  const requestReSignIn = useCallback((): Promise<SignerHandle> => {
+    return new Promise<SignerHandle>((resolve, reject) => {
+      // Reject any prior pending call so callers don't leak. The single
+      // modal can only service one prompt at a time.
+      pendingPromptRef.current?.reject(new Error("re_sign_in_superseded"));
+      pendingPromptRef.current = { resolve, reject };
+      setModalOpen(true);
+    });
   }, []);
 
   const handleModalCancel = useCallback(() => {
@@ -273,7 +232,6 @@ export function SignerProvider({
       needsSigner,
       setSigner,
       clearSigner,
-      refreshSession,
       completeLoginWithSigner,
       requestReSignIn,
       signWithPrompt,
@@ -286,7 +244,6 @@ export function SignerProvider({
       needsSigner,
       setSigner,
       clearSigner,
-      refreshSession,
       completeLoginWithSigner,
       requestReSignIn,
       signWithPrompt,

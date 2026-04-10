@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { Nunito, Nunito_Sans } from "next/font/google";
 import { routing } from "@/i18n/routing";
-import { ThemeProvider } from "@/lib/theme-context";
+import { ThemeProvider } from "@/lib/contexts/theme-context";
+import { SessionProvider } from "@/lib/contexts/session-context";
 import { ToastProvider } from "@/components/ui/toast";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -76,20 +78,29 @@ export default async function LocaleLayout({
       <head>
         <meta name="theme-color" content="#8B5CF6" />
         <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+        <Script id="theme-init" strategy="beforeInteractive">{`
+          (function(){try{var t=localStorage.getItem('theme');
+          if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))
+          document.documentElement.setAttribute('data-theme','dark');
+          else document.documentElement.setAttribute('data-theme','light');
+          }catch(e){}})();
+        `}</Script>
       </head>
       <body suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>
-            <ToastProvider>
-              <SignerProviderClient>
-                <a href="#main-content" className="skip-link">
-                  Skip to content
-                </a>
-                <Navbar />
-                <main id="main-content">{children}</main>
-                <Footer />
-              </SignerProviderClient>
-            </ToastProvider>
+            <SessionProvider>
+              <ToastProvider>
+                <SignerProviderClient>
+                  <a href="#main-content" className="skip-link">
+                    Skip to content
+                  </a>
+                  <Navbar />
+                  <main id="main-content">{children}</main>
+                  <Footer />
+                </SignerProviderClient>
+              </ToastProvider>
+            </SessionProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>
