@@ -231,8 +231,12 @@
     "verificationLabel": "Verificacion",
     "verificationTypes": {
       "creator_approval": "Aprobacion del creador",
-      "automatic": "Automatica (sistema de honor)"
+      "automatic": "Automatica (sistema de honor)",
+      "nostr_action": "Like en Nostr (automatico)"
     },
+    "nostrActionTargetLabel": "ID del evento objetivo",
+    "nostrActionTargetPlaceholder": "64 caracteres hex del evento que los participantes deben likear",
+    "nostrActionTargetError": "El ID del evento debe ser un string hexadecimal de 64 caracteres",
     "badgeNameLabel": "Nombre del badge",
     "badgeNamePlaceholder": "Ej: Maestro Zen 30 Dias",
     "startsAtLabel": "Fecha de inicio",
@@ -254,6 +258,12 @@
     "proofPlaceholder": "Describe lo que hiciste...",
     "submitting": "Enviando...",
     "proofSubmitted": "Prueba enviada!",
+    "verifyLikeTitle": "Verificar tu like",
+    "verifyLikeInstructions": "Dale like al evento objetivo desde tu cliente Nostr y despues presiona verificar. Buscamos tu reaccion kind 7 en los relays.",
+    "verifyLikeButton": "Verificar mi like en Nostr",
+    "verifying": "Verificando...",
+    "proofFound": "Prueba encontrada",
+    "proofNotFound": "No encontramos tu like en los relays. Intenta de nuevo en unos segundos.",
     "completions": "Completaciones",
     "noCompletions": "Todavia no hay completaciones.",
     "pendingReview": "Pendiente de revision",

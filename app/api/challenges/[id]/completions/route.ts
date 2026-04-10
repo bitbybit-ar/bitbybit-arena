@@ -3,6 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { NotFoundError, BadRequestError, ForbiddenError } from "@/lib/api/errors";
 import { challenges, participants, completions, users } from "@/lib/db/schema";
+import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
 
 // GET /api/challenges/[id]/completions — list completions
 export const GET = apiHandler(
@@ -64,29 +65,63 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
 
   if (!participation) throw new ForbiddenError("You must join this challenge first");
 
-  const body = await req.json();
-  const { content, step } = body;
+  const body = await req.json().catch(() => ({}));
+  const { content, step } = body as { content?: unknown; step?: unknown };
 
-  if (!content || typeof content !== "string" || content.trim().length < 5) {
-    throw new BadRequestError("Proof content must be at least 5 characters");
+  let proofEventId: string | null = null;
+  let resolvedContent: string | null = null;
+  let autoApprove = false;
+
+  if (challenge.verification_type === "nostr_action") {
+    if (!challenge.nostr_action_target_event_id) {
+      throw new BadRequestError("Challenge is missing a target event id");
+    }
+    const result = await verifyLikeForTarget({
+      likerPubkey: session!.nostr_pubkey,
+      targetEventId: challenge.nostr_action_target_event_id,
+    });
+    if (!result.valid || !result.proofEventId) {
+      throw new BadRequestError("Like not found on Nostr relays for the target event");
+    }
+    proofEventId = result.proofEventId;
+    autoApprove = true;
+
+    // Reject duplicate proofs for the same like event.
+    const [existing] = await db
+      .select({ id: completions.id })
+      .from(completions)
+      .where(
+        and(
+          eq(completions.challenge_id, params.id),
+          eq(completions.user_id, session!.user_id),
+          eq(completions.proof_event_id, proofEventId)
+        )
+      )
+      .limit(1);
+    if (existing) {
+      throw new BadRequestError("This like has already been submitted as a proof");
+    }
+  } else {
+    if (!content || typeof content !== "string" || content.trim().length < 5) {
+      throw new BadRequestError("Proof content must be at least 5 characters");
+    }
+    resolvedContent = content.trim();
+    autoApprove = challenge.verification_type === "automatic";
   }
-
-  // For automatic verification, auto-approve
-  const autoApprove = challenge.verification_type === "automatic";
 
   const [completion] = await db
     .insert(completions)
     .values({
       challenge_id: params.id,
       user_id: session!.user_id,
-      content: content.trim(),
-      step: step || null,
+      content: resolvedContent,
+      proof_event_id: proofEventId,
+      step: typeof step === "number" ? step : null,
       status: autoApprove ? "approved" : "pending",
       reviewed_at: autoApprove ? new Date() : null,
     })
     .returning();
 
-  // If auto-approved, update participant progress
   if (autoApprove) {
     const newProgress = participation.progress + 1;
     const isComplete = challenge.goal ? newProgress >= challenge.goal : true;

@@ -231,8 +231,12 @@
     "verificationLabel": "Verification",
     "verificationTypes": {
       "creator_approval": "Creator approval",
-      "automatic": "Automatic (honor system)"
+      "automatic": "Automatic (honor system)",
+      "nostr_action": "Nostr like (automatic)"
     },
+    "nostrActionTargetLabel": "Target event id",
+    "nostrActionTargetPlaceholder": "64-character hex id of the event participants must like",
+    "nostrActionTargetError": "Event id must be a 64-character hex string",
     "badgeNameLabel": "Badge name",
     "badgeNamePlaceholder": "E.g., 30-Day Zen Master",
     "startsAtLabel": "Start date",
@@ -254,6 +258,12 @@
     "proofPlaceholder": "Describe what you did...",
     "submitting": "Submitting...",
     "proofSubmitted": "Proof submitted!",
+    "verifyLikeTitle": "Verify your like",
+    "verifyLikeInstructions": "Like the target event from your Nostr client, then press verify. We'll look for your kind 7 reaction on the relays.",
+    "verifyLikeButton": "Verify my like on Nostr",
+    "verifying": "Verifying...",
+    "proofFound": "Proof found",
+    "proofNotFound": "We couldn't find your like on the relays yet. Try again in a few seconds.",
     "completions": "Completions",
     "noCompletions": "No completions yet.",
     "pendingReview": "Pending review",
