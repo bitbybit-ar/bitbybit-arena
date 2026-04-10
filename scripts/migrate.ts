@@ -5,6 +5,14 @@ import { migrate } from "drizzle-orm/neon-http/migrator";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import { sql } from "drizzle-orm";
 
+// Precedence: MIGRATE_ENV_FILE → .env.local → .env. Dotenv's default is
+// to NOT override already-set variables, so the first file that defines
+// DATABASE_URL wins. Set MIGRATE_ENV_FILE=.env.test to run migrations
+// against the test database (see `npm run test:db:migrate`).
+const envFile = process.env.MIGRATE_ENV_FILE;
+if (envFile) {
+  config({ path: envFile });
+}
 config({ path: ".env.local" });
 config({ path: ".env" });
 

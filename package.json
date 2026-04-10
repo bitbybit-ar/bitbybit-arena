@@ -14,7 +14,8 @@
     "test:coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "test:db:migrate": "MIGRATE_ENV_FILE=.env.test tsx scripts/migrate.ts"
   },
   "dependencies": {
     "@getalby/sdk": "^7.0.0",
