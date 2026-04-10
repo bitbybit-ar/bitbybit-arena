@@ -11,13 +11,6 @@ import { useTheme } from "@/lib/theme-context";
 import { useSignerContext } from "@/lib/signer-context";
 import styles from "./navbar.module.scss";
 
-interface SessionUser {
-  user_id: string;
-  username: string;
-  display_name: string;
-  avatar_url: string | null;
-}
-
 export function Navbar() {
   const t = useTranslations("common");
   const { theme, toggleTheme } = useTheme();
@@ -26,11 +19,10 @@ export function Navbar() {
   const pathname = usePathname();
   const [visible, setVisible] = useState(true);
   const [scrolled, setScrolled] = useState(false);
-  const [user, setUser] = useState<SessionUser | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const lastScrollY = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { clearSigner } = useSignerContext();
+  const { session: user, clearSigner } = useSignerContext();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -41,15 +33,6 @@ export function Navbar() {
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/auth/session")
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.success && json.data) setUser(json.data);
-      })
-      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -67,7 +50,6 @@ export function Navbar() {
     setMenuOpen(false);
     await fetch("/api/auth/signout", { method: "POST" });
     await clearSigner();
-    setUser(null);
     router.push("/");
   };
 

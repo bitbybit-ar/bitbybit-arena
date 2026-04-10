@@ -56,7 +56,8 @@ export default function ChallengeDetailPage() {
   const router = useRouter();
   const params = useParams();
   const challengeId = params.id as string;
-  const { needsSigner, signWithPrompt, requestReSignIn } = useSignerContext();
+  const { session, needsSigner, signWithPrompt, requestReSignIn } =
+    useSignerContext();
 
   const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
   const [completions, setCompletions] = useState<CompletionItem[]>([]);
@@ -70,39 +71,43 @@ export default function ChallengeDetailPage() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [challengeRes, completionsRes, participantsRes, sessionRes] = await Promise.all([
+      const [challengeRes, completionsRes, participantsRes] = await Promise.all([
         fetch(`/api/challenges/${challengeId}`),
         fetch(`/api/challenges/${challengeId}/completions`),
         fetch(`/api/challenges/${challengeId}/participants`),
-        fetch("/api/auth/session"),
       ]);
 
-      const [cJson, compJson, partJson, sessJson] = await Promise.all([
+      const [cJson, compJson, partJson] = await Promise.all([
         challengeRes.json(),
         completionsRes.json(),
         participantsRes.json(),
-        sessionRes.json(),
       ]);
 
       if (cJson.success) setChallenge(cJson.data);
       if (compJson.success) setCompletions(compJson.data);
       if (partJson.success) setParticipants(partJson.data);
 
-      if (sessJson.success && cJson.success) {
-        const userId = sessJson.data.user_id;
-        setIsCreator(cJson.data.creator_id === userId);
+      // Creator/participant flags are derived from the authoritative
+      // session in SignerContext, not from an extra fetch here.
+      if (session && cJson.success) {
+        setIsCreator(cJson.data.creator_id === session.user_id);
         setIsParticipant(
-          partJson.success && partJson.data.some(
-            (p: ParticipantItem) => p.user_id === userId && p.status === "active"
-          )
+          partJson.success &&
+            partJson.data.some(
+              (p: ParticipantItem) =>
+                p.user_id === session.user_id && p.status === "active"
+            )
         );
+      } else {
+        setIsCreator(false);
+        setIsParticipant(false);
       }
     } catch {
       // silently fail
     } finally {
       setLoading(false);
     }
-  }, [challengeId]);
+  }, [challengeId, session]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 

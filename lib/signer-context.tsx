@@ -35,6 +35,7 @@ interface SessionInfo {
   nostr_pubkey: string;
   display_name: string;
   username: string;
+  avatar_url: string | null;
 }
 
 interface SignerContextValue {
@@ -124,6 +125,7 @@ export function SignerProvider({
           nostr_pubkey: json.data.nostr_pubkey,
           display_name: json.data.display_name,
           username: json.data.username,
+          avatar_url: json.data.avatar_url ?? null,
         });
       } else {
         setSession(null);
