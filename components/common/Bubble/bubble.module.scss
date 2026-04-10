@@ -1,4 +1,5 @@
 @use "@/styles/colors" as *;
+@use "@/styles/common-mixins" as *;
 
 .bubble {
   border-radius: 50%;
@@ -6,6 +7,7 @@
   pointer-events: none;
   will-change: transform;
   z-index: 0;
+  overflow: hidden;
 }
 
 // Colors
@@ -25,22 +27,32 @@
   --bubble-color: #{$color-accent};
 }
 
-// Variants
+// Variants — all three get the bubble reflection, tuned per use case.
+// .solid respects theme `--bubble-opacity` and the `opacity` prop via
+// `--bubble-custom-opacity`, preserving the original API.
 .solid {
-  background: alpha(var(--bubble-color), var(--bubble-custom-opacity, var(--bubble-opacity, 10%)));
+  @include bubble-surface(
+    alpha(
+      var(--bubble-color),
+      var(--bubble-custom-opacity, var(--bubble-opacity, 10%))
+    )
+  );
 }
 
 .gradient {
-  background: linear-gradient(
-    135deg,
-    alpha(var(--bubble-color), 12%),
-    alpha(var(--bubble-color), 4%)
+  @include bubble-surface(
+    linear-gradient(
+      135deg,
+      alpha(var(--bubble-color), var(--bubble-custom-opacity, 14%)),
+      alpha(var(--bubble-color), 4%)
+    )
   );
 }
 
 .icon {
-  background: alpha(var(--bubble-color), 6%);
-  border: 1px solid alpha(var(--bubble-color), 10%);
+  @include bubble-surface(
+    alpha(var(--bubble-color), var(--bubble-custom-opacity, 8%))
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -49,7 +61,9 @@
     width: 40%;
     height: 40%;
     color: var(--bubble-color);
-    opacity: 0.5;
+    opacity: 0.6;
+    position: relative;
+    z-index: 1;
   }
 }
 

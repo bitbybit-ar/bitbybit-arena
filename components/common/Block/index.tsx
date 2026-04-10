@@ -8,6 +8,7 @@ interface BlockProps {
   color: BlockColor;
   animation?: "drop" | "pulse" | "none";
   delay?: number;
+  flat?: boolean;
   className?: string;
   children?: React.ReactNode;
 }
@@ -17,6 +18,7 @@ export function Block({
   color,
   animation = "none",
   delay = 0,
+  flat = false,
   className = "",
   children,
 }: BlockProps) {
@@ -29,7 +31,7 @@ export function Block({
 
   return (
     <div
-      className={`${styles.block} ${styles[size]} ${styles[color]} ${animClass} ${className}`}
+      className={`${styles.block} ${styles[size]} ${styles[color]} ${animClass} ${flat ? styles.flat : ""} ${className}`}
       style={{ animationDelay: `${delay}s` }}
       aria-hidden="true"
     >
