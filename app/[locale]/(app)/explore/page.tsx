@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
-import { FlagIcon } from "@/components/icons";
-import { Spinner } from "@/components/ui/spinner";
+import { PixelIcon } from "@/components/common/PixelIcon";
+import { BlockLoader } from "@/components/ui/block-loader";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { useSignerContext } from "@/lib/signer-context";
@@ -140,11 +140,11 @@ export default function ExplorePage() {
 
       {loading ? (
         <div className={styles.loadingState}>
-          <Spinner size="lg" label={tCommon("loading")} />
+          <BlockLoader label={tCommon("loading")} />
         </div>
       ) : challenges.length === 0 ? (
         <div className={styles.emptyState}>
-          <FlagIcon size={48} />
+          <PixelIcon shape="flag" blockSize={8} />
           <p>{search || type ? t("emptyFiltered") : t("empty")}</p>
         </div>
       ) : (

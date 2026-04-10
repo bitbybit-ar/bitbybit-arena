@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import Image from "next/image";
 import { Link, useRouter, usePathname } from "@/i18n/routing";
@@ -24,7 +24,12 @@ export function Navbar() {
   const pathname = usePathname();
   const { visible, scrolled } = useScrollVisibility();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   useClickOutside(menuRef, closeMenu, menuOpen);
@@ -72,9 +77,14 @@ export function Navbar() {
             <button
               className={styles.toggle}
               onClick={toggleTheme}
-              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={mounted && theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              suppressHydrationWarning
             >
-              {theme === "dark" ? <SunIcon size={14} /> : <MoonIcon size={14} />}
+              {mounted ? (
+                theme === "dark" ? <SunIcon size={14} /> : <MoonIcon size={14} />
+              ) : (
+                <MoonIcon size={14} />
+              )}
             </button>
             <button
               className={styles.toggle}

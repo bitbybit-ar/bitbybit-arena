@@ -65,7 +65,7 @@
   }
 
   &:hover .partnerLogo {
-    filter: grayscale(0);
+    opacity: 1;
   }
 }
 
@@ -74,8 +74,8 @@
   height: 56px;
   border-radius: 50%;
   object-fit: cover;
-  filter: grayscale(1);
-  transition: filter 0.3s ease;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
 }
 
 .partnerName {
@@ -98,7 +98,7 @@
   position: absolute;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.3;
+  opacity: 0.8;
 }
 
 .floatBlock1 {

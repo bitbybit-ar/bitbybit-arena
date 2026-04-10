@@ -117,14 +117,14 @@
 }
 
 .emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   padding: $spacing-80 0;
   color: $color-text-secondary;
-
-  svg {
-    margin-bottom: $spacing-16;
-    opacity: 0.4;
-  }
+  gap: $spacing-16;
 
   p {
     font-size: $font-size-md;
