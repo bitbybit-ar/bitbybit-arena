@@ -103,29 +103,33 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
     amounts = tieredSplit(challenge.prize_amount_sats, selected.length);
   }
 
-  // Fill in missing lightning addresses from kind:0 metadata if the row
-  // was never populated at login time.
-  const winners: WinnerPayload[] = [];
-  for (let i = 0; i < selected.length; i += 1) {
-    const row = selected[i];
-    let ln = row.lightning_address;
-    if (!ln && row.nostr_pubkey) {
+  // Fill in missing lightning addresses from kind:0 metadata for every
+  // winner in parallel. Each relay fetch has an 8s timeout, so doing
+  // them sequentially would make split-mode rewards hang for 8s × N.
+  const resolvedLightningAddresses = await Promise.all(
+    selected.map(async (row) => {
+      if (row.lightning_address) return row.lightning_address;
+      if (!row.nostr_pubkey) return null;
       const meta = await fetchNostrMetadataServer(row.nostr_pubkey);
-      ln = meta?.lud16 || null;
-    }
+      return meta?.lud16 || null;
+    })
+  );
+
+  const winners: WinnerPayload[] = selected.map((row, i) => {
+    const ln = resolvedLightningAddresses[i];
     if (!ln) {
       throw new BadRequestError(
         `Winner ${row.display_name} has no lightning address on their Nostr profile`
       );
     }
-    winners.push({
+    return {
       user_id: row.user_id,
       nostr_pubkey: row.nostr_pubkey,
       display_name: row.display_name,
       lightning_address: ln,
       amount_sats: amounts[i],
-    });
-  }
+    };
+  });
 
   return {
     challenge_id: challenge.id,
