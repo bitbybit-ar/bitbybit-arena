@@ -503,6 +503,7 @@ export default function ChallengeDetailPage() {
                               <textarea
                                 className={styles.proofInput}
                                 placeholder={t("proofPlaceholder")}
+                                aria-label={t("checkpointProofLabel", { index: idx + 1 })}
                                 value={checkpointProofs[cp.id] ?? ""}
                                 onChange={(e) =>
                                   setCheckpointProofs((prev) => ({

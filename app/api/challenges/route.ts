@@ -185,54 +185,66 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
     resolvedTargetEventId = nostr_action_target_event_id.toLowerCase();
   }
 
-  const resolvedMode: CheckpointMode = (checkpoint_mode as CheckpointMode) || "none";
-  if (!VALID_CHECKPOINT_MODE.includes(resolvedMode)) {
+  if (
+    checkpoint_mode !== undefined &&
+    !VALID_CHECKPOINT_MODE.includes(checkpoint_mode as CheckpointMode)
+  ) {
     throw new BadRequestError(
       `Invalid checkpoint_mode. Must be one of: ${VALID_CHECKPOINT_MODE.join(", ")}`
     );
   }
+  const resolvedMode: CheckpointMode =
+    (checkpoint_mode as CheckpointMode | undefined) ?? "none";
   const normalizedCheckpoints =
     resolvedMode === "none" ? [] : normalizeCheckpoints(checkpointsInput);
 
   const slug = slugify(title);
+  const newChallengeId = crypto.randomUUID();
 
-  const [challenge] = await db
-    .insert(challenges)
-    .values({
-      creator_id: session!.user_id,
-      slug,
-      title: title.trim(),
-      description: description.trim(),
-      type: type || "one_time",
-      category: category || null,
-      // When checkpoints are used, goal is the number of checkpoints and
-      // unit is always "checkpoints" so participant.progress compares
-      // directly against checkpoint count.
-      goal: normalizedCheckpoints.length > 0 ? normalizedCheckpoints.length : goal || null,
-      unit: normalizedCheckpoints.length > 0 ? "checkpoints" : unit || null,
-      verification_type: resolvedVerification,
-      nostr_action_target_event_id: resolvedTargetEventId,
-      checkpoint_mode: resolvedMode,
-      prize_amount_sats: prize_amount_sats || 0,
-      prize_distribution: prize_distribution || "none",
-      badge_name: badge_name || null,
-      starts_at: starts_at ? new Date(starts_at) : null,
-      ends_at: ends_at ? new Date(ends_at) : null,
-    })
-    .returning();
+  const challengeValues = {
+    id: newChallengeId,
+    creator_id: session!.user_id,
+    slug,
+    title: title.trim(),
+    description: description.trim(),
+    type: type || "one_time",
+    category: category || null,
+    // When checkpoints are used, goal is the number of checkpoints and
+    // unit is always "checkpoints" so participant.progress compares
+    // directly against checkpoint count.
+    goal: normalizedCheckpoints.length > 0 ? normalizedCheckpoints.length : goal || null,
+    unit: normalizedCheckpoints.length > 0 ? "checkpoints" : unit || null,
+    verification_type: resolvedVerification,
+    nostr_action_target_event_id: resolvedTargetEventId,
+    checkpoint_mode: resolvedMode,
+    prize_amount_sats: prize_amount_sats || 0,
+    prize_distribution: prize_distribution || "none",
+    badge_name: badge_name || null,
+    starts_at: starts_at ? new Date(starts_at) : null,
+    ends_at: ends_at ? new Date(ends_at) : null,
+  };
 
-  if (normalizedCheckpoints.length > 0) {
-    await db.insert(challenge_checkpoints).values(
+  if (normalizedCheckpoints.length === 0) {
+    const [challenge] = await db.insert(challenges).values(challengeValues).returning();
+    return new CreatedResponse(challenge);
+  }
+
+  // Atomic insert of the challenge and its checkpoints. neon-http's
+  // drizzle driver throws on db.transaction() but supports db.batch(),
+  // which Neon executes as a single implicit HTTP transaction.
+  const [challengeRows] = await db.batch([
+    db.insert(challenges).values(challengeValues).returning(),
+    db.insert(challenge_checkpoints).values(
       normalizedCheckpoints.map((cp, idx) => ({
-        challenge_id: challenge.id,
+        challenge_id: newChallengeId,
         order: idx,
         title: cp.title,
         description: cp.description ?? null,
         verification_type: cp.verification_type ?? "creator_approval",
         nostr_action_target_event_id: cp.nostr_action_target_event_id ?? null,
       }))
-    );
-  }
+    ),
+  ]);
 
-  return new CreatedResponse(challenge);
+  return new CreatedResponse(challengeRows[0]);
 });

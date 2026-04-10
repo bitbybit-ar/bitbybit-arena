@@ -284,6 +284,7 @@
     "checkpointModeParallel": "Completá los checkpoints en cualquier orden.",
     "checkpointLocked": "Primero completá el checkpoint anterior.",
     "checkpointError": "No se pudo completar el checkpoint. Intentá de nuevo.",
+    "checkpointProofLabel": "Prueba del checkpoint {index}",
     "proofTooShort": "La prueba debe tener al menos 5 caracteres.",
     "completions": "Completaciones",
     "noCompletions": "Todavía no hay completaciones.",
