@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useSignerContext } from "@/lib/signer-context";
+import { Button } from "@/components/ui/button";
 import { KeyIcon } from "@/components/icons";
 import styles from "./signer-required-notice.module.scss";
 
@@ -43,9 +44,9 @@ export function SignerRequiredNotice() {
           {isAnonymous ? t("anonBody") : t("body")}
         </p>
       </div>
-      <button type="button" className={styles.cta} onClick={handleClick}>
+      <Button type="button" variant="secondary" size="sm" onClick={handleClick}>
         {isAnonymous ? t("anonCta") : t("cta")}
-      </button>
+      </Button>
     </div>
   );
 }

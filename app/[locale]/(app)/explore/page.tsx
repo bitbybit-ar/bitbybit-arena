@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { Link } from "@/i18n/routing";
 import { FlagIcon } from "@/components/icons";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,6 @@ export default function ExplorePage() {
   const t = useTranslations("explore");
   const tCommon = useTranslations("common");
   const tCreate = useTranslations("createChallenge");
-  const router = useRouter();
   const { needsSigner, requestReSignIn } = useSignerContext();
 
   const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
@@ -141,10 +140,10 @@ export default function ExplorePage() {
       ) : (
         <div className={styles.grid}>
           {challenges.map((challenge) => (
-            <button
+            <Link
               key={challenge.id}
+              href={`/explore/${challenge.id}`}
               className={styles.card}
-              onClick={() => router.push(`/explore/${challenge.id}`)}
             >
               <div className={styles.cardHeader}>
                 <Tag variant={typeVariant(challenge.type)}>
@@ -169,7 +168,7 @@ export default function ExplorePage() {
               <div className={styles.cardCreator}>
                 {challenge.creator.display_name}
               </div>
-            </button>
+            </Link>
           ))}
         </div>
       )}

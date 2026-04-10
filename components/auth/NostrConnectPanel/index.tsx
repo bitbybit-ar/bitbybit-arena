@@ -153,14 +153,16 @@ export function NostrConnectPanel({
           fgColor="currentColor"
         />
       </div>
-      <button
+      <Button
         type="button"
+        variant="link"
+        size="sm"
         className={styles.copyURIBtn}
         onClick={handleCopyURI}
       >
         <CopyIcon size={14} />
         {copied ? t("connectCopiedURI") : t("connectCopyURI")}
-      </button>
+      </Button>
       <p className={styles.waiting}>{t("connectScanning")}</p>
 
       <div className={styles.divider}>
