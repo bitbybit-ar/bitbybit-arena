@@ -10,6 +10,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // --- Users (Nostr-only auth) ---
 export const users = pgTable(
@@ -129,6 +130,9 @@ export const completions = pgTable(
     index("completions_challenge_idx").on(table.challenge_id),
     index("completions_user_idx").on(table.user_id),
     index("completions_status_idx").on(table.status),
+    uniqueIndex("completions_proof_event_unique_idx")
+      .on(table.challenge_id, table.user_id, table.proof_event_id)
+      .where(sql`proof_event_id IS NOT NULL`),
   ]
 );
 

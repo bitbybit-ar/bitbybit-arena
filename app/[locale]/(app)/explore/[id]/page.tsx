@@ -71,6 +71,7 @@ export default function ChallengeDetailPage() {
   const [proofContent, setProofContent] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedWinners, setSelectedWinners] = useState<Set<string>>(new Set());
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -149,8 +150,6 @@ export default function ChallengeDetailPage() {
     await fetchAll();
     setActionLoading(null);
   };
-
-  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const handleSubmitProof = async () => {
     if (!proofContent.trim()) return;

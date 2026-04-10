@@ -15,6 +15,13 @@
       "when": 1775845641462,
       "tag": "0001_messy_baron_strucker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775852474590,
+      "tag": "0002_blushing_iceman",
+      "breakpoints": true
     }
   ]
 }

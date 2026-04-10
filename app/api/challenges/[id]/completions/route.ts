@@ -5,6 +5,17 @@ import { NotFoundError, BadRequestError, ForbiddenError } from "@/lib/api/errors
 import { challenges, participants, completions, users } from "@/lib/db/schema";
 import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
 
+function isUniqueViolation(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const maybeCode = (err as { code?: unknown }).code;
+  if (maybeCode === "23505") return true;
+  const cause = (err as { cause?: unknown }).cause;
+  if (cause && typeof cause === "object") {
+    return (cause as { code?: unknown }).code === "23505";
+  }
+  return false;
+}
+
 // GET /api/challenges/[id]/completions — list completions
 export const GET = apiHandler(
   async (req: NextRequest, { db, params }) => {
@@ -85,22 +96,6 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     }
     proofEventId = result.proofEventId;
     autoApprove = true;
-
-    // Reject duplicate proofs for the same like event.
-    const [existing] = await db
-      .select({ id: completions.id })
-      .from(completions)
-      .where(
-        and(
-          eq(completions.challenge_id, params.id),
-          eq(completions.user_id, session!.user_id),
-          eq(completions.proof_event_id, proofEventId)
-        )
-      )
-      .limit(1);
-    if (existing) {
-      throw new BadRequestError("This like has already been submitted as a proof");
-    }
   } else {
     if (!content || typeof content !== "string" || content.trim().length < 5) {
       throw new BadRequestError("Proof content must be at least 5 characters");
@@ -109,18 +104,31 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     autoApprove = challenge.verification_type === "automatic";
   }
 
-  const [completion] = await db
-    .insert(completions)
-    .values({
-      challenge_id: params.id,
-      user_id: session!.user_id,
-      content: resolvedContent,
-      proof_event_id: proofEventId,
-      step: typeof step === "number" ? step : null,
-      status: autoApprove ? "approved" : "pending",
-      reviewed_at: autoApprove ? new Date() : null,
-    })
-    .returning();
+  let completion;
+  try {
+    [completion] = await db
+      .insert(completions)
+      .values({
+        challenge_id: params.id,
+        user_id: session!.user_id,
+        content: resolvedContent,
+        proof_event_id: proofEventId,
+        step: typeof step === "number" ? step : null,
+        status: autoApprove ? "approved" : "pending",
+        reviewed_at: autoApprove ? new Date() : null,
+      })
+      .returning();
+  } catch (err) {
+    // Postgres unique_violation: the partial unique index on
+    // (challenge_id, user_id, proof_event_id) caught a duplicate proof
+    // for the same like event. Close the race between two concurrent
+    // "Verify my like" clicks. Drizzle wraps Neon errors in a
+    // DrizzleQueryError so we check both the wrapper and its cause.
+    if (isUniqueViolation(err)) {
+      throw new BadRequestError("This like has already been submitted as a proof");
+    }
+    throw err;
+  }
 
   if (autoApprove) {
     const newProgress = participation.progress + 1;
