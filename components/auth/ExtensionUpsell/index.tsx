@@ -5,6 +5,22 @@ import styles from "./extension-upsell.module.scss";
 
 type UpsellVariant = "created" | "nsec";
 
+/**
+ * Per-variant translation key lookup. Keeps the actual string literals
+ * visible to TypeScript so next-intl can validate them, and avoids
+ * having to cast a template literal.
+ */
+const COPY = {
+  created: {
+    title: "createdExtensionTitle",
+    body: "createdExtensionBody",
+  },
+  nsec: {
+    title: "nsecExtensionTitle",
+    body: "nsecExtensionBody",
+  },
+} as const;
+
 interface ExtensionUpsellProps {
   /**
    * Which copy set to show:
@@ -22,12 +38,12 @@ interface ExtensionUpsellProps {
  */
 export function ExtensionUpsell({ variant }: ExtensionUpsellProps) {
   const t = useTranslations("login");
-  const prefix = variant === "created" ? "createdExtension" : "nsecExtension";
+  const copy = COPY[variant];
 
   return (
     <div className={styles.upsell}>
-      <strong>{t(`${prefix}Title` as "createdExtensionTitle")}</strong>
-      <p>{t(`${prefix}Body` as "createdExtensionBody")}</p>
+      <strong>{t(copy.title)}</strong>
+      <p>{t(copy.body)}</p>
       <a
         href="https://nostr-wot.com/download"
         target="_blank"

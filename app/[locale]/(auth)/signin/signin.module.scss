@@ -129,26 +129,19 @@
 // the gap. Visuals come from the Button variant (primary, ghost,
 // secondary) — this class only adjusts flex alignment and padding.
 .methodButton {
-  justify-content: flex-start;
-  text-align: left;
-  gap: $spacing-12;
-  padding: $spacing-12 $spacing-16;
+  @include method-button-layout;
 }
 
 .methodInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  @include method-button-stack;
 }
 
 .methodName {
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
+  @include method-button-title;
 }
 
 .methodDescription {
-  font-size: $font-size-xs;
-  opacity: 0.8;
+  @include method-button-subtitle;
 }
 
 .error {

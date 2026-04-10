@@ -123,6 +123,8 @@
     "nsecTitle": "Secret key (not recommended)",
     "nsecDescription": "Paste your nsec directly",
     "error": "Error connecting with Nostr",
+    "no_extension": "No Nostr extension detected in this browser.",
+    "nostr_signing_rejected": "Nostr signing was rejected.",
     "comingSoon": "Coming soon",
     "wotHint": "Have you tried the",
     "backToHome": "Back to home",

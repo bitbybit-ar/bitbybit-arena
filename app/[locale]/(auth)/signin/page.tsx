@@ -159,6 +159,7 @@ export default function SignInPage() {
           onError={handleError}
           onSelectNip46={() => setPanel("nip46")}
           onSelectNsec={() => setPanel("nsec")}
+          animate
         />
 
         <div className={styles.createDivider}>

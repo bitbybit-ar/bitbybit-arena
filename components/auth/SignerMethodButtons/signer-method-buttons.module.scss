@@ -1,24 +1,26 @@
-@use "@/styles/colors" as *;
 @use "@/styles/spacing" as *;
-@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
 
 .methods {
   display: flex;
   flex-direction: column;
   gap: $spacing-12;
+}
 
-  > * {
-    animation: methodFadeIn 0.4s ease both;
+// Stagger fade-in applied only when the consumer opts in via
+// `animate`. Used on the sign-in page first load. Kept off inside
+// modals so the animation doesn't replay on back navigation.
+.animate > * {
+  animation: methodFadeIn 0.4s ease both;
 
-    &:nth-child(1) {
-      animation-delay: 0.35s;
-    }
-    &:nth-child(2) {
-      animation-delay: 0.45s;
-    }
-    &:nth-child(3) {
-      animation-delay: 0.55s;
-    }
+  &:nth-child(1) {
+    animation-delay: 0.35s;
+  }
+  &:nth-child(2) {
+    animation-delay: 0.45s;
+  }
+  &:nth-child(3) {
+    animation-delay: 0.55s;
   }
 }
 
@@ -34,37 +36,23 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .methods > * {
+  .animate > * {
     animation: none;
   }
 }
 
-// Layout override for the picker buttons: the shared Button
-// `fullWidth` centers its children, but each method shows an icon
-// plus a two-line label, so we pin the content to the left and widen
-// the gap. Visuals come from the Button variant — this class only
-// adjusts flex alignment and padding.
 .methodButton {
-  justify-content: flex-start;
-  text-align: left;
-  gap: $spacing-12;
-  padding: $spacing-12 $spacing-16;
+  @include method-button-layout;
 }
 
 .methodInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+  @include method-button-stack;
 }
 
 .methodName {
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
+  @include method-button-title;
 }
 
 .methodDescription {
-  font-size: $font-size-xs;
-  opacity: 0.85;
-  font-weight: $font-weight-normal;
+  @include method-button-subtitle;
 }

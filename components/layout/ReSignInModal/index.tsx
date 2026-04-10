@@ -22,6 +22,22 @@ interface ReSignInModalProps {
 type Method = "pick" | "nsec" | "nip46";
 
 /**
+ * Error keys that live in the `reSignIn` i18n namespace. Everything
+ * else the auth children might emit (`no_extension`,
+ * `nostr_signing_rejected`, `nsecInvalidKey`) lives in `login`.
+ */
+const RESIGN_ERROR_KEYS = [
+  "extensionRejected",
+  "mismatch",
+  "authFailed",
+] as const;
+type ResignErrorKey = (typeof RESIGN_ERROR_KEYS)[number];
+
+function isResignErrorKey(key: string): key is ResignErrorKey {
+  return (RESIGN_ERROR_KEYS as readonly string[]).includes(key);
+}
+
+/**
  * Signer modal. Serves two flows:
  *
  *  - **Reattach mode** — user already has a valid session cookie but lost
@@ -58,17 +74,11 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
   const expectedPubkey = session?.nostr_pubkey;
   const isLoginMode = !session;
 
-  const lookupErrorKey = (key: string): string => {
-    try {
-      return t(key);
-    } catch {
-      try {
-        return tLogin(key);
-      } catch {
-        return key;
-      }
-    }
-  };
+  // Dispatch an error key to the right i18n namespace without relying
+  // on try/catch around `t()`. Keys emitted by the auth children fall
+  // into two disjoint buckets (see `RESIGN_ERROR_KEYS`).
+  const lookupErrorKey = (key: string): string =>
+    isResignErrorKey(key) ? t(key) : tLogin(key as "nsecInvalidKey");
 
   const handleError = (key: string) => {
     setError(lookupErrorKey(key));
@@ -99,6 +109,19 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
     setError(null);
     setMethod("pick");
   };
+
+  const backButton = (
+    <Button
+      type="button"
+      variant="link"
+      size="sm"
+      className={styles.backBtn}
+      onClick={goBack}
+    >
+      <ArrowLeftIcon size={14} />
+      {t("back")}
+    </Button>
+  );
 
   const title = isLoginMode
     ? tLogin("title")
@@ -131,16 +154,7 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
 
       {method === "nsec" && (
         <>
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            className={styles.backBtn}
-            onClick={goBack}
-          >
-            <ArrowLeftIcon size={14} />
-            {t("back")}
-          </Button>
+          {backButton}
           <NsecSignerForm
             onSigner={handleSignerFromChild}
             onError={handleError}
@@ -157,16 +171,7 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
 
       {method === "nip46" && (
         <>
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            className={styles.backBtn}
-            onClick={goBack}
-          >
-            <ArrowLeftIcon size={14} />
-            {t("back")}
-          </Button>
+          {backButton}
           <NostrConnectPanel
             onSigner={handleSignerFromChild}
             onError={handleError}

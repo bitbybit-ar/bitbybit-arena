@@ -23,6 +23,13 @@ interface SignerMethodButtonsProps {
   onSelectNsec: () => void;
   /** Disables the two picker buttons while the parent is busy. */
   disabled?: boolean;
+  /**
+   * Play the stagger fade-in when mounted. Useful on first page load
+   * (sign-in page). Should stay off inside modals that re-mount the
+   * picker on back navigation — otherwise the animation replays every
+   * time the user cancels a sub-panel.
+   */
+  animate?: boolean;
 }
 
 /**
@@ -38,11 +45,16 @@ export function SignerMethodButtons({
   onSelectNip46,
   onSelectNsec,
   disabled,
+  animate = false,
 }: SignerMethodButtonsProps) {
   const t = useTranslations("login");
 
+  const wrapperClassName = animate
+    ? `${styles.methods} ${styles.animate}`
+    : styles.methods;
+
   return (
-    <div className={styles.methods}>
+    <div className={wrapperClassName}>
       <ExtensionSignerButton
         onSigner={onSigner}
         onError={onError}
