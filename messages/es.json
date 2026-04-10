@@ -202,6 +202,7 @@
     "filters": "Filtros",
     "allTypes": "Todos los tipos",
     "allStatuses": "Todos los estados",
+    "filterByType": "Filtrar por tipo",
     "sortBy": "Ordenar por",
     "newest": "Más recientes",
     "endingSoon": "Por terminar",

@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { ExtensionSignerButton } from "@/components/auth/ExtensionSignerButton";
 import { LinkIcon, KeyIcon } from "@/components/icons";
 import type { SignerHandle } from "@/lib/nostr/signers";
+import type { AuthError } from "@/lib/nostr/auth-errors";
 import styles from "./signer-method-buttons.module.scss";
 
 interface SignerMethodButtonsProps {
   /** Fires when any of the three methods produces a ready signer. */
   onSigner: (signer: SignerHandle) => void | Promise<void>;
-  /** Fires with an i18n error key from any of the child flows. */
-  onError: (key: string) => void;
+  /** Fires with a structured error from any of the child flows. */
+  onError: (error: AuthError) => void;
   /**
    * When provided, the extension flow enforces that the produced
    * signer's pubkey matches this value (reattach flow).

@@ -8,13 +8,18 @@ import {
   type SignerHandle,
   makeExtensionSigner,
 } from "@/lib/nostr/signers";
+import {
+  type AuthError,
+  loginError,
+  reSignInError,
+} from "@/lib/nostr/auth-errors";
 import styles from "./extension-signer-button.module.scss";
 
 interface ExtensionSignerButtonProps {
   /** Called with a ready-to-use signer once the user grants access. */
   onSigner: (signer: SignerHandle) => void | Promise<void>;
-  /** Called with an i18n error key on failure. */
-  onError?: (key: string) => void;
+  /** Called with a structured error on failure. */
+  onError?: (error: AuthError) => void;
   /**
    * When provided, the produced signer's pubkey must match this value.
    * Used by the re-sign-in flow to ensure the user re-attaches to the
@@ -54,23 +59,23 @@ export function ExtensionSignerButton({
 
   const handleClick = async () => {
     if (!window.nostr) {
-      onError?.("no_extension");
+      onError?.(loginError("no_extension"));
       return;
     }
     setBusy(true);
     try {
       const pubkey = await window.nostr.getPublicKey();
       if (expectedPubkey && pubkey !== expectedPubkey) {
-        onError?.("mismatch");
+        onError?.(reSignInError("mismatch"));
         return;
       }
       await onSigner(makeExtensionSigner(pubkey));
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("rejected") || msg.includes("denied")) {
-        onError?.("nostr_signing_rejected");
+        onError?.(loginError("nostr_signing_rejected"));
       } else {
-        onError?.("extensionRejected");
+        onError?.(reSignInError("extensionRejected"));
       }
     } finally {
       setBusy(false);

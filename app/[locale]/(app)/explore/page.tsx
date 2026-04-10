@@ -32,7 +32,7 @@ export default function ExplorePage() {
   const t = useTranslations("explore");
   const tCommon = useTranslations("common");
   const tCreate = useTranslations("createChallenge");
-  const { needsSigner, requestReSignIn } = useSignerContext();
+  const { session, needsSigner, requestReSignIn } = useSignerContext();
 
   const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,22 +90,31 @@ export default function ExplorePage() {
     <div className={styles.page}>
       <div className={styles.header}>
         <h1 className={styles.title}>{t("title")}</h1>
-        <Button onClick={handleCreateClick} size="sm">
-          {t("createNew")}
-        </Button>
+        <div className={styles.headerActions}>
+          {session && (
+            <Button href="/my-challenges" variant="success" size="sm">
+              {tCommon("myChallenges")}
+            </Button>
+          )}
+          <Button onClick={handleCreateClick} size="sm">
+            {t("createNew")}
+          </Button>
+        </div>
       </div>
 
       <div className={styles.controls}>
         <input
-          type="text"
+          type="search"
           className={styles.searchInput}
           placeholder={t("searchPlaceholder")}
+          aria-label={t("searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <div className={styles.filters}>
           <select
             className={styles.select}
+            aria-label={t("filterByType")}
             value={type}
             onChange={(e) => setType(e.target.value)}
           >
@@ -118,6 +127,7 @@ export default function ExplorePage() {
           </select>
           <select
             className={styles.select}
+            aria-label={t("sortBy")}
             value={sort}
             onChange={(e) => setSort(e.target.value)}
           >

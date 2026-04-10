@@ -4,7 +4,13 @@ import { cn } from "@/lib/utils";
 import styles from "./button.module.scss";
 
 type ButtonBaseProps = {
-  variant?: "primary" | "secondary" | "outline" | "ghost" | "link";
+  variant?:
+    | "primary"
+    | "secondary"
+    | "success"
+    | "outline"
+    | "ghost"
+    | "link";
   size?: "sm" | "default" | "lg";
   fullWidth?: boolean;
   className?: string;

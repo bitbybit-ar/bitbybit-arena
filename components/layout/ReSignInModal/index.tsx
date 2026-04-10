@@ -11,6 +11,8 @@ import { NostrConnectPanel } from "@/components/auth/NostrConnectPanel";
 import { ArrowLeftIcon } from "@/components/icons";
 import { useSignerContext } from "@/lib/signer-context";
 import type { SignerHandle } from "@/lib/nostr/signers";
+import { type AuthError, reSignInError } from "@/lib/nostr/auth-errors";
+import { useAuthErrorLookup } from "@/lib/hooks/useAuthErrorLookup";
 import styles from "./re-sign-in-modal.module.scss";
 
 interface ReSignInModalProps {
@@ -20,22 +22,6 @@ interface ReSignInModalProps {
 }
 
 type Method = "pick" | "nsec" | "nip46";
-
-/**
- * Error keys that live in the `reSignIn` i18n namespace. Everything
- * else the auth children might emit (`no_extension`,
- * `nostr_signing_rejected`, `nsecInvalidKey`) lives in `login`.
- */
-const RESIGN_ERROR_KEYS = [
-  "extensionRejected",
-  "mismatch",
-  "authFailed",
-] as const;
-type ResignErrorKey = (typeof RESIGN_ERROR_KEYS)[number];
-
-function isResignErrorKey(key: string): key is ResignErrorKey {
-  return (RESIGN_ERROR_KEYS as readonly string[]).includes(key);
-}
 
 /**
  * Signer modal. Serves two flows:
@@ -56,6 +42,7 @@ function isResignErrorKey(key: string): key is ResignErrorKey {
 export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) {
   const t = useTranslations("reSignIn");
   const tLogin = useTranslations("login");
+  const lookupAuthError = useAuthErrorLookup();
   const { session, setSigner, completeLoginWithSigner } = useSignerContext();
   const [method, setMethod] = useState<Method>("pick");
   const [error, setError] = useState<string | null>(null);
@@ -74,14 +61,8 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
   const expectedPubkey = session?.nostr_pubkey;
   const isLoginMode = !session;
 
-  // Dispatch an error key to the right i18n namespace without relying
-  // on try/catch around `t()`. Keys emitted by the auth children fall
-  // into two disjoint buckets (see `RESIGN_ERROR_KEYS`).
-  const lookupErrorKey = (key: string): string =>
-    isResignErrorKey(key) ? t(key) : tLogin(key as "nsecInvalidKey");
-
-  const handleError = (key: string) => {
-    setError(lookupErrorKey(key));
+  const handleError = (err: AuthError) => {
+    setError(lookupAuthError(err));
     setBusy(false);
   };
 
@@ -92,7 +73,7 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
       if (isLoginMode) {
         const ok = await completeLoginWithSigner(signer);
         if (!ok) {
-          setError(lookupErrorKey("authFailed"));
+          setError(lookupAuthError(reSignInError("authFailed")));
           return;
         }
       } else {

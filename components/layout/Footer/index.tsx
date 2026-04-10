@@ -2,15 +2,13 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
-import { useLocale } from "next-intl";
+import { Link } from "@/i18n/routing";
 import { Block } from "@/components/common/Block";
 import { GithubIcon } from "@/components/icons";
 import styles from "./footer.module.scss";
 
 export function Footer() {
   const t = useTranslations("landing.footer");
-  const locale = useLocale();
 
   return (
     <footer className={styles.footer}>
@@ -26,7 +24,7 @@ export function Footer() {
           </div>
 
           <div className={styles.links}>
-            <Link href={`/${locale}/about`} className={styles.link}>
+            <Link href="/about" className={styles.link}>
               {t("aboutUs")}
             </Link>
             <a

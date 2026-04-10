@@ -30,6 +30,21 @@
   }
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  flex-shrink: 0;
+
+  @include mobile {
+    justify-content: stretch;
+
+    > * {
+      flex: 1;
+    }
+  }
+}
+
 .title {
   font-family: $font-display;
   font-size: $font-size-2xl;

@@ -24,35 +24,6 @@
   margin-bottom: $spacing-24;
 }
 
-.tabs {
-  display: flex;
-  gap: $spacing-4;
-  margin-bottom: $spacing-32;
-  border-bottom: 1px solid $color-border;
-}
-
-.tab {
-  padding: $spacing-12 $spacing-20;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: $color-text-secondary;
-  font-size: $font-size-base;
-  font-weight: $font-weight-medium;
-  font-family: $font-body;
-  cursor: pointer;
-  @include transition;
-
-  &:hover {
-    color: $color-text-primary;
-  }
-}
-
-.tabActive {
-  color: $color-primary;
-  border-bottom-color: $color-primary;
-}
-
 .loadingState {
   display: flex;
   justify-content: center;
@@ -83,8 +54,14 @@
   display: block;
   width: 100%;
   text-align: left;
+  text-decoration: none;
+  color: inherit;
   padding: $spacing-20;
   cursor: pointer;
+
+  &:hover {
+    text-decoration: none;
+  }
 }
 
 .cardTop {

@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { Link, useRouter } from "@/i18n/routing";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { createNewIdentity } from "@/lib/nostr/create-account";
 import { useSignerContext } from "@/lib/signer-context";
 import { makeNsecSigner } from "@/lib/nostr/signers";
 import type { SignerHandle } from "@/lib/nostr/signers";
+import type { AuthError } from "@/lib/nostr/auth-errors";
+import { useAuthErrorLookup } from "@/lib/hooks/useAuthErrorLookup";
 import { SignerMethodButtons } from "@/components/auth/SignerMethodButtons";
 import { ExtensionUpsell } from "@/components/auth/ExtensionUpsell";
 import { NsecSignerForm } from "@/components/auth/NsecSignerForm";
@@ -31,8 +32,8 @@ type Panel = "picker" | "nsec" | "nip46";
 
 export default function SignInPage() {
   const t = useTranslations("login");
-  const tReSign = useTranslations("reSignIn");
   const router = useRouter();
+  const lookupAuthError = useAuthErrorLookup();
   const { completeLoginWithSigner, setSigner } = useSignerContext();
 
   const [panel, setPanel] = useState<Panel>("picker");
@@ -54,21 +55,8 @@ export default function SignInPage() {
     router.push("/explore");
   };
 
-  const handleError = (key: string) => {
-    // Shared auth components emit keys from either the `login` namespace
-    // (no_extension, nostr_signing_rejected, nsecInvalidKey) or the
-    // `reSignIn` namespace (extensionRejected, mismatch, authFailed).
-    try {
-      setError(t(key));
-      return;
-    } catch {
-      /* fallthrough */
-    }
-    try {
-      setError(tReSign(key));
-    } catch {
-      setError(t("error"));
-    }
+  const handleError = (err: AuthError) => {
+    setError(lookupAuthError(err));
   };
 
   const handleCreateAccount = async () => {
@@ -170,16 +158,16 @@ export default function SignInPage() {
           type="button"
           variant="secondary"
           fullWidth
-          className={styles.methodButton}
+          className={styles.createButton}
           onClick={handleCreateAccount}
           disabled={creating}
         >
           <BoltIcon size={20} />
-          <div className={styles.methodInfo}>
-            <span className={styles.methodName}>
+          <div className={styles.createInfo}>
+            <span className={styles.createName}>
               {creating ? t("creatingIdentity") : t("createIdentity")}
             </span>
-            <span className={styles.methodDescription}>
+            <span className={styles.createDescription}>
               {t("createIdentityDescription")}
             </span>
           </div>
