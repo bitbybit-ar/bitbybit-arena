@@ -1,5 +1,6 @@
 export type { IconProps } from "./types";
 
+export { ArrowLeftIcon } from "./ArrowLeftIcon";
 export { ArrowRightIcon } from "./ArrowRightIcon";
 export { BadgeIcon } from "./BadgeIcon";
 export { BoltIcon } from "./BoltIcon";
@@ -20,3 +21,4 @@ export { SettingsIcon } from "./SettingsIcon";
 export { SunIcon } from "./SunIcon";
 export { TrophyIcon } from "./TrophyIcon";
 export { UserIcon } from "./UserIcon";
+export { WotIcon } from "./WotIcon";

@@ -99,7 +99,8 @@
         "errorInvalidAddress": "No se pudo resolver la direccion Lightning. Puede que no este activa todavia.",
         "noWebln": "No se encontro una wallet Lightning. Copia la invoice manualmente.",
         "copyInvoice": "Copiar invoice",
-        "copiedInvoice": "Invoice copiada!"
+        "copiedInvoice": "Invoice copiada!",
+        "waitingPayment": "Esperando el pago..."
       }
     },
     "footer": {
@@ -116,7 +117,7 @@
     "title": "Inicia sesion con Nostr",
     "subtitle": "Elegi como conectar tu identidad Nostr para crear y unirte a desafios.",
     "extensionTitle": "Extension del navegador",
-    "extensionDescription": "Alby, nos2x, Nostr WoT u otra extension",
+    "extensionDescription": "Nostr WoT, Alby, nos2x u otra extension",
     "connectTitle": "Nostr Connect",
     "connectDescription": "Conecta con un signer remoto (NIP-46)",
     "nsecTitle": "Clave secreta (no recomendado)",
@@ -147,7 +148,10 @@
     "connectCompatible": "Compatible con: Amber, nsec.app, Damus",
     "showKey": "Mostrar clave",
     "hideKey": "Ocultar clave",
-    "nsecLabel": "Clave privada"
+    "nsecLabel": "Clave privada",
+    "noAccount": "No tenes cuenta en Nostr?",
+    "joinNostrTitle": "Unite a Nostr",
+    "joinNostrDescription": "Crea tu cuenta con la extension WoT"
   },
   "explore": {
     "title": "Explorar desafios",

@@ -9,12 +9,7 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      { hostname: "github.com" },
-      { hostname: "avatars.githubusercontent.com" },
-      { hostname: "user-images.githubusercontent.com" },
-      { hostname: "image.nostr.build" },
-      { hostname: "nostr.build" },
-      { hostname: "cdn.satellite.earth" },
+      { protocol: "https", hostname: "**" },
     ],
   },
   async headers() {

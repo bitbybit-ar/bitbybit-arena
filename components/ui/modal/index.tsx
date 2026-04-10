@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { CloseIcon } from "@/components/icons";
+import { useClickOutside } from "@/lib/hooks/useClickOutside";
 import styles from "./modal.module.scss";
 
 type ModalSize = "sm" | "md" | "lg";
@@ -16,6 +17,10 @@ interface ModalProps {
 }
 
 export function Modal({ children, onClose, title, size = "md", className }: ModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(modalRef, onClose);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -34,10 +39,10 @@ export function Modal({ children, onClose, title, size = "md", className }: Moda
   }, [handleKeyDown]);
 
   return (
-    <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
+    <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={title}>
       <div
+        ref={modalRef}
         className={cn(styles.modal, styles[size], className)}
-        onClick={(e) => e.stopPropagation()}
       >
         {title && <h3 className={styles.title}>{title}</h3>}
         <button

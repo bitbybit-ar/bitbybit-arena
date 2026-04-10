@@ -9,6 +9,7 @@ import { Tag } from "@/components/ui/tag";
 import { Spinner } from "@/components/ui/spinner";
 import { buildJoinEvent, buildCompletionEvent, buildBadgeAwardEvent } from "@/lib/nostr/events";
 import { signAndPublish } from "@/lib/nostr/publish";
+import { useSession } from "@/lib/contexts/session-context";
 import styles from "./challenge-detail.module.scss";
 
 interface ChallengeDetail {
@@ -53,6 +54,7 @@ export default function ChallengeDetailPage() {
   const tCreate = useTranslations("createChallenge");
   const router = useRouter();
   const params = useParams();
+  const { user: sessionUser } = useSession();
   const challengeId = params.id as string;
 
   const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
@@ -67,26 +69,24 @@ export default function ChallengeDetailPage() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [challengeRes, completionsRes, participantsRes, sessionRes] = await Promise.all([
+      const [challengeRes, completionsRes, participantsRes] = await Promise.all([
         fetch(`/api/challenges/${challengeId}`),
         fetch(`/api/challenges/${challengeId}/completions`),
         fetch(`/api/challenges/${challengeId}/participants`),
-        fetch("/api/auth/session"),
       ]);
 
-      const [cJson, compJson, partJson, sessJson] = await Promise.all([
+      const [cJson, compJson, partJson] = await Promise.all([
         challengeRes.json(),
         completionsRes.json(),
         participantsRes.json(),
-        sessionRes.json(),
       ]);
 
       if (cJson.success) setChallenge(cJson.data);
       if (compJson.success) setCompletions(compJson.data);
       if (partJson.success) setParticipants(partJson.data);
 
-      if (sessJson.success && cJson.success) {
-        const userId = sessJson.data.user_id;
+      if (sessionUser && cJson.success) {
+        const userId = sessionUser.user_id;
         setIsCreator(cJson.data.creator_id === userId);
         setIsParticipant(
           partJson.success && partJson.data.some(
@@ -99,7 +99,7 @@ export default function ChallengeDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [challengeId]);
+  }, [challengeId, sessionUser]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 

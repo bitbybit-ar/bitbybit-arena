@@ -24,7 +24,7 @@ export const GET = apiHandler(
 
     return challenge;
   },
-  { requireAuth: false, rateLimit: "strict" }
+  { requireAuth: false, rateLimit: "auth" }
 );
 
 // POST: Verify signed event and authenticate
@@ -115,5 +115,5 @@ export const POST = apiHandler(
       nostr_pubkey: pubkey,
     };
   },
-  { requireAuth: false, rateLimit: "strict" }
+  { requireAuth: false, rateLimit: "auth" }
 );
