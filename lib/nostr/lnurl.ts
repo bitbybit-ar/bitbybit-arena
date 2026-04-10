@@ -44,17 +44,25 @@ export async function fetchLnurlPayEndpoint(lightningAddress: string): Promise<L
  * @param callback - The LNURL-pay callback URL
  * @param amountSats - Amount in sats
  * @param comment - Optional zap comment
+ * @param zapRequest - Optional signed NIP-57 kind 9734 event. When provided,
+ *                    attached via the `nostr` query parameter so the
+ *                    recipient's node emits a kind 9735 zap receipt.
  */
 export async function fetchInvoice(
   callback: string,
   amountSats: number,
-  comment?: string
+  comment?: string,
+  zapRequest?: unknown
 ): Promise<string> {
   const url = new URL(callback);
   url.searchParams.set("amount", String(amountSats * 1000)); // millisats
 
   if (comment) {
     url.searchParams.set("comment", comment);
+  }
+
+  if (zapRequest) {
+    url.searchParams.set("nostr", JSON.stringify(zapRequest));
   }
 
   const res = await fetch(url.toString());

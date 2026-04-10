@@ -89,3 +89,16 @@
     background: alpha($color-primary, 8%);
   }
 }
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    accent-color: $color-primary;
+  }
+}

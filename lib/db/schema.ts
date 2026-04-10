@@ -63,6 +63,10 @@ export const challenges = pgTable(
       .default("none"), // none, sequential, parallel
     prize_amount_sats: integer("prize_amount_sats").default(0),
     prize_distribution: varchar("prize_distribution", { length: 30 }), // first_to_complete, winner_takes_all, tiered, split, none
+    // NIP-57 + NIP-75 zap rewards
+    zap_goal_event_id: varchar("zap_goal_event_id", { length: 64 }), // NIP-75 kind 9041 event id published by the creator to fund the prize
+    reward_zap_mode: varchar("reward_zap_mode", { length: 20 }), // first_to_complete, split, tiered
+    rewards_paid_at: timestamp("rewards_paid_at"), // set when the creator finishes paying zaps to winners
     badge_nostr_event_id: varchar("badge_nostr_event_id", { length: 64 }),
     badge_name: varchar("badge_name", { length: 100 }),
     badge_image_url: text("badge_image_url"),
@@ -124,6 +128,7 @@ export const completions = pgTable(
     step: integer("step"), // which step in a streak/multi-step challenge
     content: text("content"), // text description; null when verification_type='nostr_action'
     proof_event_id: varchar("proof_event_id", { length: 64 }), // nostr event id that proves the completion (e.g. kind:7 like)
+    reward_zap_receipt_id: varchar("reward_zap_receipt_id", { length: 64 }), // NIP-57 kind 9735 zap receipt id after the creator pays the reward
     status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
     reviewed_by: uuid("reviewed_by").references(() => users.id),
     reviewed_at: timestamp("reviewed_at"),

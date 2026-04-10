@@ -1,0 +1,342 @@
+/**
+ * @vitest-environment node
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { eq } from "drizzle-orm";
+import { cleanDb, testDb } from "./setup";
+import { challenges, participants, completions } from "@/lib/db/schema";
+import {
+  setSession,
+  makeSession,
+  seedUser,
+  seedChallenge,
+  seedParticipant,
+  seedCompletion,
+  buildRequest,
+  parseResponse,
+} from "./helpers";
+
+vi.mock("@/lib/auth", async () => {
+  const { sessionRef } = await import("./helpers");
+  return {
+    getSession: vi.fn(() => Promise.resolve(sessionRef.current)),
+    AuthSession: {},
+  };
+});
+
+vi.mock("@/lib/db", async () => {
+  const { testDb } = await import("./setup");
+  const schema = await vi.importActual<typeof import("@/lib/db/schema")>(
+    "@/lib/db/schema"
+  );
+  return { getDb: vi.fn(() => testDb), ...schema };
+});
+
+// Stub the relay metadata fetcher so tests never hit real relays. We
+// mainly care that the endpoint handles the "user has no lud16" branch
+// and that it falls back to metadata when the users row is missing it.
+const metadataMock = vi.fn();
+vi.mock("@/lib/nostr/server-metadata", () => ({
+  fetchNostrMetadataServer: (...args: unknown[]) => metadataMock(...args),
+}));
+
+const rewardRoute = await import("@/app/api/challenges/[id]/reward/route");
+
+const REAL_RECEIPT_ID = "c".repeat(64);
+
+async function markParticipantCompleted(participantId: string, secondsAgo = 0) {
+  await testDb
+    .update(participants)
+    .set({
+      status: "completed",
+      completed_at: new Date(Date.now() - secondsAgo * 1000),
+    })
+    .where(eq(participants.id, participantId));
+}
+
+describe("Integration: Zap rewards", () => {
+  let creator: Awaited<ReturnType<typeof seedUser>>;
+  let winnerA: Awaited<ReturnType<typeof seedUser>>;
+  let winnerB: Awaited<ReturnType<typeof seedUser>>;
+  let winnerC: Awaited<ReturnType<typeof seedUser>>;
+
+  beforeEach(async () => {
+    await cleanDb();
+    metadataMock.mockReset();
+    creator = await seedUser({ username: "creator", display_name: "Creator" });
+    winnerA = await seedUser({
+      username: "alice",
+      display_name: "Alice",
+      lightning_address: "alice@getalby.com",
+    });
+    winnerB = await seedUser({
+      username: "bob",
+      display_name: "Bob",
+      lightning_address: "bob@strike.me",
+    });
+    winnerC = await seedUser({
+      username: "carol",
+      display_name: "Carol",
+      lightning_address: "carol@walletofsatoshi.com",
+    });
+  });
+
+  describe("POST /api/challenges/[id]/reward", () => {
+    it("first_to_complete: returns the earliest completer with the full pot", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 5000,
+        reward_zap_mode: "first_to_complete",
+        status: "open",
+      });
+      const pA = await seedParticipant(challenge.id, winnerA.id, {
+        status: "active",
+      });
+      const pB = await seedParticipant(challenge.id, winnerB.id, {
+        status: "active",
+      });
+      await markParticipantCompleted(pB.id, 20); // earliest
+      await markParticipantCompleted(pA.id, 10);
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { status, body } = await parseResponse(res);
+
+      expect(status).toBe(200);
+      expect(body.data.winners).toHaveLength(1);
+      expect(body.data.winners[0].user_id).toBe(winnerB.id);
+      expect(body.data.winners[0].amount_sats).toBe(5000);
+      expect(body.data.winners[0].lightning_address).toBe("bob@strike.me");
+    });
+
+    it("split: divides the pot evenly among all completers, remainder to the first", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1001,
+        reward_zap_mode: "split",
+        status: "open",
+      });
+      const pA = await seedParticipant(challenge.id, winnerA.id, { status: "active" });
+      const pB = await seedParticipant(challenge.id, winnerB.id, { status: "active" });
+      const pC = await seedParticipant(challenge.id, winnerC.id, { status: "active" });
+      await markParticipantCompleted(pA.id, 30); // earliest
+      await markParticipantCompleted(pB.id, 20);
+      await markParticipantCompleted(pC.id, 10);
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { body } = await parseResponse(res);
+      expect(body.data.winners).toHaveLength(3);
+      const total = body.data.winners.reduce(
+        (sum: number, w: { amount_sats: number }) => sum + w.amount_sats,
+        0
+      );
+      expect(total).toBe(1001);
+      // Remainder (1001 % 3 = 2) goes to the first-place winner (alice).
+      expect(body.data.winners[0].user_id).toBe(winnerA.id);
+      expect(body.data.winners[0].amount_sats).toBe(335);
+    });
+
+    it("tiered: 50/30/20 to top 3 by completion time", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 10000,
+        reward_zap_mode: "tiered",
+        status: "open",
+      });
+      const pA = await seedParticipant(challenge.id, winnerA.id, { status: "active" });
+      const pB = await seedParticipant(challenge.id, winnerB.id, { status: "active" });
+      const pC = await seedParticipant(challenge.id, winnerC.id, { status: "active" });
+      await markParticipantCompleted(pA.id, 30);
+      await markParticipantCompleted(pB.id, 20);
+      await markParticipantCompleted(pC.id, 10);
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { body } = await parseResponse(res);
+      expect(body.data.winners).toHaveLength(3);
+      expect(body.data.winners[0].amount_sats).toBe(5000);
+      expect(body.data.winners[1].amount_sats).toBe(3000);
+      expect(body.data.winners[2].amount_sats).toBe(2000);
+    });
+
+    it("falls back to kind:0 metadata when the users row has no lud16", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        reward_zap_mode: "first_to_complete",
+        status: "open",
+      });
+      const nolnUser = await seedUser({
+        username: "noln",
+        display_name: "NoLN",
+        lightning_address: null,
+      });
+      const p = await seedParticipant(challenge.id, nolnUser.id, {
+        status: "active",
+      });
+      await markParticipantCompleted(p.id);
+      metadataMock.mockResolvedValueOnce({ lud16: "noln@example.com" });
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { status, body } = await parseResponse(res);
+      expect(status).toBe(200);
+      expect(metadataMock).toHaveBeenCalledWith(nolnUser.nostr_pubkey);
+      expect(body.data.winners[0].lightning_address).toBe("noln@example.com");
+    });
+
+    it("400 when a winner has no lightning address anywhere", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        reward_zap_mode: "first_to_complete",
+        status: "open",
+      });
+      const nolnUser = await seedUser({
+        username: "noln2",
+        display_name: "NoLN2",
+        lightning_address: null,
+      });
+      const p = await seedParticipant(challenge.id, nolnUser.id, {
+        status: "active",
+      });
+      await markParticipantCompleted(p.id);
+      metadataMock.mockResolvedValueOnce(null);
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("403 for non-creators", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        reward_zap_mode: "first_to_complete",
+        status: "open",
+      });
+      const p = await seedParticipant(challenge.id, winnerA.id, {
+        status: "active",
+      });
+      await markParticipantCompleted(p.id);
+
+      setSession(makeSession(winnerA.id, { nostr_pubkey: winnerA.nostr_pubkey }));
+      const res = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it("400 when no one has completed", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        reward_zap_mode: "first_to_complete",
+        status: "open",
+      });
+      await seedParticipant(challenge.id, winnerA.id, { status: "active" });
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe("PATCH /api/challenges/[id]/reward", () => {
+    it("sets rewards_paid_at without a body", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        reward_zap_mode: "first_to_complete",
+        status: "open",
+      });
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+
+      const res = await rewardRoute.PATCH(
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(200);
+
+      const [updated] = await testDb
+        .select()
+        .from(challenges)
+        .where(eq(challenges.id, challenge.id));
+      expect(updated.rewards_paid_at).not.toBeNull();
+    });
+
+    it("stores a receipt id on the winner's latest approved completion", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        reward_zap_mode: "first_to_complete",
+        status: "open",
+      });
+      const p = await seedParticipant(challenge.id, winnerA.id, {
+        status: "active",
+      });
+      await markParticipantCompleted(p.id);
+      await seedCompletion(challenge.id, winnerA.id, {
+        status: "approved",
+        content: "Proof of completion",
+      });
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.PATCH(
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`, {
+          user_id: winnerA.id,
+          receipt_event_id: REAL_RECEIPT_ID,
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(200);
+
+      const [row] = await testDb
+        .select()
+        .from(completions)
+        .where(eq(completions.user_id, winnerA.id));
+      expect(row.reward_zap_receipt_id).toBe(REAL_RECEIPT_ID);
+    });
+
+    it("400 when receipt_event_id is not 64-hex", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        reward_zap_mode: "first_to_complete",
+        status: "open",
+      });
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.PATCH(
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`, {
+          user_id: winnerA.id,
+          receipt_event_id: "not-hex",
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("403 for non-creators", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        reward_zap_mode: "first_to_complete",
+        status: "open",
+      });
+      setSession(makeSession(winnerA.id, { nostr_pubkey: winnerA.nostr_pubkey }));
+      const res = await rewardRoute.PATCH(
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(403);
+    });
+  });
+});

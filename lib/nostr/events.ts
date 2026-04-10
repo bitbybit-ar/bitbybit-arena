@@ -107,6 +107,39 @@ export function buildBadgeAwardEvent(params: {
 }
 
 /**
+ * Build a Zap Goal event (kind 9041, NIP-75).
+ * Published by the challenge creator to declare a funding goal for the
+ * prize pot. Supporters can zap the goal event directly; the client
+ * aggregates the incoming zap receipts to show real-time funding.
+ */
+export function buildZapGoalEvent(params: {
+  challengeSlug: string;
+  creatorPubkey: string;
+  amountSats: number;
+  title: string;
+  relays: string[];
+  closedAt?: string;
+}): UnsignedNostrEvent {
+  const tags: string[][] = [
+    ["amount", String(params.amountSats * 1000)], // millisats per NIP-75
+    ["relays", ...params.relays],
+    ["a", `30100:${params.creatorPubkey}:${params.challengeSlug}`],
+  ];
+  if (params.closedAt) {
+    tags.push([
+      "closed_at",
+      String(Math.floor(new Date(params.closedAt).getTime() / 1000)),
+    ]);
+  }
+  return {
+    kind: 9041,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: params.title,
+  };
+}
+
+/**
  * Build a Zap Request event (kind 9734, NIP-57).
  * The sender's wallet will use this to pay the recipient.
  */
