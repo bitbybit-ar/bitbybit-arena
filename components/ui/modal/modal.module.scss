@@ -51,18 +51,20 @@
 .modal {
   @include ceramic-card;
   position: relative;
-  padding: $spacing-24;
+  padding: $spacing-32;
   width: 100%;
   max-height: 85vh;
   overflow-y: auto;
   animation: slideIn 0.25s ease;
   border-radius: $border-radius-xl;
-  // Stronger outer shadow than a regular card so the modal feels
-  // lifted above the backdrop while still layering the ceramic insets.
+  // Heavier outer drop shadow so the modal feels properly lifted above
+  // the backdrop, plus stronger inset highlights than a regular card
+  // so the ceramic tile reads at this larger size.
   box-shadow:
-    0 16px 48px alpha($static-black, 25%),
-    inset 0 1px 0 $ceramic-highlight,
-    inset 0 -2px 4px $ceramic-inner-shadow;
+    0 24px 64px alpha($static-black, 30%),
+    0 4px 16px alpha($static-black, 12%),
+    inset 0 2px 0 $ceramic-highlight,
+    inset 0 -3px 6px $ceramic-inner-shadow;
 
   @include mobile {
     max-width: 100%;
@@ -74,15 +76,15 @@
 }
 
 .sm {
-  max-width: 400px;
+  max-width: 420px;
 }
 
 .md {
-  max-width: 480px;
+  max-width: 520px;
 }
 
 .lg {
-  max-width: 600px;
+  max-width: 640px;
 
   @include mobile {
     padding: $spacing-24 $spacing-20;
@@ -93,14 +95,14 @@
   font-size: $font-size-lg;
   font-weight: $font-weight-bold;
   color: $color-text-primary;
-  margin: 0 0 $spacing-20;
+  margin: 0 0 $spacing-24;
   padding-right: $spacing-32;
 }
 
 .closeButton {
   position: absolute;
-  top: $spacing-16;
-  right: $spacing-16;
+  top: $spacing-20;
+  right: $spacing-20;
   display: flex;
   align-items: center;
   justify-content: center;

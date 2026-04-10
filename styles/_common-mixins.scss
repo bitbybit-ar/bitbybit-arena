@@ -1,5 +1,6 @@
 @use "./colors" as *;
 @use "./spacing" as *;
+@use "./typography" as *;
 @use "./media-mixins" as *;
 
 @mixin container {
@@ -83,6 +84,38 @@
     0 4px 12px alpha($color, $shadow-strength),
     inset 0 1px 0 rgba(255, 255, 255, 0.4),
     inset 0 -2px 4px rgba(0, 0, 0, 0.18);
+}
+
+// Method-button layout used by the signer picker buttons and by the
+// sign-in page "Create identity" CTA. The shared Button `fullWidth`
+// centers its children, but these buttons show an icon + two-line
+// label, so we pin the content to the left and widen the gap.
+// Visuals (ceramic variant) come from the Button component.
+@mixin method-button-layout {
+  justify-content: flex-start;
+  text-align: left;
+  gap: $spacing-12;
+  padding: $spacing-12 $spacing-16;
+}
+
+// Inner text stack next to the icon inside a method-button: a bold
+// title and a muted description stacked vertically.
+@mixin method-button-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+@mixin method-button-title {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+@mixin method-button-subtitle {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-normal;
+  opacity: 0.85;
 }
 
 // Bubble surface — translucent sphere with off-center radial light,

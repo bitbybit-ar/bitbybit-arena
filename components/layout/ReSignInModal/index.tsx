@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/modal";
-import { ExtensionSignerButton } from "@/components/auth/ExtensionSignerButton";
+import { Button } from "@/components/ui/button";
+import { SignerMethodButtons } from "@/components/auth/SignerMethodButtons";
+import { ExtensionUpsell } from "@/components/auth/ExtensionUpsell";
 import { NsecSignerForm } from "@/components/auth/NsecSignerForm";
 import { NostrConnectPanel } from "@/components/auth/NostrConnectPanel";
-import { KeyIcon, LinkIcon } from "@/components/icons";
+import { ArrowLeftIcon } from "@/components/icons";
 import { useSignerContext } from "@/lib/signer-context";
 import type { SignerHandle } from "@/lib/nostr/signers";
 import styles from "./re-sign-in-modal.module.scss";
@@ -18,6 +20,22 @@ interface ReSignInModalProps {
 }
 
 type Method = "pick" | "nsec" | "nip46";
+
+/**
+ * Error keys that live in the `reSignIn` i18n namespace. Everything
+ * else the auth children might emit (`no_extension`,
+ * `nostr_signing_rejected`, `nsecInvalidKey`) lives in `login`.
+ */
+const RESIGN_ERROR_KEYS = [
+  "extensionRejected",
+  "mismatch",
+  "authFailed",
+] as const;
+type ResignErrorKey = (typeof RESIGN_ERROR_KEYS)[number];
+
+function isResignErrorKey(key: string): key is ResignErrorKey {
+  return (RESIGN_ERROR_KEYS as readonly string[]).includes(key);
+}
 
 /**
  * Signer modal. Serves two flows:
@@ -56,17 +74,11 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
   const expectedPubkey = session?.nostr_pubkey;
   const isLoginMode = !session;
 
-  const lookupErrorKey = (key: string): string => {
-    try {
-      return t(key);
-    } catch {
-      try {
-        return tLogin(key);
-      } catch {
-        return key;
-      }
-    }
-  };
+  // Dispatch an error key to the right i18n namespace without relying
+  // on try/catch around `t()`. Keys emitted by the auth children fall
+  // into two disjoint buckets (see `RESIGN_ERROR_KEYS`).
+  const lookupErrorKey = (key: string): string =>
+    isResignErrorKey(key) ? t(key) : tLogin(key as "nsecInvalidKey");
 
   const handleError = (key: string) => {
     setError(lookupErrorKey(key));
@@ -98,6 +110,19 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
     setMethod("pick");
   };
 
+  const backButton = (
+    <Button
+      type="button"
+      variant="link"
+      size="sm"
+      className={styles.backBtn}
+      onClick={goBack}
+    >
+      <ArrowLeftIcon size={14} />
+      {t("back")}
+    </Button>
+  );
+
   const title = isLoginMode
     ? tLogin("title")
     : method === "pick"
@@ -114,47 +139,14 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
             {isLoginMode ? tLogin("subtitle") : t("intro")}
           </p>
 
-          <div className={styles.methods}>
-            <ExtensionSignerButton
-              onSigner={handleSignerFromChild}
-              onError={handleError}
-              expectedPubkey={expectedPubkey}
-            />
-
-            <button
-              type="button"
-              className={styles.methodButton}
-              onClick={() => setMethod("nip46")}
-              disabled={busy}
-            >
-              <LinkIcon size={20} />
-              <div className={styles.methodInfo}>
-                <span className={styles.methodName}>
-                  {tLogin("connectTitle")}
-                </span>
-                <span className={styles.methodDescription}>
-                  {tLogin("connectDescription")}
-                </span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className={`${styles.methodButton} ${styles.methodSecondary}`}
-              onClick={() => setMethod("nsec")}
-              disabled={busy}
-            >
-              <KeyIcon size={20} />
-              <div className={styles.methodInfo}>
-                <span className={styles.methodName}>
-                  {tLogin("nsecTitle")}
-                </span>
-                <span className={styles.methodDescription}>
-                  {tLogin("nsecDescription")}
-                </span>
-              </div>
-            </button>
-          </div>
+          <SignerMethodButtons
+            onSigner={handleSignerFromChild}
+            onError={handleError}
+            expectedPubkey={expectedPubkey}
+            onSelectNip46={() => setMethod("nip46")}
+            onSelectNsec={() => setMethod("nsec")}
+            disabled={busy}
+          />
 
           {error && <p className={styles.error}>{error}</p>}
         </>
@@ -162,9 +154,7 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
 
       {method === "nsec" && (
         <>
-          <button type="button" className={styles.backBtn} onClick={goBack}>
-            ← {t("back")}
-          </button>
+          {backButton}
           <NsecSignerForm
             onSigner={handleSignerFromChild}
             onError={handleError}
@@ -174,15 +164,14 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
             submitLabel={isLoginMode ? tLogin("nsecSignIn") : t("attachKey")}
             submittingLabel={tLogin("nsecSigningIn")}
           />
+          <ExtensionUpsell variant="nsec" />
           {error && <p className={styles.error}>{error}</p>}
         </>
       )}
 
       {method === "nip46" && (
         <>
-          <button type="button" className={styles.backBtn} onClick={goBack}>
-            ← {t("back")}
-          </button>
+          {backButton}
           <NostrConnectPanel
             onSigner={handleSignerFromChild}
             onError={handleError}

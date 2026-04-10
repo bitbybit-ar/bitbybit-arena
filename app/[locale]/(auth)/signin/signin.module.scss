@@ -69,20 +69,6 @@
   }
 }
 
-.methods {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-12;
-
-  > * {
-    animation: fadeInUp 0.4s ease both;
-
-    &:nth-child(1) { animation-delay: 0.35s; }
-    &:nth-child(2) { animation-delay: 0.45s; }
-    &:nth-child(3) { animation-delay: 0.55s; }
-  }
-}
-
 // Floating blocks
 .floatBlock1,
 .floatBlock2,
@@ -130,10 +116,6 @@
     animation: none;
   }
 
-  .methods > * {
-    animation: none;
-  }
-
   .floatBlock1,
   .floatBlock2,
   .floatBlock3 {
@@ -147,26 +129,19 @@
 // the gap. Visuals come from the Button variant (primary, ghost,
 // secondary) — this class only adjusts flex alignment and padding.
 .methodButton {
-  justify-content: flex-start;
-  text-align: left;
-  gap: $spacing-12;
-  padding: $spacing-12 $spacing-16;
+  @include method-button-layout;
 }
 
 .methodInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  @include method-button-stack;
 }
 
 .methodName {
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
+  @include method-button-title;
 }
 
 .methodDescription {
-  font-size: $font-size-xs;
-  opacity: 0.8;
+  @include method-button-subtitle;
 }
 
 .error {
@@ -299,43 +274,6 @@
   svg {
     flex-shrink: 0;
     margin-top: 2px;
-  }
-}
-
-.createdExtensionUpsell {
-  padding: $spacing-12;
-  background: alpha($color-secondary, 10%);
-  border: 1px solid alpha($color-secondary, 30%);
-  border-radius: $border-radius-md;
-  margin-top: $spacing-16;
-  margin-bottom: $spacing-12;
-  text-align: left;
-
-  strong {
-    display: block;
-    font-size: $font-size-sm;
-    font-weight: $font-weight-semibold;
-    color: $color-text-primary;
-    margin-bottom: $spacing-4;
-  }
-
-  p {
-    font-size: $font-size-xs;
-    color: $color-text-secondary;
-    line-height: $line-height-base;
-    margin-bottom: $spacing-8;
-  }
-}
-
-.createdExtensionLink {
-  display: inline-block;
-  font-size: $font-size-xs;
-  font-weight: $font-weight-semibold;
-  color: $color-secondary;
-  text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
   }
 }
 

@@ -123,6 +123,8 @@
     "nsecTitle": "Clave secreta (no recomendado)",
     "nsecDescription": "Pegá tu nsec directamente",
     "error": "Error al conectar con Nostr",
+    "no_extension": "No detectamos una extensión Nostr en el navegador.",
+    "nostr_signing_rejected": "La firma con Nostr fue rechazada.",
     "comingSoon": "Próximamente",
     "wotHint": "¿Probaste",
     "backToHome": "Volver al inicio",

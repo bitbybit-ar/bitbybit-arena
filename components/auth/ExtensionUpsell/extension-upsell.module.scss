@@ -1,0 +1,40 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.upsell {
+  padding: $spacing-12;
+  background: alpha($color-secondary, 10%);
+  border: 1px solid alpha($color-secondary, 30%);
+  border-radius: $border-radius-md;
+  margin-top: $spacing-16;
+  margin-bottom: $spacing-12;
+  text-align: left;
+
+  strong {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+    margin-bottom: $spacing-4;
+  }
+
+  p {
+    font-size: $font-size-xs;
+    color: $color-text-secondary;
+    line-height: $line-height-base;
+    margin-bottom: $spacing-8;
+  }
+}
+
+.link {
+  display: inline-block;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $color-secondary;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
