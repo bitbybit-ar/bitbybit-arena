@@ -51,6 +51,15 @@ The challenge creator chooses the verification method when creating the challeng
 - Best for low-stakes, trust-based challenges
 - Badge is awarded immediately
 
+### Nostr Action (auto-verified)
+
+- Creator picks a target event id at challenge creation (`verification_type = "nostr_action"`)
+- Participant proves completion by publishing a NIP-25 kind 7 reaction (like) to that event from any Nostr client
+- When they click "Verify my like on Nostr", the server queries `DEFAULT_RELAYS` in parallel for a signed kind 7 event from their pubkey e-tagging the target
+- On match, the completion is inserted as `approved` with `proof_event_id = <like event id>` and the participant's progress bumps
+- A partial unique index prevents the same like from being counted twice
+- See [docs/nostr-flows.md](./nostr-flows.md) for the full path
+
 ## Verification Flow
 
 ```
