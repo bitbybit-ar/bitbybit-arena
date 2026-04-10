@@ -23,12 +23,21 @@ async function main() {
 }
 
 // If the schema already exists (e.g. created by a prior `drizzle-kit push` or
-// manual setup) but drizzle's bookkeeping table is empty, the migrator would
-// try to re-run 0000 and crash on "relation already exists". Baseline the
-// journal so drizzle treats those migrations as already applied.
+// manual setup) but drizzle's bookkeeping table is missing some rows, the
+// migrator would try to re-run 0000 and crash on "relation already exists".
+// Baseline the journal so drizzle treats those migrations as already applied.
+//
+// Self-healing: instead of short-circuiting when the table already has *any*
+// rows, we iterate every migration in the folder and insert a row for each
+// one that has no matching hash. This survives partial/corrupted state left
+// behind by previous failed runs (a row with NULL/0 created_at, a row for
+// an unrelated migration, etc.).
 async function baselineIfNeeded(db: NeonHttpDatabase): Promise<void> {
   const schemaExists = await hasUsersTable(db);
-  if (!schemaExists) return;
+  if (!schemaExists) {
+    console.log("Baseline: no existing schema, skipping");
+    return;
+  }
 
   await db.execute(sql`CREATE SCHEMA IF NOT EXISTS drizzle`);
   await db.execute(sql`
@@ -39,18 +48,36 @@ async function baselineIfNeeded(db: NeonHttpDatabase): Promise<void> {
     )
   `);
 
-  const { rows: countRows } = await db.execute<{ count: number }>(
-    sql`SELECT COUNT(*)::int AS count FROM drizzle.__drizzle_migrations`,
+  const { rows: existing } = await db.execute<{ hash: string; created_at: string | number | null }>(
+    sql`SELECT hash, created_at FROM drizzle.__drizzle_migrations`,
   );
-  if ((countRows[0]?.count ?? 0) > 0) return;
+  const knownHashes = new Set(existing.map((r) => r.hash));
 
   const migrations = readMigrationFiles({ migrationsFolder: MIGRATIONS_FOLDER });
+  let inserted = 0;
   for (const m of migrations) {
+    if (knownHashes.has(m.hash)) continue;
     await db.execute(
       sql`INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES (${m.hash}, ${m.folderMillis})`,
     );
+    inserted += 1;
   }
-  console.log(`Baselined ${migrations.length} existing migration(s)`);
+
+  // A prior failed run may have left a row with NULL or 0 created_at that
+  // would still be "< folderMillis" to the migrator and trigger a re-run.
+  // Patch any such rows to the correct folderMillis by matching hash.
+  for (const m of migrations) {
+    await db.execute(sql`
+      UPDATE drizzle.__drizzle_migrations
+      SET created_at = ${m.folderMillis}
+      WHERE hash = ${m.hash}
+        AND (created_at IS NULL OR created_at < ${m.folderMillis})
+    `);
+  }
+
+  console.log(
+    `Baseline: ${migrations.length} migration(s) in folder, ${existing.length} pre-existing row(s), ${inserted} inserted`,
+  );
 }
 
 async function hasUsersTable(db: NeonHttpDatabase): Promise<boolean> {
