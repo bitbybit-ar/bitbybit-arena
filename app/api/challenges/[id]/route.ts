@@ -1,8 +1,15 @@
 import { NextRequest } from "next/server";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql, and, asc } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
 import { NotFoundError, ForbiddenError, BadRequestError } from "@/lib/api/errors";
-import { challenges, users, participants } from "@/lib/db/schema";
+import {
+  challenges,
+  users,
+  participants,
+  challenge_checkpoints,
+  checkpoint_completions,
+} from "@/lib/db/schema";
+import { getSession } from "@/lib/auth";
 import type { ChallengeType, VerificationType, PrizeDistribution } from "@/lib/types";
 
 const VALID_TYPES: ChallengeType[] = ["one_time", "streak", "competition", "race", "creative"];
@@ -41,11 +48,41 @@ export const GET = apiHandler(
 
     if (rows.length === 0) throw new NotFoundError("Challenge");
 
+    const checkpoints = await db
+      .select()
+      .from(challenge_checkpoints)
+      .where(eq(challenge_checkpoints.challenge_id, params.id))
+      .orderBy(asc(challenge_checkpoints.order));
+
+    // Current user's checkpoint completions, if they are a participant.
+    const session = await getSession();
+    let myCheckpointCompletions: (typeof checkpoint_completions.$inferSelect)[] = [];
+    if (session && checkpoints.length > 0) {
+      const [myParticipation] = await db
+        .select({ id: participants.id })
+        .from(participants)
+        .where(
+          and(
+            eq(participants.challenge_id, params.id),
+            eq(participants.user_id, session.user_id)
+          )
+        )
+        .limit(1);
+      if (myParticipation) {
+        myCheckpointCompletions = await db
+          .select()
+          .from(checkpoint_completions)
+          .where(eq(checkpoint_completions.participant_id, myParticipation.id));
+      }
+    }
+
     return {
       ...rows[0].challenge,
       participant_count: rows[0].participant_count,
       completion_count: rows[0].completion_count,
       creator: rows[0].creator,
+      checkpoints,
+      my_checkpoint_completions: myCheckpointCompletions,
     };
   },
   { requireAuth: false }

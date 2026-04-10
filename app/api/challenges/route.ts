@@ -2,14 +2,72 @@ import { NextRequest } from "next/server";
 import { eq, and, ilike, or, sql, desc, asc } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { BadRequestError } from "@/lib/api/errors";
-import { challenges, users } from "@/lib/db/schema";
+import { challenges, challenge_checkpoints, users } from "@/lib/db/schema";
 import { slugify } from "@/lib/utils";
-import type { ChallengeType, VerificationType, PrizeDistribution } from "@/lib/types";
+import type {
+  ChallengeType,
+  VerificationType,
+  PrizeDistribution,
+  CheckpointMode,
+} from "@/lib/types";
 
 const VALID_TYPES: ChallengeType[] = ["one_time", "streak", "competition", "race", "creative"];
 const VALID_VERIFICATION: VerificationType[] = ["creator_approval", "automatic", "nostr_action"];
 const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "winner_takes_all", "split", "none"];
+const VALID_CHECKPOINT_MODE: CheckpointMode[] = ["none", "sequential", "parallel"];
 const HEX_64 = /^[0-9a-f]{64}$/i;
+
+interface CheckpointInput {
+  title: string;
+  description?: string | null;
+  verification_type?: VerificationType;
+  nostr_action_target_event_id?: string | null;
+}
+
+function normalizeCheckpoints(raw: unknown): CheckpointInput[] {
+  if (!Array.isArray(raw)) {
+    throw new BadRequestError("checkpoints must be an array");
+  }
+  if (raw.length === 0) {
+    throw new BadRequestError("checkpoint_mode is set but checkpoints is empty");
+  }
+  if (raw.length > 20) {
+    throw new BadRequestError("A challenge can have at most 20 checkpoints");
+  }
+  return raw.map((item, idx) => {
+    if (!item || typeof item !== "object") {
+      throw new BadRequestError(`Checkpoint #${idx + 1} must be an object`);
+    }
+    const obj = item as Record<string, unknown>;
+    const title = obj.title;
+    if (typeof title !== "string" || title.trim().length < 3) {
+      throw new BadRequestError(`Checkpoint #${idx + 1}: title must be at least 3 characters`);
+    }
+    const verification = (obj.verification_type as VerificationType | undefined) ?? "creator_approval";
+    if (!VALID_VERIFICATION.includes(verification)) {
+      throw new BadRequestError(`Checkpoint #${idx + 1}: invalid verification_type`);
+    }
+    let targetEventId: string | null = null;
+    if (verification === "nostr_action") {
+      const raw = obj.nostr_action_target_event_id;
+      if (typeof raw !== "string" || !HEX_64.test(raw)) {
+        throw new BadRequestError(
+          `Checkpoint #${idx + 1}: nostr_action requires a 64-character hex event id`
+        );
+      }
+      targetEventId = raw.toLowerCase();
+    }
+    return {
+      title: title.trim(),
+      description:
+        typeof obj.description === "string" && obj.description.trim().length > 0
+          ? obj.description.trim()
+          : null,
+      verification_type: verification,
+      nostr_action_target_event_id: targetEventId,
+    };
+  });
+}
 // GET /api/challenges — list with search, filters, sort, pagination
 export const GET = apiHandler(
   async (req: NextRequest, { db }) => {
@@ -100,7 +158,7 @@ export const GET = apiHandler(
 export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
   const body = await req.json();
 
-  const { title, description, type, category, goal, unit, verification_type, nostr_action_target_event_id, prize_amount_sats, prize_distribution, badge_name, starts_at, ends_at } = body;
+  const { title, description, type, category, goal, unit, verification_type, nostr_action_target_event_id, checkpoint_mode, checkpoints: checkpointsInput, prize_amount_sats, prize_distribution, badge_name, starts_at, ends_at } = body;
 
   if (!title || typeof title !== "string" || title.trim().length < 3) {
     throw new BadRequestError("Title must be at least 3 characters");
@@ -127,28 +185,66 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
     resolvedTargetEventId = nostr_action_target_event_id.toLowerCase();
   }
 
+  if (
+    checkpoint_mode !== undefined &&
+    !VALID_CHECKPOINT_MODE.includes(checkpoint_mode as CheckpointMode)
+  ) {
+    throw new BadRequestError(
+      `Invalid checkpoint_mode. Must be one of: ${VALID_CHECKPOINT_MODE.join(", ")}`
+    );
+  }
+  const resolvedMode: CheckpointMode =
+    (checkpoint_mode as CheckpointMode | undefined) ?? "none";
+  const normalizedCheckpoints =
+    resolvedMode === "none" ? [] : normalizeCheckpoints(checkpointsInput);
+
   const slug = slugify(title);
+  const newChallengeId = crypto.randomUUID();
 
-  const [challenge] = await db
-    .insert(challenges)
-    .values({
-      creator_id: session!.user_id,
-      slug,
-      title: title.trim(),
-      description: description.trim(),
-      type: type || "one_time",
-      category: category || null,
-      goal: goal || null,
-      unit: unit || null,
-      verification_type: resolvedVerification,
-      nostr_action_target_event_id: resolvedTargetEventId,
-      prize_amount_sats: prize_amount_sats || 0,
-      prize_distribution: prize_distribution || "none",
-      badge_name: badge_name || null,
-      starts_at: starts_at ? new Date(starts_at) : null,
-      ends_at: ends_at ? new Date(ends_at) : null,
-    })
-    .returning();
+  const challengeValues = {
+    id: newChallengeId,
+    creator_id: session!.user_id,
+    slug,
+    title: title.trim(),
+    description: description.trim(),
+    type: type || "one_time",
+    category: category || null,
+    // When checkpoints are used, goal is the number of checkpoints and
+    // unit is always "checkpoints" so participant.progress compares
+    // directly against checkpoint count.
+    goal: normalizedCheckpoints.length > 0 ? normalizedCheckpoints.length : goal || null,
+    unit: normalizedCheckpoints.length > 0 ? "checkpoints" : unit || null,
+    verification_type: resolvedVerification,
+    nostr_action_target_event_id: resolvedTargetEventId,
+    checkpoint_mode: resolvedMode,
+    prize_amount_sats: prize_amount_sats || 0,
+    prize_distribution: prize_distribution || "none",
+    badge_name: badge_name || null,
+    starts_at: starts_at ? new Date(starts_at) : null,
+    ends_at: ends_at ? new Date(ends_at) : null,
+  };
 
-  return new CreatedResponse(challenge);
+  if (normalizedCheckpoints.length === 0) {
+    const [challenge] = await db.insert(challenges).values(challengeValues).returning();
+    return new CreatedResponse(challenge);
+  }
+
+  // Atomic insert of the challenge and its checkpoints. neon-http's
+  // drizzle driver throws on db.transaction() but supports db.batch(),
+  // which Neon executes as a single implicit HTTP transaction.
+  const [challengeRows] = await db.batch([
+    db.insert(challenges).values(challengeValues).returning(),
+    db.insert(challenge_checkpoints).values(
+      normalizedCheckpoints.map((cp, idx) => ({
+        challenge_id: newChallengeId,
+        order: idx,
+        title: cp.title,
+        description: cp.description ?? null,
+        verification_type: cp.verification_type ?? "creator_approval",
+        nostr_action_target_event_id: cp.nostr_action_target_event_id ?? null,
+      }))
+    ),
+  ]);
+
+  return new CreatedResponse(challengeRows[0]);
 });

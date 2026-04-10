@@ -23,3 +23,69 @@
   color: $color-error;
   font-size: $font-size-sm;
 }
+
+.checkpointsSection {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+  padding: $spacing-16;
+  background: alpha($color-text-primary, 3%);
+  border-radius: $border-radius-md;
+  border: 1px dashed $color-border;
+}
+
+.checkpointsHint {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin: 0;
+}
+
+.checkpointRow {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+  padding: $spacing-12;
+  background: $color-surface;
+  border-radius: $border-radius-md;
+  border: 1px solid $color-border;
+}
+
+.checkpointHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.checkpointIndex {
+  font-weight: $font-weight-semibold;
+  font-size: $font-size-sm;
+  color: $color-primary;
+}
+
+.checkpointRemove {
+  background: none;
+  border: none;
+  color: $color-error;
+  font-size: $font-size-xs;
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.addCheckpoint {
+  background: none;
+  border: 1px dashed $color-primary;
+  color: $color-primary;
+  padding: $spacing-8 $spacing-12;
+  border-radius: $border-radius-md;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+
+  &:hover {
+    background: alpha($color-primary, 8%);
+  }
+}
