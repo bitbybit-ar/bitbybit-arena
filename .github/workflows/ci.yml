@@ -31,6 +31,15 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      # Apply any pending drizzle migrations to the test database so
+      # integration tests see the latest schema. Without this, a PR that
+      # rebases over a merged migration will fail against the frozen
+      # test DB schema.
+      - name: Migrate test DB
+        run: npm run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+
       - name: Integration tests
         run: npm run test:integration
         env:
