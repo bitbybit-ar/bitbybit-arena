@@ -7,12 +7,33 @@ import { ArrowRightIcon, BadgeIcon, BoltIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { Spinner } from "@/components/ui/spinner";
+import { Block } from "@/components/common/Block";
 import { buildJoinEvent, buildCompletionEvent, buildBadgeAwardEvent } from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
 import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
 import styles from "./challenge-detail.module.scss";
+
+interface CheckpointItem {
+  id: string;
+  challenge_id: string;
+  order: number;
+  title: string;
+  description: string | null;
+  verification_type: string;
+  nostr_action_target_event_id: string | null;
+}
+
+interface CheckpointCompletionItem {
+  id: string;
+  participant_id: string;
+  checkpoint_id: string;
+  proof_event_id: string | null;
+  content: string | null;
+  status: string;
+  completed_at: string | null;
+}
 
 interface ChallengeDetail {
   id: string;
@@ -22,6 +43,7 @@ interface ChallengeDetail {
   status: string;
   verification_type: string;
   nostr_action_target_event_id: string | null;
+  checkpoint_mode: "none" | "sequential" | "parallel";
   goal: number | null;
   unit: string | null;
   category: string | null;
@@ -33,6 +55,8 @@ interface ChallengeDetail {
   creator_id: string;
   slug: string;
   creator: { id: string; display_name: string; username: string; nostr_pubkey: string; lightning_address?: string };
+  checkpoints: CheckpointItem[];
+  my_checkpoint_completions: CheckpointCompletionItem[];
 }
 
 interface CompletionItem {
@@ -72,6 +96,8 @@ export default function ChallengeDetailPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedWinners, setSelectedWinners] = useState<Set<string>>(new Set());
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [checkpointProofs, setCheckpointProofs] = useState<Record<string, string>>({});
+  const [checkpointErrors, setCheckpointErrors] = useState<Record<string, string>>({});
 
   const fetchAll = useCallback(async () => {
     try {
@@ -200,6 +226,58 @@ export default function ChallengeDetailPage() {
       }
     } catch {
       setVerifyError(t("proofNotFound"));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCompleteCheckpoint = async (checkpoint: CheckpointItem) => {
+    setCheckpointErrors((prev) => {
+      const next = { ...prev };
+      delete next[checkpoint.id];
+      return next;
+    });
+    setActionLoading(`cp_${checkpoint.id}`);
+    try {
+      const body: Record<string, unknown> = {};
+      if (checkpoint.verification_type !== "nostr_action") {
+        const content = checkpointProofs[checkpoint.id] ?? "";
+        if (content.trim().length < 5) {
+          setCheckpointErrors((prev) => ({
+            ...prev,
+            [checkpoint.id]: t("proofTooShort"),
+          }));
+          return;
+        }
+        body.content = content.trim();
+      }
+      const res = await fetch(
+        `/api/challenges/${challengeId}/checkpoints/${checkpoint.id}/complete`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      );
+      const json = await res.json();
+      if (!json.success) {
+        setCheckpointErrors((prev) => ({
+          ...prev,
+          [checkpoint.id]: json.error || t("checkpointError"),
+        }));
+        return;
+      }
+      setCheckpointProofs((prev) => {
+        const next = { ...prev };
+        delete next[checkpoint.id];
+        return next;
+      });
+      await fetchAll();
+    } catch {
+      setCheckpointErrors((prev) => ({
+        ...prev,
+        [checkpoint.id]: t("checkpointError"),
+      }));
     } finally {
       setActionLoading(null);
     }
@@ -343,8 +421,128 @@ export default function ChallengeDetailPage() {
           )}
         </div>
 
+        {/* Checkpoints */}
+        {challenge.checkpoint_mode !== "none" && challenge.checkpoints.length > 0 && (
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>
+              {t("checkpointsTitle")} (
+              {challenge.my_checkpoint_completions.filter((c) => c.status === "approved").length}
+              /{challenge.checkpoints.length})
+            </h2>
+            <p className={styles.emptyText}>
+              {challenge.checkpoint_mode === "sequential"
+                ? t("checkpointModeSequential")
+                : t("checkpointModeParallel")}
+            </p>
+            <div className={styles.checkpointTower}>
+              {challenge.checkpoints.map((cp, idx) => {
+                const completion = challenge.my_checkpoint_completions.find(
+                  (c) => c.checkpoint_id === cp.id
+                );
+                const isDone = completion?.status === "approved";
+                const priorIncomplete =
+                  challenge.checkpoint_mode === "sequential" &&
+                  challenge.checkpoints
+                    .slice(0, idx)
+                    .some(
+                      (earlier) =>
+                        !challenge.my_checkpoint_completions.find(
+                          (c) =>
+                            c.checkpoint_id === earlier.id &&
+                            c.status === "approved"
+                        )
+                    );
+                return (
+                  <div key={cp.id} className={styles.checkpointItem}>
+                    <Block
+                      size="small"
+                      color={isDone ? "green" : priorIncomplete ? "red" : "purple"}
+                    />
+                    <div className={styles.checkpointBody}>
+                      <div className={styles.checkpointTitleRow}>
+                        <span className={styles.checkpointOrder}>
+                          {idx + 1}.
+                        </span>
+                        <strong>{cp.title}</strong>
+                        {isDone && (
+                          <Tag variant="green">{tCommon("completed")}</Tag>
+                        )}
+                      </div>
+                      {cp.description && (
+                        <p className={styles.checkpointDescription}>
+                          {cp.description}
+                        </p>
+                      )}
+                      {isParticipant && !isDone && !priorIncomplete && (
+                        <div className={styles.checkpointActions}>
+                          {cp.verification_type === "nostr_action" ? (
+                            <>
+                              {cp.nostr_action_target_event_id && (
+                                <p className={styles.targetEventId}>
+                                  <a
+                                    href={`https://njump.me/${cp.nostr_action_target_event_id}`}
+                                    target="_blank"
+                                    rel="noreferrer noopener"
+                                  >
+                                    {cp.nostr_action_target_event_id.slice(0, 16)}…
+                                  </a>
+                                </p>
+                              )}
+                              <Button
+                                size="sm"
+                                onClick={() => handleCompleteCheckpoint(cp)}
+                                disabled={actionLoading === `cp_${cp.id}`}
+                              >
+                                {actionLoading === `cp_${cp.id}`
+                                  ? t("verifying")
+                                  : t("verifyLikeButton")}
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <textarea
+                                className={styles.proofInput}
+                                placeholder={t("proofPlaceholder")}
+                                value={checkpointProofs[cp.id] ?? ""}
+                                onChange={(e) =>
+                                  setCheckpointProofs((prev) => ({
+                                    ...prev,
+                                    [cp.id]: e.target.value,
+                                  }))
+                                }
+                                rows={2}
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => handleCompleteCheckpoint(cp)}
+                                disabled={actionLoading === `cp_${cp.id}`}
+                              >
+                                {actionLoading === `cp_${cp.id}`
+                                  ? t("submitting")
+                                  : tCommon("submit")}
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      {priorIncomplete && (
+                        <p className={styles.checkpointLocked}>
+                          {t("checkpointLocked")}
+                        </p>
+                      )}
+                      {checkpointErrors[cp.id] && (
+                        <p className={styles.error}>{checkpointErrors[cp.id]}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Submit proof */}
-        {isParticipant && challenge.verification_type === "nostr_action" && (
+        {isParticipant && challenge.checkpoint_mode === "none" && challenge.verification_type === "nostr_action" && (
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>{t("verifyLikeTitle")}</h2>
             <p className={styles.emptyText}>
@@ -374,7 +572,7 @@ export default function ChallengeDetailPage() {
           </div>
         )}
 
-        {isParticipant && challenge.verification_type !== "nostr_action" && (
+        {isParticipant && challenge.checkpoint_mode === "none" && challenge.verification_type !== "nostr_action" && (
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>{t("submitProof")}</h2>
             <textarea

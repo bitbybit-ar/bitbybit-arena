@@ -281,3 +281,60 @@
   font-size: $font-size-sm;
   margin-top: $spacing-8;
 }
+
+.checkpointTower {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+  margin-top: $spacing-16;
+}
+
+.checkpointItem {
+  display: flex;
+  gap: $spacing-12;
+  align-items: flex-start;
+  padding: $spacing-12;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+}
+
+.checkpointBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+  min-width: 0;
+}
+
+.checkpointTitleRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  flex-wrap: wrap;
+}
+
+.checkpointOrder {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+}
+
+.checkpointDescription {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  margin: 0;
+}
+
+.checkpointActions {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+  margin-top: $spacing-4;
+}
+
+.checkpointLocked {
+  color: $color-text-secondary;
+  font-size: $font-size-xs;
+  font-style: italic;
+  margin: 0;
+}

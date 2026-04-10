@@ -26,6 +26,8 @@ export type VerificationType =
   | "automatic"
   | "nostr_action";
 
+export type CheckpointMode = "none" | "sequential" | "parallel";
+
 export type PrizeDistribution =
   | "first_to_complete"
   | "winner_takes_all"
@@ -45,6 +47,7 @@ export interface Challenge {
   unit: string | null;
   verification_type: VerificationType;
   nostr_action_target_event_id: string | null;
+  checkpoint_mode: CheckpointMode;
   prize_amount_sats: number;
   prize_distribution: PrizeDistribution | null;
   badge_name: string | null;
@@ -82,6 +85,26 @@ export interface Badge {
   badge_name: string;
   badge_image_url: string | null;
   awarded_at: string;
+}
+
+export interface Checkpoint {
+  id: string;
+  challenge_id: string;
+  order: number;
+  title: string;
+  description: string | null;
+  verification_type: VerificationType;
+  nostr_action_target_event_id: string | null;
+}
+
+export interface CheckpointCompletion {
+  id: string;
+  participant_id: string;
+  checkpoint_id: string;
+  proof_event_id: string | null;
+  content: string | null;
+  status: CompletionStatus;
+  completed_at: string | null;
 }
 
 export interface Participant {

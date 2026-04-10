@@ -58,6 +58,9 @@ export const challenges = pgTable(
     nostr_action_target_event_id: varchar("nostr_action_target_event_id", {
       length: 64,
     }),
+    checkpoint_mode: varchar("checkpoint_mode", { length: 20 })
+      .notNull()
+      .default("none"), // none, sequential, parallel
     prize_amount_sats: integer("prize_amount_sats").default(0),
     prize_distribution: varchar("prize_distribution", { length: 30 }), // first_to_complete, winner_takes_all, tiered, split, none
     badge_nostr_event_id: varchar("badge_nostr_event_id", { length: 64 }),
@@ -133,6 +136,60 @@ export const completions = pgTable(
     uniqueIndex("completions_proof_event_unique_idx")
       .on(table.challenge_id, table.user_id, table.proof_event_id)
       .where(sql`proof_event_id IS NOT NULL`),
+  ]
+);
+
+// --- Challenge checkpoints (optional sub-tasks) ---
+export const challenge_checkpoints = pgTable(
+  "challenge_checkpoints",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    challenge_id: uuid("challenge_id")
+      .notNull()
+      .references(() => challenges.id, { onDelete: "cascade" }),
+    order: integer("order").notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description"),
+    verification_type: varchar("verification_type", { length: 20 })
+      .notNull()
+      .default("creator_approval"), // creator_approval, automatic, nostr_action
+    nostr_action_target_event_id: varchar("nostr_action_target_event_id", {
+      length: 64,
+    }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("checkpoints_challenge_idx").on(table.challenge_id),
+    uniqueIndex("checkpoints_challenge_order_idx").on(
+      table.challenge_id,
+      table.order
+    ),
+  ]
+);
+
+// --- Checkpoint completions (per participant, per checkpoint) ---
+export const checkpoint_completions = pgTable(
+  "checkpoint_completions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    participant_id: uuid("participant_id")
+      .notNull()
+      .references(() => participants.id, { onDelete: "cascade" }),
+    checkpoint_id: uuid("checkpoint_id")
+      .notNull()
+      .references(() => challenge_checkpoints.id, { onDelete: "cascade" }),
+    proof_event_id: varchar("proof_event_id", { length: 64 }),
+    content: text("content"),
+    status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
+    completed_at: timestamp("completed_at"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("checkpoint_completions_unique_idx").on(
+      table.participant_id,
+      table.checkpoint_id
+    ),
+    index("checkpoint_completions_checkpoint_idx").on(table.checkpoint_id),
   ]
 );
 

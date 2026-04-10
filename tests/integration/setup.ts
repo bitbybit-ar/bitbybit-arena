@@ -25,6 +25,8 @@ export async function cleanDb() {
   // Delete in FK-safe order (children first, parents last)
   await testDb.delete(schema.notifications);
   await testDb.delete(schema.badges);
+  await testDb.delete(schema.checkpoint_completions);
+  await testDb.delete(schema.challenge_checkpoints);
   await testDb.delete(schema.completions);
   await testDb.delete(schema.participants);
   await testDb.delete(schema.challenges);
