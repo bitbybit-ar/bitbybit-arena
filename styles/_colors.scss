@@ -23,6 +23,11 @@ $color-border: var(--color-border);
 $card-shadow: var(--card-shadow);
 $card-shadow-hover: var(--card-shadow-hover);
 
+// Ceramic surface tints (theme-aware)
+$ceramic-highlight: var(--ceramic-highlight);
+$ceramic-highlight-soft: var(--ceramic-highlight-soft);
+$ceramic-inner-shadow: var(--ceramic-inner-shadow);
+
 // Static colors (don't change with theme)
 $static-white: #ffffff;
 $static-black: #000000;

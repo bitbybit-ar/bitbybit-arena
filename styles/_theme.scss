@@ -37,6 +37,11 @@ $themes: (
 
     // Bubble
     bubble-opacity: 0.08,
+
+    // Ceramic surface tints (ghost button, light-on-light tiles)
+    ceramic-highlight: rgba(255 255 255 / 0.6),
+    ceramic-highlight-soft: rgba(255 255 255 / 0.25),
+    ceramic-inner-shadow: rgba(0 0 0 / 0.06),
   ),
   dark: (
     // Backgrounds
@@ -72,6 +77,11 @@ $themes: (
 
     // Bubble
     bubble-opacity: 0.12,
+
+    // Ceramic surface tints — cool blue-gray reflecting off navy tiles
+    ceramic-highlight: rgba(138 152 200 / 0.22),
+    ceramic-highlight-soft: rgba(138 152 200 / 0.1),
+    ceramic-inner-shadow: rgba(0 0 0 / 0.35),
   ),
 );
 
