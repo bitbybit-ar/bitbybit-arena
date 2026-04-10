@@ -127,19 +127,18 @@
 }
 
 .card {
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-lg;
-  box-shadow: 0 2px 8px $card-shadow;
+  @include ceramic-card;
+  @include ceramic-card-hover;
+  display: block;
   padding: $spacing-24;
   text-align: left;
+  text-decoration: none;
+  color: inherit;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
   width: 100%;
 
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px $card-shadow-hover;
+    text-decoration: none;
   }
 }
 

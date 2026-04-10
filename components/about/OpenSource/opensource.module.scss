@@ -42,22 +42,23 @@
   flex-wrap: wrap;
 }
 
+// External GitHub links: plain <a> (not routed through next-intl Link),
+// but they reuse the ceramic-card mixin so they match the ghost button
+// vocabulary. Border radius is overridden to button-sized.
 .repoLink {
+  @include ceramic-card;
+  @include ceramic-card-hover;
   display: inline-flex;
   align-items: center;
   gap: $spacing-8;
   padding: $spacing-12 $spacing-20;
-  background: $color-surface;
-  border: 1px solid $color-border;
   border-radius: $border-radius-md;
   color: $color-text-primary;
   font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
+  font-weight: $font-weight-bold;
   text-decoration: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px $card-shadow-hover;
+    text-decoration: none;
   }
 }

@@ -20,22 +20,13 @@
   color: $color-text-primary;
 }
 
+// Keeps the icon inline with the label and gives the copy link a
+// little breathing room from the waiting text that follows.
 .copyURIBtn {
   display: inline-flex;
   align-items: center;
   gap: $spacing-4;
-  padding: $spacing-4 $spacing-8;
-  background: none;
-  border: none;
-  font-family: $font-body;
-  font-size: $font-size-xs;
-  color: $color-primary;
-  cursor: pointer;
   margin-bottom: $spacing-4;
-
-  &:hover {
-    text-decoration: underline;
-  }
 }
 
 .waiting {

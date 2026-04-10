@@ -87,9 +87,14 @@ export function Navbar() {
 
           {user ? (
             <>
-              <Link href="/explore" className={styles.navLink}>
+              <Button
+                href="/explore"
+                variant="ghost"
+                size="sm"
+                className={styles.desktopOnly}
+              >
                 {t("explore") || "Explore"}
-              </Link>
+              </Button>
               <Link href="/my-challenges" className={styles.navLink}>
                 {t("myChallenges") || "My Challenges"}
               </Link>
@@ -137,9 +142,14 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/explore" className={styles.navLink}>
+              <Button
+                href="/explore"
+                variant="ghost"
+                size="sm"
+                className={styles.desktopOnly}
+              >
                 {t("explore") || "Explore"}
-              </Link>
+              </Button>
               <Button href="/signin" variant="primary" size="sm">
                 {t("signIn")}
               </Button>

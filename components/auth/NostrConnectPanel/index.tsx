@@ -120,7 +120,7 @@ export function NostrConnectPanel({
   if (status === "connecting") {
     return (
       <div className={styles.connectingState}>
-        <BlockTower maxBlocks={3} blockSize="medium" />
+        <BlockTower maxBlocks={3} blockSize="medium" flat />
         <p className={styles.waiting}>{t("connectConnecting")}</p>
       </div>
     );
@@ -153,14 +153,16 @@ export function NostrConnectPanel({
           fgColor="currentColor"
         />
       </div>
-      <button
+      <Button
         type="button"
+        variant="link"
+        size="sm"
         className={styles.copyURIBtn}
         onClick={handleCopyURI}
       >
         <CopyIcon size={14} />
         {copied ? t("connectCopiedURI") : t("connectCopyURI")}
-      </button>
+      </Button>
       <p className={styles.waiting}>{t("connectScanning")}</p>
 
       <div className={styles.divider}>

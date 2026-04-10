@@ -12,6 +12,13 @@ interface BlockTowerProps {
   maxBlocks?: number;
   blockSize?: "small" | "medium" | "large";
   animate?: boolean;
+  /**
+   * Use the flat Block variant (cheap paint, no ceramic gradient or
+   * inset shadows). Enable it for loader placements where the tower
+   * animates briefly and detail is imperceptible. Decorative placements
+   * like the About Story page should leave this off.
+   */
+  flat?: boolean;
   className?: string;
 }
 
@@ -24,6 +31,7 @@ export function BlockTower({
   maxBlocks = 4,
   blockSize = "large",
   animate = true,
+  flat = false,
   className = "",
 }: BlockTowerProps) {
   const [blocks, setBlocks] = useState<BlockColor[]>([]);
@@ -90,7 +98,7 @@ export function BlockTower({
             key={`${i}-${color}`}
             size={blockSize}
             color={color}
-            flat
+            flat={flat}
             animation={phase === "building" ? "drop" : "pulse"}
             delay={phase === "building" ? i * 0.35 : i * 0.5}
           >

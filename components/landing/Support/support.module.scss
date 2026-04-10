@@ -36,49 +36,33 @@
   flex-wrap: wrap;
 }
 
+// Sizing overrides so the CTA pair reads as a matched set.
 .zapButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: $spacing-8;
-  padding: $spacing-12 $spacing-32;
   min-width: 220px;
-  background: $color-secondary;
-  color: $static-white;
-  border: none;
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  font-size: $font-size-base;
-  font-weight: $font-weight-semibold;
-  cursor: pointer;
-  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.1);
-    box-shadow: 0 8px 24px alpha($color-secondary, 25%);
-  }
+  gap: $spacing-8;
 }
 
+// External GitHub link: stays a plain `<a>` (external target, no
+// locale routing), but picks up the shared ceramic finish via the
+// mixin so it matches the rest of the landing visually.
 .githubButton {
+  @include ceramic-surface($color-text-primary, 20%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: $spacing-8;
   padding: $spacing-12 $spacing-32;
   min-width: 220px;
-  background: $color-text-primary;
   color: $color-bg;
   border-radius: $border-radius-md;
   font-family: $font-body;
   font-size: $font-size-base;
-  font-weight: $font-weight-semibold;
+  font-weight: $font-weight-bold;
   text-decoration: none;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
     transform: translateY(-2px);
-    opacity: 0.9;
     text-decoration: none;
   }
 }

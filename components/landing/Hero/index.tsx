@@ -49,7 +49,7 @@ export function Hero() {
             <Button href="/explore" variant="primary">
               {t("exploreCta")}
             </Button>
-            <Button href="/explore" variant="outline">
+            <Button href="/explore" variant="secondary">
               {t("createCta")}
             </Button>
           </div>

@@ -49,16 +49,20 @@
 }
 
 .modal {
+  @include ceramic-card;
   position: relative;
   padding: $spacing-24;
   width: 100%;
   max-height: 85vh;
   overflow-y: auto;
   animation: slideIn 0.25s ease;
-  background: $color-surface;
-  border: 1px solid $color-border;
   border-radius: $border-radius-xl;
-  box-shadow: 0 16px 48px alpha($static-black, 25%);
+  // Stronger outer shadow than a regular card so the modal feels
+  // lifted above the backdrop while still layering the ceramic insets.
+  box-shadow:
+    0 16px 48px alpha($static-black, 25%),
+    inset 0 1px 0 $ceramic-highlight,
+    inset 0 -2px 4px $ceramic-inner-shadow;
 
   @include mobile {
     max-width: 100%;

@@ -78,21 +78,13 @@
 }
 
 .card {
+  @include ceramic-card;
+  @include ceramic-card-hover;
   display: block;
   width: 100%;
   text-align: left;
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-lg;
-  box-shadow: 0 2px 8px $card-shadow;
   padding: $spacing-20;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px $card-shadow-hover;
-  }
 }
 
 .cardTop {

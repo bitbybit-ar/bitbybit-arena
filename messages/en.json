@@ -149,7 +149,7 @@
     "showKey": "Show key",
     "hideKey": "Hide key",
     "nsecLabel": "Private key",
-    "orNew": "Or no extension",
+    "orNew": "New to Nostr?",
     "createIdentity": "Create new identity",
     "creatingIdentity": "Generating keys...",
     "createIdentityDescription": "Generate a fresh Nostr identity in one click",
@@ -162,6 +162,8 @@
     "createdExtensionTitle": "For the best experience, install an extension",
     "createdExtensionBody": "Without an extension your key lives only in memory: if you reload the page you'll need to sign in again to publish new Nostr events.",
     "createdExtensionCta": "Install Nostr WoT",
+    "nsecExtensionTitle": "Better yet, use an extension",
+    "nsecExtensionBody": "For security and session continuity: an extension keeps your key protected and your session alive across reloads. Pasting your nsec here leaves it in memory, so you'll have to sign in again every time you reload.",
     "createdAckLabel": "I've saved my key and I understand there is no recovery",
     "createdContinue": "Continue to the Arena"
   },
@@ -332,7 +334,7 @@
       "arenaName": "BitByBit Arena",
       "hackathon": "Hackathon",
       "habitsHackathon": "FOUNDATIONS (#1) — Lightning",
-      "arenaHackathon": "Hackathon #2 — Nostr",
+      "arenaHackathon": "IDENTITY (#2) — Nostr",
       "theme": "Theme",
       "habitsTheme": "Private, family",
       "arenaTheme": "Public, social",
@@ -359,23 +361,23 @@
       "title": "Who We Are",
       "anix": {
         "name": "Anix",
-        "role": "Lead Dev",
-        "bio": "Full-stack developer. Designed the architecture and wrote most of the code for both projects."
+        "role": "Dev & team wrangler",
+        "bio": "Keeps the code clean and the team on track. Probably debugging at 3am."
       },
       "llopo": {
         "name": "Llopo",
-        "role": "Dev",
-        "bio": "Developer contributing to backend and Lightning integration."
+        "role": "The bitcoiner of the family. Licensed vibe coder",
+        "bio": "If it doesn't run on Lightning, it doesn't run. Certified in vibes-driven development."
       },
       "wander": {
         "name": "Wander",
-        "role": "Dev / UX",
-        "bio": "Developer and UX. Worked on the user experience and frontend."
+        "role": "Licensed in 'My grandma can use it' & tester",
+        "bio": "If Wander can't break it, nobody can. Chief UX critic and bug whisperer."
       },
       "leon": {
         "name": "Leon",
-        "role": "PM",
-        "bio": "Project manager. Keeps the team on track and coordinates hackathon deliverables."
+        "role": "Consultant & pitch specialist",
+        "bio": "Can sell ice to penguins. Turns our spaghetti ideas into 3-minute magic."
       }
     },
     "lacrypta": {

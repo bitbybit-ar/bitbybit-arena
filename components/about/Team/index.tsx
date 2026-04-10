@@ -15,10 +15,10 @@ interface TeamMember {
 }
 
 const members: TeamMember[] = [
-  { key: "anix", github: "analiaacosta2023", nostr: "", color: "purple" },
-  { key: "llopo", github: "LlopoNern", nostr: "", color: "gold" },
-  { key: "wander", github: "WanderSady", nostr: "", color: "green" },
-  { key: "leon", github: "leodev-xyz", nostr: "", color: "red" },
+  { key: "anix", github: "analiaacostaok", nostr: "", color: "purple" },
+  { key: "llopo", github: "fabricio333", nostr: "", color: "gold" },
+  { key: "wander", github: "Pizza-Wder", nostr: "", color: "green" },
+  { key: "leon", github: "leonacostaok", nostr: "", color: "red" },
 ];
 
 export function Team() {
@@ -36,7 +36,6 @@ export function Team() {
         <div className={styles.grid}>
           {members.map((member) => (
             <div key={member.key} className={styles.card}>
-              <div className={`${styles.cardBorder} ${styles[member.color]}`} />
               <Image
                 src={`https://github.com/${member.github}.png`}
                 alt={t(`${member.key}.name` as `anix.name`)}

@@ -18,17 +18,42 @@
   background-clip: text;
 }
 
-@mixin card-base {
-  background: $color-surface;
+// Light ceramic card surface — the neutral-tile companion to the
+// colored `ceramic-surface`. Uses the theme-aware `$ceramic-highlight*`
+// vars so light mode gets a white sheen on the warm-gray surface and
+// dark mode gets a cool blue-gray reflection on the navy surface.
+// Hover lift lives on the consumer so non-interactive cards can skip it.
+@mixin ceramic-card {
+  background-color: $color-surface;
+  background-image: linear-gradient(
+    180deg,
+    $ceramic-highlight-soft 0%,
+    transparent 60%
+  );
   border: 1px solid $color-border;
   border-radius: $border-radius-lg;
-  box-shadow: 0 2px 8px var(--card-shadow);
-  transition: all 0.3s ease;
+  box-shadow:
+    0 4px 12px $card-shadow,
+    inset 0 1px 0 $ceramic-highlight,
+    inset 0 -2px 4px $ceramic-inner-shadow;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
 
+// Hover treatment for interactive cards — preserves the theme-tinted
+// shadow glow the user wanted to keep while the base stays ceramic.
+@mixin ceramic-card-hover {
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px var(--card-shadow-hover);
+    box-shadow:
+      0 8px 24px $card-shadow-hover,
+      inset 0 1px 0 $ceramic-highlight,
+      inset 0 -2px 4px $ceramic-inner-shadow;
   }
+}
+
+@mixin card-base {
+  @include ceramic-card;
+  @include ceramic-card-hover;
 }
 
 @mixin section-padding {

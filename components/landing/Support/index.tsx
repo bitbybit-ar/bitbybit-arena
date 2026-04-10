@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
 import { Block } from "@/components/common/Block";
+import { Button } from "@/components/ui/button";
 import { BoltIcon, GithubIcon } from "@/components/icons";
 import { ZapModal } from "@/components/landing/ZapModal";
 import styles from "./support.module.scss";
@@ -27,13 +28,15 @@ export function Support() {
         <p className={styles.subtitle}>{t("subtitle")}</p>
 
         <div className={styles.actions}>
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             className={styles.zapButton}
             onClick={() => setShowZapModal(true)}
           >
             <BoltIcon size={18} color="white" />
             {t("zapDevs")}
-          </button>
+          </Button>
           <a
             href="https://github.com/bitbybit-ar/bitbybit-arena"
             target="_blank"

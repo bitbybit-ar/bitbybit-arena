@@ -103,6 +103,14 @@
   }
 }
 
+// Hides the explore ghost button on mobile to match the pre-existing
+// navLink behavior (the mobile nav has no room for full-label CTAs).
+.desktopOnly {
+  @include mobile {
+    display: none;
+  }
+}
+
 .toggleGroup {
   display: flex;
   align-items: center;

@@ -32,10 +32,7 @@
 }
 
 .card {
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-lg;
-  box-shadow: 0 2px 8px $card-shadow;
+  @include ceramic-card;
   padding: $spacing-32;
   display: flex;
   flex-direction: column;

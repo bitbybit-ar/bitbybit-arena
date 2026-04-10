@@ -1,6 +1,7 @@
 @use "@/styles/colors" as *;
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
 @use "@/styles/media-mixins" as *;
 
 .page {
@@ -15,12 +16,10 @@
 }
 
 .card {
+  @include ceramic-card;
   position: relative;
   z-index: 1;
-  background: $color-surface;
-  border: 1px solid $color-border;
   border-radius: $border-radius-xl;
-  box-shadow: 0 4px 16px $card-shadow;
   padding: $spacing-40;
   max-width: 420px;
   width: 100%;
@@ -142,41 +141,16 @@
   }
 }
 
+// Layout override for the login method buttons: the shared Button
+// `fullWidth` centers its children, but each method shows an icon
+// plus a two-line label, so we pin the content to the left and widen
+// the gap. Visuals come from the Button variant (primary, ghost,
+// secondary) — this class only adjusts flex alignment and padding.
 .methodButton {
-  display: flex;
-  align-items: center;
-  gap: $spacing-12;
-  width: 100%;
-  padding: $spacing-12 $spacing-16;
-  background: $color-primary;
-  color: $static-white;
-  border: none;
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  justify-content: flex-start;
   text-align: left;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px alpha($color-primary, 30%);
-  }
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-}
-
-.methodSecondary {
-  background: transparent;
-  color: $color-text-secondary;
-  border: 1px solid $color-border;
-
-  &:hover:not(:disabled) {
-    border-color: $color-text-secondary;
-    box-shadow: none;
-  }
+  gap: $spacing-12;
+  padding: $spacing-12 $spacing-16;
 }
 
 .methodInfo {
@@ -218,283 +192,6 @@
   }
 }
 
-// Nostr Connect modal content
-.connectScanTitle {
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
-  color: $color-text-primary;
-  margin-bottom: $spacing-12;
-}
-
-.qrWrapper {
-  display: flex;
-  justify-content: center;
-  padding: $spacing-16;
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-md;
-  margin-bottom: $spacing-8;
-  color: $color-text-primary;
-}
-
-.copyURIBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: $spacing-4;
-  padding: $spacing-4 $spacing-8;
-  background: none;
-  border: none;
-  font-family: $font-body;
-  font-size: $font-size-xs;
-  color: $color-primary;
-  cursor: pointer;
-  margin-bottom: $spacing-4;
-
-  &:hover {
-    text-decoration: underline;
-  }
-}
-
-.connectWaiting {
-  font-size: $font-size-xs;
-  color: $color-text-secondary;
-  margin-bottom: $spacing-12;
-}
-
-.connectDivider {
-  display: flex;
-  align-items: center;
-  gap: $spacing-12;
-  margin: $spacing-12 0;
-
-  &::before,
-  &::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: $color-border;
-  }
-
-  span {
-    font-size: $font-size-xs;
-    color: $color-text-secondary;
-    white-space: nowrap;
-  }
-}
-
-.connectBunkerLabel {
-  display: block;
-  font-size: $font-size-xs;
-  font-weight: $font-weight-semibold;
-  color: $color-text-primary;
-  margin-bottom: $spacing-4;
-  text-align: left;
-}
-
-.bunkerInputRow {
-  display: flex;
-  gap: $spacing-8;
-  margin-bottom: $spacing-12;
-}
-
-.bunkerInput {
-  flex: 1;
-  padding: $spacing-8 $spacing-12;
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-md;
-  font-family: monospace;
-  font-size: $font-size-xs;
-  color: $color-text-primary;
-  outline: none;
-  min-width: 0;
-  transition: border-color 0.15s ease;
-
-  &::placeholder {
-    font-family: $font-body;
-    color: $color-text-secondary;
-  }
-
-  &:focus {
-    border-color: $color-primary;
-  }
-}
-
-.bunkerSubmit {
-  padding: $spacing-8 $spacing-12;
-  background: $color-primary;
-  color: $static-white;
-  border: none;
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  font-size: $font-size-xs;
-  font-weight: $font-weight-semibold;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: filter 0.15s ease;
-
-  &:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
-.errorInModal {
-  color: $color-error;
-  font-size: $font-size-xs;
-  margin-bottom: $spacing-8;
-}
-
-.connectCompatible {
-  font-size: $font-size-xs;
-  color: $color-text-secondary;
-  margin-top: $spacing-4;
-}
-
-.connectingState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: $spacing-16;
-  padding: $spacing-24 0;
-}
-
-.connectExpired {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: $spacing-12;
-  padding: $spacing-12 0;
-
-  p {
-    font-size: $font-size-sm;
-    color: $color-text-secondary;
-  }
-}
-
-.connectRetryBtn {
-  padding: $spacing-8 $spacing-24;
-  background: $color-primary;
-  color: $static-white;
-  border: none;
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
-  cursor: pointer;
-  transition: filter 0.15s ease;
-
-  &:hover {
-    filter: brightness(1.1);
-  }
-}
-
-// nsec modal content
-.nsecWarning {
-  font-size: $font-size-xs;
-  color: $color-accent;
-  line-height: $line-height-base;
-  margin-bottom: $spacing-12;
-  padding: $spacing-8 $spacing-12;
-  background: alpha($color-accent, 8%);
-  border-radius: $border-radius-sm;
-}
-
-.nsecLabel {
-  display: block;
-  font-size: $font-size-xs;
-  font-weight: $font-weight-semibold;
-  color: $color-text-primary;
-  margin-bottom: $spacing-4;
-}
-
-.nsecInputWrapper {
-  position: relative;
-  margin-bottom: $spacing-12;
-}
-
-.nsecInput {
-  width: 100%;
-  padding: $spacing-8 $spacing-32 $spacing-8 $spacing-12;
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-md;
-  font-family: monospace;
-  font-size: $font-size-sm;
-  color: $color-text-primary;
-  outline: none;
-  transition: border-color 0.15s ease;
-
-  &::placeholder {
-    font-family: $font-body;
-    color: $color-text-secondary;
-  }
-
-  &:focus {
-    border-color: $color-primary;
-  }
-}
-
-.nsecToggle {
-  position: absolute;
-  right: $spacing-8;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: $spacing-4;
-  background: none;
-  border: none;
-  color: $color-text-secondary;
-  cursor: pointer;
-
-  &:hover {
-    color: $color-text-primary;
-  }
-}
-
-.nsecCheckbox {
-  display: flex;
-  align-items: center;
-  gap: $spacing-8;
-  font-size: $font-size-xs;
-  color: $color-text-secondary;
-  margin-bottom: $spacing-12;
-  cursor: pointer;
-
-  input[type="checkbox"] {
-    accent-color: $color-primary;
-  }
-}
-
-.nsecSubmit {
-  width: 100%;
-  padding: $spacing-8 $spacing-16;
-  background: $color-primary;
-  color: $static-white;
-  border: none;
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
-  cursor: pointer;
-  transition: filter 0.15s ease;
-
-  &:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
 // Create new identity
 .createDivider {
   display: flex;
@@ -515,33 +212,6 @@
     color: $color-text-secondary;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-  }
-}
-
-.createButton {
-  display: flex;
-  align-items: center;
-  gap: $spacing-12;
-  width: 100%;
-  padding: $spacing-12 $spacing-16;
-  background: alpha($color-secondary, 14%);
-  color: $color-text-primary;
-  border: 1px solid alpha($color-secondary, 40%);
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  cursor: pointer;
-  text-align: left;
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    border-color: $color-secondary;
-    box-shadow: 0 4px 20px alpha($color-secondary, 25%);
-  }
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
   }
 }
 
@@ -637,6 +307,7 @@
   background: alpha($color-secondary, 10%);
   border: 1px solid alpha($color-secondary, 30%);
   border-radius: $border-radius-md;
+  margin-top: $spacing-16;
   margin-bottom: $spacing-12;
   text-align: left;
 

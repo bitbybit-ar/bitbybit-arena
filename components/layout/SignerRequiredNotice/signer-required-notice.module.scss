@@ -45,21 +45,3 @@
   margin: 0;
 }
 
-.cta {
-  padding: $spacing-8 $spacing-12;
-  background: $color-secondary;
-  color: $static-white;
-  border: none;
-  border-radius: $border-radius-md;
-  font-family: $font-body;
-  font-size: $font-size-xs;
-  font-weight: $font-weight-semibold;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: filter 0.15s ease;
-
-  &:hover {
-    filter: brightness(1.1);
-  }
-}
