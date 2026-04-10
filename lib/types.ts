@@ -34,6 +34,8 @@ export type PrizeDistribution =
   | "split"
   | "none";
 
+export type RewardZapMode = "first_to_complete" | "split" | "tiered";
+
 export interface Challenge {
   id: string;
   creator_id: string;
@@ -48,6 +50,9 @@ export interface Challenge {
   verification_type: VerificationType;
   nostr_action_target_event_id: string | null;
   checkpoint_mode: CheckpointMode;
+  zap_goal_event_id: string | null;
+  reward_zap_mode: RewardZapMode | null;
+  rewards_paid_at: string | null;
   prize_amount_sats: number;
   prize_distribution: PrizeDistribution | null;
   badge_name: string | null;
@@ -71,6 +76,7 @@ export interface Completion {
   step: number | null;
   content: string | null;
   proof_event_id: string | null;
+  reward_zap_receipt_id: string | null;
   status: CompletionStatus;
   reviewed_by: string | null;
   submitted_at: string;

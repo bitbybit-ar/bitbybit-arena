@@ -6,6 +6,7 @@ import { config } from "dotenv";
 import { resolve } from "path";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
+import { sql } from "drizzle-orm";
 import * as schema from "@/lib/db/schema";
 
 // Load .env.test before anything else
@@ -22,13 +23,11 @@ export const testDb = drizzle(sqlClient, { schema });
  * Call in beforeEach to guarantee a clean slate.
  */
 export async function cleanDb() {
-  // Delete in FK-safe order (children first, parents last)
-  await testDb.delete(schema.notifications);
-  await testDb.delete(schema.badges);
-  await testDb.delete(schema.checkpoint_completions);
-  await testDb.delete(schema.challenge_checkpoints);
-  await testDb.delete(schema.completions);
-  await testDb.delete(schema.participants);
-  await testDb.delete(schema.challenges);
-  await testDb.delete(schema.users);
+  // Single TRUNCATE with RESTART IDENTITY CASCADE handles every FK in
+  // the schema in one round trip, avoids drizzle's per-table DELETE
+  // overhead, and guarantees state is wiped even if a previous test
+  // file left tangled references behind.
+  await testDb.execute(
+    sql`TRUNCATE TABLE notifications, badges, checkpoint_completions, challenge_checkpoints, completions, participants, challenges, users RESTART IDENTITY CASCADE`
+  );
 }

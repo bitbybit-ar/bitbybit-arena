@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { Spinner } from "@/components/ui/spinner";
 import { Block } from "@/components/common/Block";
-import { buildJoinEvent, buildCompletionEvent, buildBadgeAwardEvent } from "@/lib/nostr/events";
+import { buildJoinEvent, buildCompletionEvent, buildBadgeAwardEvent, buildZapRequestEvent } from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
+import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
+import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
 import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
@@ -54,9 +56,21 @@ interface ChallengeDetail {
   completion_count: number;
   creator_id: string;
   slug: string;
+  prize_amount_sats: number;
+  reward_zap_mode: "first_to_complete" | "split" | "tiered" | null;
+  zap_goal_event_id: string | null;
+  rewards_paid_at: string | null;
   creator: { id: string; display_name: string; username: string; nostr_pubkey: string; lightning_address?: string };
   checkpoints: CheckpointItem[];
   my_checkpoint_completions: CheckpointCompletionItem[];
+}
+
+interface RewardWinner {
+  user_id: string;
+  nostr_pubkey: string;
+  display_name: string;
+  lightning_address: string;
+  amount_sats: number;
 }
 
 interface CompletionItem {
@@ -98,6 +112,8 @@ export default function ChallengeDetailPage() {
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [checkpointProofs, setCheckpointProofs] = useState<Record<string, string>>({});
   const [checkpointErrors, setCheckpointErrors] = useState<Record<string, string>>({});
+  const [rewardError, setRewardError] = useState<string | null>(null);
+  const [rewardStatus, setRewardStatus] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -226,6 +242,74 @@ export default function ChallengeDetailPage() {
       }
     } catch {
       setVerifyError(t("proofNotFound"));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleClaimReward = async () => {
+    if (!challenge) return;
+    setRewardError(null);
+    setRewardStatus(null);
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return;
+      }
+    }
+    setActionLoading("reward");
+    try {
+      const res = await fetch(`/api/challenges/${challengeId}/reward`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setRewardError(json.error || t("rewardError"));
+        return;
+      }
+      const winners: RewardWinner[] = json.data.winners;
+      if (typeof window === "undefined" || !window.webln) {
+        setRewardError(t("rewardNoWebln"));
+        return;
+      }
+      await window.webln.enable();
+
+      for (const winner of winners) {
+        setRewardStatus(
+          t("rewardPaying", {
+            name: winner.display_name,
+            amount: winner.amount_sats,
+          })
+        );
+        // Build + sign a NIP-57 zap request. eventId is the challenge's
+        // Nostr definition event id when present; otherwise fall back to
+        // the DB id so the zap request still has an `e` tag.
+        const zapRequest = buildZapRequestEvent({
+          recipientPubkey: winner.nostr_pubkey,
+          eventId: challenge.id,
+          amount: winner.amount_sats,
+          relays: DEFAULT_RELAYS,
+          comment: `BitByBit Arena reward: ${challenge.title}`,
+        });
+        const signedZap = await signWithPrompt(zapRequest);
+        const endpoint = await fetchLnurlPayEndpoint(winner.lightning_address);
+        const invoice = await fetchInvoice(
+          endpoint.callback,
+          winner.amount_sats,
+          undefined,
+          signedZap
+        );
+        await window.webln.sendPayment(invoice);
+      }
+
+      await fetch(`/api/challenges/${challengeId}/reward`, { method: "PATCH" });
+      setRewardStatus(t("rewardSent"));
+      await fetchAll();
+    } catch (err) {
+      setRewardError(
+        err instanceof Error ? err.message : t("rewardError")
+      );
     } finally {
       setActionLoading(null);
     }
@@ -685,6 +769,45 @@ export default function ChallengeDetailPage() {
             </>
           )}
         </div>
+
+        {/* Reward zaps */}
+        {isCreator &&
+          challenge.prize_amount_sats > 0 &&
+          challenge.reward_zap_mode &&
+          !challenge.rewards_paid_at && (
+            <div className={styles.section}>
+              <h2 className={styles.sectionTitle}>{t("rewardSectionTitle")}</h2>
+              <p className={styles.emptyText}>
+                {t("rewardInstructions", {
+                  amount: challenge.prize_amount_sats,
+                  mode: tCreate(
+                    `rewardZapModes.${challenge.reward_zap_mode}`
+                  ),
+                })}
+              </p>
+              <Button
+                size="sm"
+                onClick={handleClaimReward}
+                disabled={actionLoading === "reward"}
+              >
+                <BoltIcon size={16} />
+                {actionLoading === "reward"
+                  ? t("rewardSending")
+                  : t("claimReward")}
+              </Button>
+              {rewardStatus && (
+                <p className={styles.emptyText}>{rewardStatus}</p>
+              )}
+              {rewardError && <p className={styles.error}>{rewardError}</p>}
+            </div>
+          )}
+
+        {isCreator && challenge.rewards_paid_at && (
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>{t("rewardSectionTitle")}</h2>
+            <p className={styles.emptyText}>{t("rewardAlreadyPaid")}</p>
+          </div>
+        )}
       </div>
     </div>
   );

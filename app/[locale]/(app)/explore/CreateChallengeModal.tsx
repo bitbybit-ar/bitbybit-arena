@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/modal";
 import { FormInput, FormTextarea, FormSelect, FormButton } from "@/components/ui/form";
-import { buildChallengeEvent } from "@/lib/nostr/events";
+import { buildChallengeEvent, buildZapGoalEvent } from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
+import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import { useSignerContext } from "@/lib/signer-context";
 import styles from "./create-challenge.module.scss";
 
@@ -16,7 +17,7 @@ interface CreateChallengeModalProps {
 
 export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModalProps) {
   const t = useTranslations("createChallenge");
-  const { needsSigner, signWithPrompt, requestReSignIn } = useSignerContext();
+  const { needsSigner, signWithPrompt, requestReSignIn, signer } = useSignerContext();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -38,6 +39,11 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
     }>
   >([]);
   const [badgeName, setBadgeName] = useState("");
+  const [prizeAmountSats, setPrizeAmountSats] = useState("");
+  const [rewardZapMode, setRewardZapMode] = useState<
+    "first_to_complete" | "split" | "tiered"
+  >("first_to_complete");
+  const [publishZapGoal, setPublishZapGoal] = useState(false);
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [loading, setLoading] = useState(false);
@@ -102,6 +108,11 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
             verification === "nostr_action"
               ? nostrActionTarget.trim().toLowerCase()
               : undefined,
+          prize_amount_sats: prizeAmountSats ? Number(prizeAmountSats) : undefined,
+          reward_zap_mode:
+            prizeAmountSats && Number(prizeAmountSats) > 0
+              ? rewardZapMode
+              : undefined,
           checkpoint_mode: checkpointMode,
           checkpoints:
             checkpointMode !== "none"
@@ -147,6 +158,34 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
         await publishSignedEvent(signed);
       } catch {
         // Non-blocking: challenge is created in DB even if Nostr publish fails
+      }
+
+      // Optionally publish a NIP-75 Zap Goal and PUT the event id back.
+      if (
+        publishZapGoal &&
+        prizeAmountSats &&
+        Number(prizeAmountSats) > 0 &&
+        signer?.pubkey
+      ) {
+        try {
+          const goalEvent = buildZapGoalEvent({
+            challengeSlug: json.data.slug,
+            creatorPubkey: signer.pubkey,
+            amountSats: Number(prizeAmountSats),
+            title: `Prize pot: ${title}`,
+            relays: DEFAULT_RELAYS,
+            closedAt: endsAt || undefined,
+          });
+          const signedGoal = await signWithPrompt(goalEvent);
+          await publishSignedEvent(signedGoal);
+          await fetch(`/api/challenges/${json.data.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ zap_goal_event_id: signedGoal.id }),
+          });
+        } catch {
+          // Non-blocking: challenge is still created without the goal event
+        }
       }
 
       onCreated();
@@ -361,6 +400,41 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
               + {t("addCheckpoint")}
             </button>
           </div>
+        )}
+
+        <FormInput
+          label={t("prizeAmountLabel")}
+          placeholder={t("prizeAmountPlaceholder")}
+          type="number"
+          value={prizeAmountSats}
+          onChange={setPrizeAmountSats}
+        />
+
+        {prizeAmountSats && Number(prizeAmountSats) > 0 && (
+          <>
+            <FormSelect
+              label={t("rewardZapModeLabel")}
+              value={rewardZapMode}
+              onChange={(v) =>
+                setRewardZapMode(v as "first_to_complete" | "split" | "tiered")
+              }
+            >
+              <option value="first_to_complete">
+                {t("rewardZapModes.first_to_complete")}
+              </option>
+              <option value="split">{t("rewardZapModes.split")}</option>
+              <option value="tiered">{t("rewardZapModes.tiered")}</option>
+            </FormSelect>
+
+            <label className={styles.checkboxRow}>
+              <input
+                type="checkbox"
+                checked={publishZapGoal}
+                onChange={(e) => setPublishZapGoal(e.target.checked)}
+              />
+              <span>{t("publishZapGoalLabel")}</span>
+            </label>
+          </>
         )}
 
         <FormInput

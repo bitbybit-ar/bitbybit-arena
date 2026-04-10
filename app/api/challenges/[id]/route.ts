@@ -13,9 +13,10 @@ import { getSession } from "@/lib/auth";
 import type { ChallengeType, VerificationType, PrizeDistribution } from "@/lib/types";
 
 const VALID_TYPES: ChallengeType[] = ["one_time", "streak", "competition", "race", "creative"];
-const VALID_VERIFICATION: VerificationType[] = ["creator_approval", "automatic"];
+const VALID_VERIFICATION: VerificationType[] = ["creator_approval", "automatic", "nostr_action"];
 const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "winner_takes_all", "split", "none"];
 const VALID_STATUSES = ["open", "in_progress", "completed", "cancelled"];
+const HEX_64 = /^[0-9a-f]{64}$/i;
 
 // GET /api/challenges/[id] — get single challenge with creator and participant count
 export const GET = apiHandler(
@@ -137,6 +138,20 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db, params }) 
   if (body.badge_name !== undefined) updates.badge_name = body.badge_name;
   if (body.starts_at !== undefined) updates.starts_at = body.starts_at ? new Date(body.starts_at) : null;
   if (body.ends_at !== undefined) updates.ends_at = body.ends_at ? new Date(body.ends_at) : null;
+  if (body.zap_goal_event_id !== undefined) {
+    if (body.zap_goal_event_id === null) {
+      updates.zap_goal_event_id = null;
+    } else if (
+      typeof body.zap_goal_event_id !== "string" ||
+      !HEX_64.test(body.zap_goal_event_id)
+    ) {
+      throw new BadRequestError(
+        "zap_goal_event_id must be a 64-character hex event id"
+      );
+    } else {
+      updates.zap_goal_event_id = body.zap_goal_event_id.toLowerCase();
+    }
+  }
 
   if (Object.keys(updates).length === 0) throw new BadRequestError("No fields to update");
 
