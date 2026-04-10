@@ -2,9 +2,8 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { useRouter, usePathname } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
+import { Link, useRouter, usePathname } from "@/i18n/routing";
 import { Block } from "@/components/common/Block";
 import { Button } from "@/components/ui/button";
 import { MoonIcon, SunIcon, SettingsIcon, UserIcon } from "@/components/icons";
@@ -41,11 +40,10 @@ export function Navbar() {
 
   const toggleLocale = () => {
     const newLocale = locale === "es" ? "en" : "es";
-    const pathWithoutLocale = pathname.replace(/^\/(es|en)/, "");
-    router.push(`/${newLocale}${pathWithoutLocale}`);
+    router.replace(pathname, { locale: newLocale });
   };
 
-  const logoHref = user ? `/${locale}/explore` : "/";
+  const logoHref = user ? "/explore" : "/";
 
   const navbarClasses = [
     styles.navbar,
@@ -117,7 +115,7 @@ export function Navbar() {
                 {menuOpen && (
                   <div className={styles.avatarMenu} role="menu">
                     <Link
-                      href={`/${locale}/settings`}
+                      href="/settings"
                       className={styles.menuItem}
                       role="menuitem"
                       onClick={() => setMenuOpen(false)}

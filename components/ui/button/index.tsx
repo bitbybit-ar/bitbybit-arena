@@ -24,7 +24,10 @@ type ButtonAsLink = ButtonBaseProps &
 export type ButtonProps = ButtonAsButton | ButtonAsLink;
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "default", fullWidth, children, ...props }, ref) => {
+  function Button(
+    { className, variant = "primary", size = "default", fullWidth, children, ...props },
+    ref,
+  ) {
     const classes = cn(
       styles.button,
       styles[`variant-${variant}`],
@@ -33,22 +36,22 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       className,
     );
 
-    if ("href" in props && props.href !== undefined) {
-      const { href, ...rest } = props;
+    if (props.href !== undefined) {
+      const { href, ...anchorProps } = props;
       return (
-        <Link href={href} className={classes} {...rest}>
+        <Link href={href} className={classes} {...anchorProps}>
           {children}
         </Link>
       );
     }
 
+    const { href: _href, ...buttonProps } = props;
     return (
-      <button ref={ref} className={classes} {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}>
+      <button ref={ref} className={classes} {...buttonProps}>
         {children}
       </button>
     );
   },
 );
-Button.displayName = "Button";
 
 export default Button;

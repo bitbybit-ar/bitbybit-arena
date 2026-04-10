@@ -23,8 +23,6 @@ interface ExtensionSignerButtonProps {
   expectedPubkey?: string;
   /** Hide the button entirely when no NIP-07 extension is detected. */
   hideIfUnavailable?: boolean;
-  /** Optional secondary visual variant. */
-  variant?: "primary" | "secondary";
   className?: string;
 }
 
@@ -38,7 +36,6 @@ export function ExtensionSignerButton({
   onError,
   expectedPubkey,
   hideIfUnavailable = false,
-  variant = "primary",
   className,
 }: ExtensionSignerButtonProps) {
   const t = useTranslations("login");
@@ -83,7 +80,7 @@ export function ExtensionSignerButton({
   return (
     <Button
       type="button"
-      variant={variant === "secondary" ? "outline" : "primary"}
+      variant="primary"
       fullWidth
       className={[styles.extensionButton, className].filter(Boolean).join(" ")}
       onClick={handleClick}

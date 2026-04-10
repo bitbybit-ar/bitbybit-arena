@@ -192,6 +192,7 @@ export function FormButton({
       fullWidth
       className={cn(styles.formButton, className)}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...buttonProps}
     >
       {loading ? (loadingText ?? children) : children}
