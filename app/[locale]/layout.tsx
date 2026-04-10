@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { Nunito, Nunito_Sans } from "next/font/google";
@@ -78,13 +77,6 @@ export default async function LocaleLayout({
       <head>
         <meta name="theme-color" content="#8B5CF6" />
         <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
-        <Script id="theme-init" strategy="beforeInteractive">{`
-          (function(){try{var t=localStorage.getItem('theme');
-          if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))
-          document.documentElement.setAttribute('data-theme','dark');
-          else document.documentElement.setAttribute('data-theme','light');
-          }catch(e){}})();
-        `}</Script>
       </head>
       <body suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
