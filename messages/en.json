@@ -332,7 +332,7 @@
       "arenaName": "BitByBit Arena",
       "hackathon": "Hackathon",
       "habitsHackathon": "FOUNDATIONS (#1) — Lightning",
-      "arenaHackathon": "Hackathon #2 — Nostr",
+      "arenaHackathon": "IDENTITY (#2) — Nostr",
       "theme": "Theme",
       "habitsTheme": "Private, family",
       "arenaTheme": "Public, social",
@@ -359,23 +359,23 @@
       "title": "Who We Are",
       "anix": {
         "name": "Anix",
-        "role": "Lead Dev",
-        "bio": "Full-stack developer. Designed the architecture and wrote most of the code for both projects."
+        "role": "Dev & team wrangler",
+        "bio": "Keeps the code clean and the team on track. Probably debugging at 3am."
       },
       "llopo": {
         "name": "Llopo",
-        "role": "Dev",
-        "bio": "Developer contributing to backend and Lightning integration."
+        "role": "The bitcoiner of the family. Licensed vibe coder",
+        "bio": "If it doesn't run on Lightning, it doesn't run. Certified in vibes-driven development."
       },
       "wander": {
         "name": "Wander",
-        "role": "Dev / UX",
-        "bio": "Developer and UX. Worked on the user experience and frontend."
+        "role": "Licensed in 'My grandma can use it' & tester",
+        "bio": "If Wander can't break it, nobody can. Chief UX critic and bug whisperer."
       },
       "leon": {
         "name": "Leon",
-        "role": "PM",
-        "bio": "Project manager. Keeps the team on track and coordinates hackathon deliverables."
+        "role": "Consultant & pitch specialist",
+        "bio": "Can sell ice to penguins. Turns our spaghetti ideas into 3-minute magic."
       }
     },
     "lacrypta": {

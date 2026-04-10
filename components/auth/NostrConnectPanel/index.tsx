@@ -120,7 +120,7 @@ export function NostrConnectPanel({
   if (status === "connecting") {
     return (
       <div className={styles.connectingState}>
-        <BlockTower maxBlocks={3} blockSize="medium" />
+        <BlockTower maxBlocks={3} blockSize="medium" flat />
         <p className={styles.waiting}>{t("connectConnecting")}</p>
       </div>
     );
