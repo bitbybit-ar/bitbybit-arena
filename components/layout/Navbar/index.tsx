@@ -1,70 +1,36 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Block } from "@/components/common/Block";
 import { MoonIcon, SunIcon, SettingsIcon, UserIcon } from "@/components/icons";
-import { useTheme } from "@/lib/theme-context";
+import { useTheme } from "@/lib/contexts/theme-context";
+import { useSession } from "@/lib/contexts/session-context";
+import { useScrollVisibility } from "@/lib/hooks/useScrollVisibility";
+import { useClickOutside } from "@/lib/hooks/useClickOutside";
 import styles from "./navbar.module.scss";
-
-interface SessionUser {
-  user_id: string;
-  username: string;
-  display_name: string;
-  avatar_url: string | null;
-}
 
 export function Navbar() {
   const t = useTranslations("common");
   const { theme, toggleTheme } = useTheme();
+  const { user, clear } = useSession();
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const [visible, setVisible] = useState(true);
-  const [scrolled, setScrolled] = useState(false);
-  const [user, setUser] = useState<SessionUser | null>(null);
+  const { visible, scrolled } = useScrollVisibility();
   const [menuOpen, setMenuOpen] = useState(false);
-  const lastScrollY = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentY = window.scrollY;
-      setScrolled(currentY > 20);
-      setVisible(currentY <= 20 || currentY < lastScrollY.current);
-      lastScrollY.current = currentY;
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/auth/session")
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.success && json.data) setUser(json.data);
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  useClickOutside(menuRef, closeMenu, menuOpen);
 
   const handleSignOut = async () => {
     setMenuOpen(false);
     await fetch("/api/auth/signout", { method: "POST" });
-    setUser(null);
+    clear();
     router.push("/");
   };
 

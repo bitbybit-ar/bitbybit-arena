@@ -7,6 +7,8 @@ import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { Modal } from "@/components/ui/modal";
 import { useNostr } from "@/lib/hooks/useNostr";
+import { useSession } from "@/lib/contexts/session-context";
+import { useClipboard } from "@/lib/hooks/useClipboard";
 import { signChallengeWithNsec } from "@/lib/nostr/nsec-login";
 import {
   createConnectSession,
@@ -16,6 +18,7 @@ import {
 } from "@/lib/nostr/nip46-login";
 import type { BunkerSigner } from "nostr-tools/nip46";
 import { Block } from "@/components/common/Block";
+import { BlockTower } from "@/components/common/BlockTower";
 import { Bubble } from "@/components/common/Bubble";
 import {
   ArrowLeftIcon,
@@ -36,6 +39,7 @@ export default function LoginPage() {
   const t = useTranslations("login");
   const router = useRouter();
   const { login, isLoading } = useNostr();
+  const { refresh } = useSession();
   const [error, setError] = useState<string | null>(null);
 
   // nsec state
@@ -50,7 +54,7 @@ export default function LoginPage() {
   const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
   const [connectURI, setConnectURI] = useState("");
   const [bunkerURL, setBunkerURL] = useState("");
-  const [copiedURI, setCopiedURI] = useState(false);
+  const { copied: copiedURI, copy: copyURI } = useClipboard();
   const abortRef = useRef<AbortController | null>(null);
 
   // Cleanup abort controller on unmount
@@ -64,6 +68,7 @@ export default function LoginPage() {
     setError(null);
     const result = await login();
     if (result.success) {
+      await refresh();
       router.push("/explore");
     } else {
       setError(result.error || t("error"));
@@ -103,7 +108,8 @@ export default function LoginPage() {
           return;
         }
 
-        router.push("/explore");
+        await refresh();
+      router.push("/explore");
       } finally {
         await signer.close();
       }
@@ -171,9 +177,7 @@ export default function LoginPage() {
   };
 
   const handleCopyURI = async () => {
-    await navigator.clipboard.writeText(connectURI);
-    setCopiedURI(true);
-    setTimeout(() => setCopiedURI(false), 2000);
+    await copyURI(connectURI);
   };
 
   const handleNsecLogin = async () => {
@@ -203,6 +207,7 @@ export default function LoginPage() {
       }
 
       setNsecKey("");
+      await refresh();
       router.push("/explore");
     } catch {
       setNsecKey("");
@@ -403,9 +408,12 @@ export default function LoginPage() {
           )}
 
           {connectStatus === "connecting" && (
-            <p className={styles.connectWaiting}>
-              {t("connectConnecting")}
-            </p>
+            <div className={styles.connectingState}>
+              <BlockTower maxBlocks={3} blockSize="medium" />
+              <p className={styles.connectWaiting}>
+                {t("connectConnecting")}
+              </p>
+            </div>
           )}
 
           {connectStatus === "expired" && (

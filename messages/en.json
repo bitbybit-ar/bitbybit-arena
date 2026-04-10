@@ -99,7 +99,8 @@
         "errorInvalidAddress": "Could not resolve Lightning address. It may not be active yet.",
         "noWebln": "No Lightning wallet found. Copy the invoice manually.",
         "copyInvoice": "Copy invoice",
-        "copiedInvoice": "Invoice copied!"
+        "copiedInvoice": "Invoice copied!",
+        "waitingPayment": "Waiting for payment..."
       }
     },
     "footer": {

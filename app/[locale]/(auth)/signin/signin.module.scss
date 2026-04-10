@@ -355,6 +355,14 @@
   margin-top: $spacing-4;
 }
 
+.connectingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-16;
+  padding: $spacing-24 0;
+}
+
 .connectExpired {
   display: flex;
   flex-direction: column;
