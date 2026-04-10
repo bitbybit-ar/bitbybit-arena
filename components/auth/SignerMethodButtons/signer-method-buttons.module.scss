@@ -1,0 +1,70 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.methods {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+
+  > * {
+    animation: methodFadeIn 0.4s ease both;
+
+    &:nth-child(1) {
+      animation-delay: 0.35s;
+    }
+    &:nth-child(2) {
+      animation-delay: 0.45s;
+    }
+    &:nth-child(3) {
+      animation-delay: 0.55s;
+    }
+  }
+}
+
+@keyframes methodFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .methods > * {
+    animation: none;
+  }
+}
+
+// Layout override for the picker buttons: the shared Button
+// `fullWidth` centers its children, but each method shows an icon
+// plus a two-line label, so we pin the content to the left and widen
+// the gap. Visuals come from the Button variant — this class only
+// adjusts flex alignment and padding.
+.methodButton {
+  justify-content: flex-start;
+  text-align: left;
+  gap: $spacing-12;
+  padding: $spacing-12 $spacing-16;
+}
+
+.methodInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.methodName {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.methodDescription {
+  font-size: $font-size-xs;
+  opacity: 0.85;
+  font-weight: $font-weight-normal;
+}

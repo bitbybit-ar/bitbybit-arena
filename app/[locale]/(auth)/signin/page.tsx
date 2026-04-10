@@ -10,7 +10,8 @@ import { createNewIdentity } from "@/lib/nostr/create-account";
 import { useSignerContext } from "@/lib/signer-context";
 import { makeNsecSigner } from "@/lib/nostr/signers";
 import type { SignerHandle } from "@/lib/nostr/signers";
-import { ExtensionSignerButton } from "@/components/auth/ExtensionSignerButton";
+import { SignerMethodButtons } from "@/components/auth/SignerMethodButtons";
+import { ExtensionUpsell } from "@/components/auth/ExtensionUpsell";
 import { NsecSignerForm } from "@/components/auth/NsecSignerForm";
 import { NostrConnectPanel } from "@/components/auth/NostrConnectPanel";
 import { Block } from "@/components/common/Block";
@@ -153,44 +154,12 @@ export default function SignInPage() {
         <h1 className={styles.title}>{t("title")}</h1>
         <p className={styles.subtitle}>{t("subtitle")}</p>
 
-        <div className={styles.methods}>
-          <ExtensionSignerButton
-            onSigner={handleSignerFromChild}
-            onError={handleError}
-          />
-
-          <Button
-            type="button"
-            variant="primary"
-            fullWidth
-            className={styles.methodButton}
-            onClick={() => setPanel("nip46")}
-          >
-            <LinkIcon size={20} />
-            <div className={styles.methodInfo}>
-              <span className={styles.methodName}>{t("connectTitle")}</span>
-              <span className={styles.methodDescription}>
-                {t("connectDescription")}
-              </span>
-            </div>
-          </Button>
-
-          <Button
-            type="button"
-            variant="ghost"
-            fullWidth
-            className={styles.methodButton}
-            onClick={() => setPanel("nsec")}
-          >
-            <KeyIcon size={20} />
-            <div className={styles.methodInfo}>
-              <span className={styles.methodName}>{t("nsecTitle")}</span>
-              <span className={styles.methodDescription}>
-                {t("nsecDescription")}
-              </span>
-            </div>
-          </Button>
-        </div>
+        <SignerMethodButtons
+          onSigner={handleSignerFromChild}
+          onError={handleError}
+          onSelectNip46={() => setPanel("nip46")}
+          onSelectNsec={() => setPanel("nsec")}
+        />
 
         <div className={styles.createDivider}>
           <span>{t("orNew")}</span>
@@ -258,20 +227,7 @@ export default function SignInPage() {
             submitLabel={t("nsecSignIn")}
             submittingLabel={t("nsecSigningIn")}
           />
-
-          <div className={styles.createdExtensionUpsell}>
-            <strong>{t("nsecExtensionTitle")}</strong>
-            <p>{t("nsecExtensionBody")}</p>
-            <a
-              href="https://nostr-wot.com/download"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.createdExtensionLink}
-            >
-              {t("createdExtensionCta")}
-            </a>
-          </div>
-
+          <ExtensionUpsell variant="nsec" />
           {error && <p className={styles.error}>{error}</p>}
         </Modal>
       )}
@@ -306,18 +262,7 @@ export default function SignInPage() {
             <span>{t("createdWarning")}</span>
           </div>
 
-          <div className={styles.createdExtensionUpsell}>
-            <strong>{t("createdExtensionTitle")}</strong>
-            <p>{t("createdExtensionBody")}</p>
-            <a
-              href="https://nostr-wot.com/download"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.createdExtensionLink}
-            >
-              {t("createdExtensionCta")}
-            </a>
-          </div>
+          <ExtensionUpsell variant="created" />
 
           <label className={styles.createdAck}>
             <input
