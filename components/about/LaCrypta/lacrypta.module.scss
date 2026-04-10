@@ -24,10 +24,7 @@
 }
 
 .card {
-  background: $color-bg;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-lg;
-  box-shadow: 0 2px 8px $card-shadow;
+  @include ceramic-card;
   padding: $spacing-32;
   max-width: 520px;
   margin: 0 auto;

@@ -55,7 +55,6 @@ export function Partners() {
               rel="noopener noreferrer"
               className={`${styles.partnerLink} ${styles[partner.color]}`}
             >
-              <div className={`${styles.cardBorder} ${styles[`border-${partner.color}`]}`} />
               <Image
                 src={partner.logo}
                 alt={partner.name}

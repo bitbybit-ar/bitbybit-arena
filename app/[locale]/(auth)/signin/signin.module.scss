@@ -1,6 +1,7 @@
 @use "@/styles/colors" as *;
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
 @use "@/styles/media-mixins" as *;
 
 .page {
@@ -15,12 +16,10 @@
 }
 
 .card {
+  @include ceramic-card;
   position: relative;
   z-index: 1;
-  background: $color-surface;
-  border: 1px solid $color-border;
   border-radius: $border-radius-xl;
-  box-shadow: 0 4px 16px $card-shadow;
   padding: $spacing-40;
   max-width: 420px;
   width: 100%;

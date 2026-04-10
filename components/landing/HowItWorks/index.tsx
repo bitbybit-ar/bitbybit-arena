@@ -50,14 +50,6 @@ export function HowItWorks() {
                     {t(`step${num}Description` as "step1Description")}
                   </p>
                 </div>
-
-                {/* Pixel trail between steps */}
-                {i < STEPS.length - 1 && (
-                  <div className={styles.connector}>
-                    <Block size="tiny" color={step.color} />
-                    <Block size="tiny" color={STEPS[i + 1].color} />
-                  </div>
-                )}
               </div>
             );
           })}

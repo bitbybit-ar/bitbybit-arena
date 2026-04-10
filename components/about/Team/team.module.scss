@@ -36,33 +36,12 @@
 }
 
 .card {
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-lg;
-  box-shadow: 0 2px 8px $card-shadow;
+  @include ceramic-card;
+  @include ceramic-card-hover;
   padding: $spacing-32 $spacing-24;
   text-align: center;
   position: relative;
   overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px $card-shadow-hover;
-  }
-}
-
-.cardBorder {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-
-  &.purple { background: $color-primary; }
-  &.gold { background: $color-secondary; }
-  &.green { background: $color-accent-alt; }
-  &.red { background: $color-accent; }
 }
 
 .avatar {

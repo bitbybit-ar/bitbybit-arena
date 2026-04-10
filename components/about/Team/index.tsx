@@ -36,7 +36,6 @@ export function Team() {
         <div className={styles.grid}>
           {members.map((member) => (
             <div key={member.key} className={styles.card}>
-              <div className={`${styles.cardBorder} ${styles[member.color]}`} />
               <Image
                 src={`https://github.com/${member.github}.png`}
                 alt={t(`${member.key}.name` as `anix.name`)}

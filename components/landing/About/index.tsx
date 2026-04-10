@@ -36,7 +36,6 @@ export function About() {
 
         <div className={styles.cards}>
           <div className={styles.card}>
-            <div className={`${styles.cardBorder} ${styles.gold}`} />
             <h3 className={styles.cardTitle}>{t("habitsTitle")}</h3>
             <ul className={styles.cardList}>
               <li>{t("habitsPrivate")}</li>
@@ -55,7 +54,6 @@ export function About() {
           </div>
 
           <div className={`${styles.card} ${styles.active}`}>
-            <div className={`${styles.cardBorder} ${styles.purple}`} />
             <div className={styles.arenaGlow} />
             <h3 className={styles.cardTitle}>{t("challengesTitle")}</h3>
             <ul className={styles.cardList}>

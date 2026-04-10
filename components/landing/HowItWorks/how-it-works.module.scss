@@ -60,25 +60,17 @@
 }
 
 .card {
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-lg;
-  box-shadow: 0 2px 8px $card-shadow;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  @include ceramic-card;
+  @include ceramic-card-hover;
   padding: $spacing-48 $spacing-24 $spacing-24;
   text-align: center;
   width: 100%;
   position: relative;
   overflow: hidden;
   flex: 1;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px $card-shadow-hover;
-  }
 }
 
-// Number badge — top left corner of card
+// Number badge — top left corner of card, ceramic tile per step color.
 .numberBadge {
   position: absolute;
   top: $spacing-12;
@@ -94,14 +86,20 @@
   font-size: $font-size-sm;
   color: $static-white;
 
+  span {
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
   &.purple {
-    background: $color-primary;
+    @include ceramic-surface($color-primary);
   }
   &.green {
-    background: $color-accent-alt;
+    @include ceramic-surface($color-accent-alt);
   }
   &.gold {
-    background: $color-secondary;
+    @include ceramic-surface($color-secondary);
   }
 }
 
@@ -123,26 +121,6 @@
   color: $color-text-secondary;
   font-size: $font-size-sm;
   line-height: $line-height-base;
-}
-
-.connector {
-  display: flex;
-  gap: 8px;
-  padding: $spacing-12 0;
-  opacity: 0.5;
-
-  @include mobile {
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  @include desktop {
-    position: absolute;
-    right: -28px;
-    top: 50%;
-    transform: translateY(-50%);
-    flex-direction: row;
-  }
 }
 
 // Floating decorative blocks — high contrast, visible animation
