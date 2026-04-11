@@ -7,8 +7,9 @@ import { PixelIcon } from "@/components/common/PixelIcon";
 import { BlockLoader } from "@/components/ui/block-loader";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
+import { AppPageHeader } from "@/components/layout/AppPageHeader";
+import { CreateChallengeModal } from "@/components/challenges/CreateChallengeModal";
 import { useSignerContext } from "@/lib/signer-context";
-import { CreateChallengeModal } from "./CreateChallengeModal";
 import styles from "./explore.module.scss";
 
 interface ChallengeItem {
@@ -88,19 +89,21 @@ export default function ExplorePage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>{t("title")}</h1>
-        <div className={styles.headerActions}>
-          {session && (
-            <Button href="/my-challenges" variant="success" size="sm">
-              {tCommon("myChallenges")}
+      <AppPageHeader
+        title={t("title")}
+        actions={
+          <>
+            {session && (
+              <Button href="/my-challenges" variant="success" size="sm">
+                {tCommon("myChallenges")}
+              </Button>
+            )}
+            <Button onClick={handleCreateClick} size="sm">
+              {t("createNew")}
             </Button>
-          )}
-          <Button onClick={handleCreateClick} size="sm">
-            {t("createNew")}
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className={styles.controls}>
         <input

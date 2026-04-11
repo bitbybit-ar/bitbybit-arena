@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
-import { FlagIcon } from "@/components/icons";
+import { PixelIcon } from "@/components/common/PixelIcon";
 import { BlockLoader } from "@/components/ui/block-loader";
+import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { Tabs, panelIdFor } from "@/components/ui/tabs";
+import { AppPageHeader } from "@/components/layout/AppPageHeader";
+import { CreateChallengeModal } from "@/components/challenges/CreateChallengeModal";
+import { useSignerContext } from "@/lib/signer-context";
 import styles from "./my-challenges.module.scss";
 
 const TABS_ID = "my-challenges-tabs";
@@ -25,17 +29,41 @@ export default function MyChallengesPage() {
   const t = useTranslations("myChallenges");
   const tCommon = useTranslations("common");
   const tCreate = useTranslations("createChallenge");
+  const tExplore = useTranslations("explore");
+  const { needsSigner, requestReSignIn } = useSignerContext();
   const [data, setData] = useState<{ created: MyChallengeItem[]; joined: MyChallengeItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("joined");
+  const [showCreate, setShowCreate] = useState(false);
 
-  useEffect(() => {
+  const fetchMyChallenges = useCallback(() => {
+    setLoading(true);
     fetch("/api/my-challenges")
       .then((r) => r.json())
       .then((json) => { if (json.success) setData(json.data); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchMyChallenges();
+  }, [fetchMyChallenges]);
+
+  const handleCreated = () => {
+    setShowCreate(false);
+    fetchMyChallenges();
+  };
+
+  const handleCreateClick = async () => {
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return;
+      }
+    }
+    setShowCreate(true);
+  };
 
   if (loading) return <div className={styles.loadingState}><BlockLoader label={tCommon("loading")} /></div>;
 
@@ -48,7 +76,16 @@ export default function MyChallengesPage() {
 
   return (
     <div className={styles.page}>
-      <h1 className={styles.title}>{t("title")}</h1>
+      <AppPageHeader
+        title={t("title")}
+        backHref="/explore"
+        backLabel={tCommon("back")}
+        actions={
+          <Button onClick={handleCreateClick} size="sm">
+            {tExplore("createNew")}
+          </Button>
+        }
+      />
       <Tabs
         id={TABS_ID}
         tabs={tabItems}
@@ -59,7 +96,7 @@ export default function MyChallengesPage() {
       <div {...{ id: panelIdFor(TABS_ID, tab), role: "tabpanel" as const, "aria-labelledby": `${TABS_ID}-tab-${tab}` }}>
         {!items || items.length === 0 ? (
           <div className={styles.emptyState}>
-            <FlagIcon size={48} />
+            <PixelIcon shape="flag" blockSize={8} />
             <p>{tab === "created" ? t("emptyCreated") : t("emptyJoined")}</p>
           </div>
         ) : (
@@ -84,6 +121,13 @@ export default function MyChallengesPage() {
           </div>
         )}
       </div>
+
+      {showCreate && (
+        <CreateChallengeModal
+          onClose={() => setShowCreate(false)}
+          onCreated={handleCreated}
+        />
+      )}
     </div>
   );
 }

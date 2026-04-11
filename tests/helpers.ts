@@ -126,7 +126,7 @@ export function makeChallenge(overrides: Record<string, unknown> = {}) {
     category: null,
     goal: null,
     unit: null,
-    verification_type: "creator_approval",
+    verification_methods: ["creator_approval"],
     prize_amount_sats: 0,
     prize_distribution: "none",
     badge_nostr_event_id: null,

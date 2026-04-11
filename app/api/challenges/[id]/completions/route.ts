@@ -4,6 +4,9 @@ import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { NotFoundError, BadRequestError, ForbiddenError } from "@/lib/api/errors";
 import { challenges, participants, completions, users } from "@/lib/db/schema";
 import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
+import { verifyHashtagPost } from "@/lib/nostr/verify-hashtag-post";
+import { pickVerificationMethod } from "@/lib/api/verification-methods";
+import type { VerificationMethod } from "@/lib/types";
 
 function isUniqueViolation(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
@@ -77,13 +80,20 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
   if (!participation) throw new ForbiddenError("You must join this challenge first");
 
   const body = await req.json().catch(() => ({}));
-  const { content, step } = body as { content?: unknown; step?: unknown };
+  const { content, step, method } = body as {
+    content?: unknown;
+    step?: unknown;
+    method?: unknown;
+  };
+
+  const allowedMethods = challenge.verification_methods as VerificationMethod[];
+  const selectedMethod = pickVerificationMethod(method, allowedMethods);
 
   let proofEventId: string | null = null;
   let resolvedContent: string | null = null;
   let autoApprove = false;
 
-  if (challenge.verification_type === "nostr_action") {
+  if (selectedMethod === "nostr_action") {
     if (!challenge.nostr_action_target_event_id) {
       throw new BadRequestError("Challenge is missing a target event id");
     }
@@ -96,12 +106,27 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     }
     proofEventId = result.proofEventId;
     autoApprove = true;
+  } else if (selectedMethod === "nostr_hashtag") {
+    if (!challenge.nostr_hashtag) {
+      throw new BadRequestError("Challenge is missing a hashtag");
+    }
+    const result = await verifyHashtagPost({
+      authorPubkey: session!.nostr_pubkey,
+      hashtag: challenge.nostr_hashtag,
+    });
+    if (!result.valid || !result.proofEventId) {
+      throw new BadRequestError(
+        "No matching nostr note with that hashtag was found on your relays"
+      );
+    }
+    proofEventId = result.proofEventId;
+    autoApprove = true;
   } else {
     if (!content || typeof content !== "string" || content.trim().length < 5) {
       throw new BadRequestError("Proof content must be at least 5 characters");
     }
     resolvedContent = content.trim();
-    autoApprove = challenge.verification_type === "automatic";
+    autoApprove = selectedMethod === "automatic";
   }
 
   let completion;

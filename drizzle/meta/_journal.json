@@ -43,6 +43,13 @@
       "when": 1775859406187,
       "tag": "0005_harsh_quasar",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776000000000,
+      "tag": "0006_verification_methods_array",
+      "breakpoints": true
     }
   ]
 }

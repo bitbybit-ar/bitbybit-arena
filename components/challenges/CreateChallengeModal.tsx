@@ -25,8 +25,11 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
   const [category, setCategory] = useState("");
   const [goal, setGoal] = useState("");
   const [unit, setUnit] = useState("");
-  const [verification, setVerification] = useState("creator_approval");
+  const [verification, setVerification] = useState<
+    "creator_approval" | "automatic" | "nostr_action" | "nostr_hashtag"
+  >("creator_approval");
   const [nostrActionTarget, setNostrActionTarget] = useState("");
+  const [nostrHashtag, setNostrHashtag] = useState("");
   const [checkpointMode, setCheckpointMode] = useState<
     "none" | "sequential" | "parallel"
   >("none");
@@ -34,8 +37,13 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
     Array<{
       title: string;
       description: string;
-      verification_type: "creator_approval" | "automatic" | "nostr_action";
+      verification_type:
+        | "creator_approval"
+        | "automatic"
+        | "nostr_action"
+        | "nostr_hashtag";
       nostr_action_target_event_id: string;
+      nostr_hashtag: string;
     }>
   >([]);
   const [badgeName, setBadgeName] = useState("");
@@ -68,6 +76,12 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
         return;
       }
     }
+    if (verification === "nostr_hashtag") {
+      if (!/^#?[a-z0-9_]{2,50}$/i.test(nostrHashtag.trim())) {
+        setError(t("nostrHashtagError"));
+        return;
+      }
+    }
 
     if (checkpointMode !== "none") {
       if (checkpoints.length === 0) {
@@ -87,6 +101,13 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
           setError(t("checkpointTargetError", { index: i + 1 }));
           return;
         }
+        if (
+          cp.verification_type === "nostr_hashtag" &&
+          !/^#?[a-z0-9_]{2,50}$/i.test(cp.nostr_hashtag.trim())
+        ) {
+          setError(t("checkpointHashtagError", { index: i + 1 }));
+          return;
+        }
       }
     }
 
@@ -104,10 +125,14 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
           category: category || undefined,
           goal: goal ? Number(goal) : undefined,
           unit: unit || undefined,
-          verification_type: verification,
+          verification_methods: [verification],
           nostr_action_target_event_id:
             verification === "nostr_action"
               ? nostrActionTarget.trim().toLowerCase()
+              : undefined,
+          nostr_hashtag:
+            verification === "nostr_hashtag"
+              ? nostrHashtag.trim().toLowerCase().replace(/^#/, "")
               : undefined,
           prize_amount_sats: prizeAmountSats ? Number(prizeAmountSats) : undefined,
           prize_distribution:
@@ -120,10 +145,14 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
               ? checkpoints.map((cp) => ({
                   title: cp.title.trim(),
                   description: cp.description.trim() || null,
-                  verification_type: cp.verification_type,
+                  verification_methods: [cp.verification_type],
                   nostr_action_target_event_id:
                     cp.verification_type === "nostr_action"
                       ? cp.nostr_action_target_event_id.trim().toLowerCase()
+                      : null,
+                  nostr_hashtag:
+                    cp.verification_type === "nostr_hashtag"
+                      ? cp.nostr_hashtag.trim().toLowerCase().replace(/^#/, "")
                       : null,
                 }))
               : undefined,
@@ -260,11 +289,16 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
         <FormSelect
           label={t("verificationLabel")}
           value={verification}
-          onChange={setVerification}
+          onChange={(v) =>
+            setVerification(
+              v as "creator_approval" | "automatic" | "nostr_action" | "nostr_hashtag"
+            )
+          }
         >
           <option value="creator_approval">{t("verificationTypes.creator_approval")}</option>
           <option value="automatic">{t("verificationTypes.automatic")}</option>
           <option value="nostr_action">{t("verificationTypes.nostr_action")}</option>
+          <option value="nostr_hashtag">{t("verificationTypes.nostr_hashtag")}</option>
         </FormSelect>
 
         {verification === "nostr_action" && (
@@ -273,6 +307,16 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
             placeholder={t("nostrActionTargetPlaceholder")}
             value={nostrActionTarget}
             onChange={setNostrActionTarget}
+            required
+          />
+        )}
+
+        {verification === "nostr_hashtag" && (
+          <FormInput
+            label={t("nostrHashtagLabel")}
+            placeholder={t("nostrHashtagPlaceholder")}
+            value={nostrHashtag}
+            onChange={setNostrHashtag}
             required
           />
         )}
@@ -346,7 +390,8 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
                               verification_type: v as
                                 | "creator_approval"
                                 | "automatic"
-                                | "nostr_action",
+                                | "nostr_action"
+                                | "nostr_hashtag",
                             }
                           : c
                       )
@@ -361,6 +406,9 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
                   </option>
                   <option value="nostr_action">
                     {t("verificationTypes.nostr_action")}
+                  </option>
+                  <option value="nostr_hashtag">
+                    {t("verificationTypes.nostr_hashtag")}
                   </option>
                 </FormSelect>
                 {cp.verification_type === "nostr_action" && (
@@ -380,6 +428,21 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
                     required
                   />
                 )}
+                {cp.verification_type === "nostr_hashtag" && (
+                  <FormInput
+                    label={t("nostrHashtagLabel")}
+                    placeholder={t("nostrHashtagPlaceholder")}
+                    value={cp.nostr_hashtag}
+                    onChange={(v) =>
+                      setCheckpoints((prev) =>
+                        prev.map((c, i) =>
+                          i === idx ? { ...c, nostr_hashtag: v } : c
+                        )
+                      )
+                    }
+                    required
+                  />
+                )}
               </div>
             ))}
             <button
@@ -393,6 +456,7 @@ export function CreateChallengeModal({ onClose, onCreated }: CreateChallengeModa
                     description: "",
                     verification_type: "creator_approval",
                     nostr_action_target_event_id: "",
+                    nostr_hashtag: "",
                   },
                 ])
               }

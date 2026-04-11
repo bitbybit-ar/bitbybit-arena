@@ -237,11 +237,15 @@
     "verificationTypes": {
       "creator_approval": "Creator approval",
       "automatic": "Automatic (honor system)",
-      "nostr_action": "Nostr like (automatic)"
+      "nostr_action": "Nostr like (automatic)",
+      "nostr_hashtag": "Nostr post with hashtag (automatic)"
     },
     "nostrActionTargetLabel": "Target event id",
     "nostrActionTargetPlaceholder": "64-character hex id of the event participants must like",
     "nostrActionTargetError": "Event id must be a 64-character hex string",
+    "nostrHashtagLabel": "Hashtag",
+    "nostrHashtagPlaceholder": "E.g., arenahackathon",
+    "nostrHashtagError": "Hashtag must be 2-50 characters (letters, numbers, underscore)",
     "checkpointModeLabel": "Checkpoints (optional)",
     "checkpointModes": {
       "none": "No checkpoints",
@@ -257,6 +261,7 @@
     "checkpointsEmptyError": "Add at least one checkpoint or select \"No checkpoints\"",
     "checkpointTitleError": "Checkpoint {index}: title must be at least 3 characters",
     "checkpointTargetError": "Checkpoint {index}: event id must be a 64-character hex string",
+    "checkpointHashtagError": "Checkpoint {index}: hashtag must be 2-50 characters (letters, numbers, underscore)",
     "prizeAmountLabel": "Prize (sats)",
     "prizeAmountPlaceholder": "E.g., 10000",
     "rewardZapModeLabel": "How the prize is distributed",

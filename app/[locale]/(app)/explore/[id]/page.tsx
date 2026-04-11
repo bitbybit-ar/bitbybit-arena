@@ -24,8 +24,9 @@ interface CheckpointItem {
   order: number;
   title: string;
   description: string | null;
-  verification_type: string;
+  verification_methods: string[];
   nostr_action_target_event_id: string | null;
+  nostr_hashtag: string | null;
 }
 
 interface CheckpointCompletionItem {
@@ -44,8 +45,9 @@ interface ChallengeDetail {
   description: string;
   type: string;
   status: string;
-  verification_type: string;
+  verification_methods: string[];
   nostr_action_target_event_id: string | null;
+  nostr_hashtag: string | null;
   checkpoint_mode: "none" | "sequential" | "parallel";
   goal: number | null;
   unit: string | null;
@@ -331,7 +333,11 @@ export default function ChallengeDetailPage() {
     setActionLoading(`cp_${checkpoint.id}`);
     try {
       const body: Record<string, unknown> = {};
-      if (checkpoint.verification_type !== "nostr_action") {
+      const cpMethods = checkpoint.verification_methods ?? [];
+      const cpPrimary = cpMethods[0];
+      body.method = cpPrimary;
+      const needsContent = cpPrimary !== "nostr_action" && cpPrimary !== "nostr_hashtag";
+      if (needsContent) {
         const content = checkpointProofs[checkpoint.id] ?? "";
         if (content.trim().length < 5) {
           setCheckpointErrors((prev) => ({
@@ -473,7 +479,11 @@ export default function ChallengeDetailPage() {
             )}
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>{t("verification")}</span>
-              <span>{tCreate(`verificationTypes.${challenge.verification_type}`)}</span>
+              <span>
+                {(challenge.verification_methods ?? [])
+                  .map((m) => tCreate(`verificationTypes.${m}`))
+                  .join(" · ")}
+              </span>
             </div>
             {challenge.ends_at && (
               <div className={styles.detailRow}>
@@ -559,7 +569,7 @@ export default function ChallengeDetailPage() {
                       )}
                       {isParticipant && !isDone && !priorIncomplete && (
                         <div className={styles.checkpointActions}>
-                          {cp.verification_type === "nostr_action" ? (
+                          {cp.verification_methods?.[0] === "nostr_action" ? (
                             <>
                               {cp.nostr_action_target_event_id && (
                                 <p className={styles.targetEventId}>
@@ -627,7 +637,7 @@ export default function ChallengeDetailPage() {
         )}
 
         {/* Submit proof */}
-        {isParticipant && challenge.checkpoint_mode === "none" && challenge.verification_type === "nostr_action" && (
+        {isParticipant && challenge.checkpoint_mode === "none" && (challenge.verification_methods ?? []).includes("nostr_action") && (
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>{t("verifyLikeTitle")}</h2>
             <p className={styles.emptyText}>
@@ -657,7 +667,7 @@ export default function ChallengeDetailPage() {
           </div>
         )}
 
-        {isParticipant && challenge.checkpoint_mode === "none" && challenge.verification_type !== "nostr_action" && (
+        {isParticipant && challenge.checkpoint_mode === "none" && (challenge.verification_methods ?? []).some((m) => m !== "nostr_action" && m !== "nostr_hashtag") && (
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>{t("submitProof")}</h2>
             <textarea

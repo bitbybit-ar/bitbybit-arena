@@ -13,6 +13,9 @@ import {
   participants,
 } from "@/lib/db/schema";
 import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
+import { verifyHashtagPost } from "@/lib/nostr/verify-hashtag-post";
+import { pickVerificationMethod } from "@/lib/api/verification-methods";
+import type { VerificationMethod } from "@/lib/types";
 
 function isUniqueViolation(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
@@ -103,13 +106,16 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
   }
 
   const body = await req.json().catch(() => ({}));
-  const { content } = body as { content?: unknown };
+  const { content, method } = body as { content?: unknown; method?: unknown };
+
+  const allowedMethods = checkpoint.verification_methods as VerificationMethod[];
+  const selectedMethod = pickVerificationMethod(method, allowedMethods);
 
   let resolvedContent: string | null = null;
   let proofEventId: string | null = null;
   let autoApprove = false;
 
-  if (checkpoint.verification_type === "nostr_action") {
+  if (selectedMethod === "nostr_action") {
     if (!checkpoint.nostr_action_target_event_id) {
       throw new BadRequestError("Checkpoint is missing a target event id");
     }
@@ -124,12 +130,27 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     }
     proofEventId = result.proofEventId;
     autoApprove = true;
+  } else if (selectedMethod === "nostr_hashtag") {
+    if (!checkpoint.nostr_hashtag) {
+      throw new BadRequestError("Checkpoint is missing a hashtag");
+    }
+    const result = await verifyHashtagPost({
+      authorPubkey: session!.nostr_pubkey,
+      hashtag: checkpoint.nostr_hashtag,
+    });
+    if (!result.valid || !result.proofEventId) {
+      throw new BadRequestError(
+        "No matching nostr note with that hashtag was found on your relays"
+      );
+    }
+    proofEventId = result.proofEventId;
+    autoApprove = true;
   } else {
     if (!content || typeof content !== "string" || content.trim().length < 5) {
       throw new BadRequestError("Proof content must be at least 5 characters");
     }
     resolvedContent = content.trim();
-    autoApprove = checkpoint.verification_type === "automatic";
+    autoApprove = selectedMethod === "automatic";
   }
 
   let completion: typeof checkpoint_completions.$inferSelect;

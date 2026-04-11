@@ -61,7 +61,7 @@ describe("Integration: Nostr action verification", () => {
   });
 
   describe("POST /api/challenges — create nostr_action challenge", () => {
-    it("persists verification_type and target event id", async () => {
+    it("persists verification_methods and target event id", async () => {
       setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
 
       const res = await createChallengeRoute.POST(
@@ -69,14 +69,14 @@ describe("Integration: Nostr action verification", () => {
           title: "Like my note",
           description: "A challenge to verify likes via Nostr",
           type: "one_time",
-          verification_type: "nostr_action",
+          verification_methods: ["nostr_action"],
           nostr_action_target_event_id: VALID_EVENT_ID,
         })
       );
       const { status, body } = await parseResponse(res);
 
       expect(status).toBe(201);
-      expect(body.data.verification_type).toBe("nostr_action");
+      expect(body.data.verification_methods).toEqual(["nostr_action"]);
       expect(body.data.nostr_action_target_event_id).toBe(VALID_EVENT_ID);
     });
 
@@ -88,7 +88,7 @@ describe("Integration: Nostr action verification", () => {
           title: "Like my note",
           description: "A challenge to verify likes via Nostr",
           type: "one_time",
-          verification_type: "nostr_action",
+          verification_methods: ["nostr_action"],
           nostr_action_target_event_id: "not-hex",
         })
       );
@@ -104,7 +104,7 @@ describe("Integration: Nostr action verification", () => {
       challenge = await seedChallenge(creator.id, {
         title: "Like Challenge",
         status: "open",
-        verification_type: "nostr_action",
+        verification_methods: ["nostr_action"],
         nostr_action_target_event_id: VALID_EVENT_ID,
         goal: 1,
       });
@@ -180,7 +180,7 @@ describe("Integration: Nostr action verification", () => {
       const multi = await seedChallenge(creator.id, {
         title: "Multi Like",
         status: "open",
-        verification_type: "nostr_action",
+        verification_methods: ["nostr_action"],
         nostr_action_target_event_id: VALID_EVENT_ID,
         goal: 5,
       });
@@ -208,7 +208,7 @@ describe("Integration: Nostr action verification", () => {
           slug: `broken-${Date.now()}`,
           title: "Broken",
           description: "Missing target event id for nostr_action",
-          verification_type: "nostr_action",
+          verification_methods: ["nostr_action"],
           nostr_action_target_event_id: null,
         })
         .returning();

@@ -10,6 +10,7 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
+import type { VerificationMethod } from "@/lib/types";
 import { sql } from "drizzle-orm";
 
 // --- Users (Nostr-only auth) ---
@@ -52,12 +53,15 @@ export const challenges = pgTable(
     category: varchar("category", { length: 50 }),
     goal: integer("goal"), // target number (e.g., 30 days, 5 books)
     unit: varchar("unit", { length: 30 }), // days, completions, points
-    verification_type: varchar("verification_type", { length: 20 })
+    verification_methods: text("verification_methods")
+      .array()
       .notNull()
-      .default("creator_approval"), // creator_approval, automatic, nostr_action
+      .default(sql`ARRAY['creator_approval']::text[]`)
+      .$type<VerificationMethod[]>(),
     nostr_action_target_event_id: varchar("nostr_action_target_event_id", {
       length: 64,
     }),
+    nostr_hashtag: varchar("nostr_hashtag", { length: 50 }),
     checkpoint_mode: varchar("checkpoint_mode", { length: 20 })
       .notNull()
       .default("none"), // none, sequential, parallel
@@ -154,12 +158,15 @@ export const challenge_checkpoints = pgTable(
     order: integer("order").notNull(),
     title: varchar("title", { length: 200 }).notNull(),
     description: text("description"),
-    verification_type: varchar("verification_type", { length: 20 })
+    verification_methods: text("verification_methods")
+      .array()
       .notNull()
-      .default("creator_approval"), // creator_approval, automatic, nostr_action
+      .default(sql`ARRAY['creator_approval']::text[]`)
+      .$type<VerificationMethod[]>(),
     nostr_action_target_event_id: varchar("nostr_action_target_event_id", {
       length: 64,
     }),
+    nostr_hashtag: varchar("nostr_hashtag", { length: 50 }),
     created_at: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [

@@ -38,7 +38,7 @@ export async function seedChallenge(
       title: overrides.title ?? "Test Challenge",
       description: overrides.description ?? "A test challenge description",
       type: "one_time",
-      verification_type: "creator_approval",
+      verification_methods: ["creator_approval"],
       ...overrides,
     })
     .returning();
