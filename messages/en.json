@@ -422,6 +422,13 @@
       "habitsRepo": "Habits on GitHub"
     }
   },
+  "notFound": {
+    "code": "404",
+    "title": "Page not found",
+    "subtitle": "This arena vanished. The challenge you were looking for may have ended or the link is broken.",
+    "ctaExplore": "Back to Explore",
+    "ctaHome": "Back to home"
+  },
   "settings": {
     "title": "Settings",
     "profile": "Profile",
