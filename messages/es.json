@@ -417,6 +417,13 @@
       "habitsRepo": "Habits en GitHub"
     }
   },
+  "notFound": {
+    "code": "404",
+    "title": "Página no encontrada",
+    "subtitle": "Esta arena se desvaneció. Quizás el desafío que buscás ya terminó o el enlace está roto.",
+    "ctaExplore": "Volver a Explorar",
+    "ctaHome": "Volver al inicio"
+  },
   "settings": {
     "title": "Configuración",
     "profile": "Perfil",

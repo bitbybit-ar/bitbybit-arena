@@ -1,0 +1,140 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.page {
+  min-height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-24;
+  position: relative;
+  overflow: hidden;
+}
+
+.card {
+  position: relative;
+  z-index: 1;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-xl;
+  padding: $spacing-40;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  animation: cardFadeIn 0.5s ease both;
+
+  @include mobile {
+    padding: $spacing-24;
+  }
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.code {
+  font-family: $font-display;
+  font-size: $font-size-hero;
+  font-weight: $font-weight-extrabold;
+  line-height: 1;
+  margin-bottom: $spacing-12;
+  background: linear-gradient(135deg, $color-primary, $color-secondary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: fadeInUp 0.4s ease both 0.1s;
+}
+
+.title {
+  font-family: $font-display;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-8;
+  animation: fadeInUp 0.4s ease both 0.2s;
+}
+
+.subtitle {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  margin-bottom: $spacing-32;
+  line-height: $line-height-base;
+  animation: fadeInUp 0.4s ease both 0.3s;
+}
+
+.cta {
+  animation: fadeInUp 0.4s ease both 0.4s;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.floatBlock1,
+.floatBlock2,
+.floatBlock3 {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.25;
+}
+
+.floatBlock1 {
+  top: 14%;
+  right: 10%;
+  animation: nf-drift-a 5s ease-in-out infinite;
+}
+
+.floatBlock2 {
+  bottom: 22%;
+  left: 8%;
+  animation: nf-drift-b 5.5s ease-in-out infinite;
+  animation-delay: -1.5s;
+}
+
+.floatBlock3 {
+  top: 58%;
+  right: 6%;
+  animation: nf-drift-a 6s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+@keyframes nf-drift-a {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(14px, -18px); }
+}
+
+@keyframes nf-drift-b {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-12px, 14px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .code,
+  .title,
+  .subtitle,
+  .cta,
+  .floatBlock1,
+  .floatBlock2,
+  .floatBlock3 {
+    animation: none;
+  }
+}
