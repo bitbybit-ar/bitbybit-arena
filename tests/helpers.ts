@@ -123,7 +123,7 @@ export function makeChallenge(overrides: Record<string, unknown> = {}) {
     description: "A test challenge description that is long enough",
     image_url: null,
     type: "one_time",
-    category: null,
+    tags: [],
     goal: null,
     unit: null,
     verification_methods: ["creator_approval"],

@@ -44,7 +44,7 @@ export interface Challenge {
   description: string;
   image_url: string | null;
   type: ChallengeType;
-  category: string | null;
+  tags: string[];
   goal: number | null;
   unit: string | null;
   verification_methods: VerificationMethod[];

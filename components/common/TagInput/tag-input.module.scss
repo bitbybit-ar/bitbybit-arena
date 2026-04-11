@@ -1,0 +1,67 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-8;
+  padding: $spacing-8 $spacing-12;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  min-height: 42px;
+  font-family: $font-family-base;
+
+  &:focus-within {
+    border-color: $color-primary;
+  }
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-4;
+  padding: 4px $spacing-8;
+  background: color-mix(in srgb, $color-primary 15%, $color-surface);
+  border: 1px solid $color-primary;
+  border-radius: $border-radius-full;
+  color: $color-text-primary;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+}
+
+.chipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: $color-text-secondary;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+
+  &:hover {
+    color: $color-accent;
+  }
+}
+
+.input {
+  flex: 1 1 120px;
+  min-width: 120px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: inherit;
+  color: $color-text-primary;
+
+  &::placeholder {
+    color: $color-text-secondary;
+  }
+}

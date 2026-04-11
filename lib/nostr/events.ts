@@ -9,11 +9,12 @@ export function buildChallengeEvent(params: {
   title: string;
   description: string;
   type: string;
-  category?: string;
+  tags?: string[];
   goal?: number;
   unit?: string;
-  verification: string;
+  verification: string[];
   badgeName?: string;
+  badgeImageUrl?: string;
   startsAt?: string;
   endsAt?: string;
 }): UnsignedNostrEvent {
@@ -21,14 +22,19 @@ export function buildChallengeEvent(params: {
     ["d", params.slug],
     ["title", params.title],
     ["type", params.type],
-    ["verification", params.verification],
     ["status", "open"],
   ];
 
-  if (params.category) tags.push(["t", params.category]);
+  for (const method of params.verification) {
+    tags.push(["verification", method]);
+  }
+  if (params.tags) {
+    for (const t of params.tags) tags.push(["t", t]);
+  }
   if (params.goal) tags.push(["goal", String(params.goal)]);
   if (params.unit) tags.push(["unit", params.unit]);
   if (params.badgeName) tags.push(["badge", params.badgeName]);
+  if (params.badgeImageUrl) tags.push(["badge_image", params.badgeImageUrl]);
   if (params.startsAt) tags.push(["start", String(Math.floor(new Date(params.startsAt).getTime() / 1000))]);
   if (params.endsAt) tags.push(["end", String(Math.floor(new Date(params.endsAt).getTime() / 1000))]);
 

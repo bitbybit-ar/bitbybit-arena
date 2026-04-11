@@ -50,6 +50,20 @@
       "when": 1776000000000,
       "tag": "0006_verification_methods_array",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1776100000000,
+      "tag": "0007_add_tags_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1776100000001,
+      "tag": "0008_drop_category",
+      "breakpoints": true
     }
   ]
 }

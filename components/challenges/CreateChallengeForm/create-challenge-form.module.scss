@@ -1,0 +1,175 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/media-mixins" as *;
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-16;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-16;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-12;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  font-family: $font-family-base;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-4;
+    cursor: pointer;
+  }
+}
+
+.required {
+  color: $color-accent;
+}
+
+.hint {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.checkpointsSection {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-16;
+  padding: $spacing-16;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+}
+
+.checkpointRow {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+  padding: $spacing-12;
+  background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-sm;
+}
+
+.checkpointHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.checkpointIndex {
+  font-weight: $font-weight-bold;
+  font-size: $font-size-sm;
+}
+
+.checkpointRemove {
+  background: transparent;
+  border: none;
+  color: $color-accent;
+  font-size: $font-size-xs;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.addCheckpoint {
+  align-self: flex-start;
+  padding: $spacing-8 $spacing-16;
+  background: transparent;
+  border: 1px dashed $color-primary;
+  border-radius: $border-radius-sm;
+  color: $color-primary;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, $color-primary 8%, transparent);
+  }
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-8;
+  font-size: $font-size-sm;
+
+  input {
+    accent-color: $color-primary;
+    margin-top: 2px;
+  }
+}
+
+.badgePreview {
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
+  padding: $spacing-12;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+}
+
+.badgePreviewImage {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: $border-radius-sm;
+  background: $color-bg;
+}
+
+.badgePreviewText {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.badgePreviewError {
+  font-size: $font-size-xs;
+  color: $color-accent;
+}
+
+.error {
+  padding: $spacing-12;
+  background: color-mix(in srgb, $color-accent 12%, transparent);
+  border: 1px solid $color-accent;
+  border-radius: $border-radius-sm;
+  color: $color-accent;
+  font-size: $font-size-sm;
+}
+
+.warning {
+  padding: $spacing-12;
+  background: color-mix(in srgb, $color-secondary 15%, transparent);
+  border: 1px solid $color-secondary;
+  border-radius: $border-radius-sm;
+  color: $color-text-primary;
+  font-size: $font-size-sm;
+}

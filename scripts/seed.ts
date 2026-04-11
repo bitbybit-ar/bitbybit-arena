@@ -96,7 +96,7 @@ type MockChallenge = {
   title: string;
   description: string;
   type: "one_time" | "streak" | "competition" | "race" | "creative";
-  category: string;
+  tags: string[];
   verification_methods: VerificationMethod[];
   nostr_hashtag?: string;
   checkpoint_mode: "none" | "sequential" | "parallel";
@@ -118,7 +118,7 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     description:
       "Run at least 2km every day for 30 consecutive days. Post a screenshot of your tracker as proof. Streak resets to zero if you skip a day.",
     type: "streak",
-    category: "fitness",
+    tags: ["fitness"],
     verification_methods: ["creator_approval"],
     checkpoint_mode: "none",
     goal: 30,
@@ -140,7 +140,7 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     description:
       "React with a zap or like to the pinned La Crypta announcement. Verification is automatic — once your Nostr event hits the relays, you're in.",
     type: "one_time",
-    category: "social",
+    tags: ["social"],
     verification_methods: ["nostr_action"],
     checkpoint_mode: "none",
     ends_in_days: 7,
@@ -159,7 +159,7 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     description:
       "Finish 5 books before the end of the quarter. Submit a text review of each one. Any genre counts, re-reads don't.",
     type: "streak",
-    category: "learning",
+    tags: ["learning"],
     verification_methods: ["creator_approval"],
     checkpoint_mode: "parallel",
     goal: 5,
@@ -185,7 +185,7 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     description:
       "First person to log 100km of cycling in Buenos Aires wins the full pot. Post your ride summary to claim checkpoints. Race ends when the first rider hits 100km.",
     type: "race",
-    category: "fitness",
+    tags: ["fitness"],
     verification_methods: ["creator_approval"],
     checkpoint_mode: "sequential",
     goal: 100,
@@ -215,7 +215,7 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     description:
       "Create something real, publish it on GitHub, and post the link. The top 3 projects (by zap votes) split the reward pot.",
     type: "competition",
-    category: "coding",
+    tags: ["coding"],
     verification_methods: ["creator_approval"],
     checkpoint_mode: "none",
     prize_amount_sats: 120000,
@@ -236,7 +236,7 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     description:
       "Make one piece of pixel art per day for the weekend. Share it on nostr with #pixelart. The jury picks one winner to take the full pot.",
     type: "creative",
-    category: "creativity",
+    tags: ["creativity"],
     verification_methods: ["nostr_action"],
     checkpoint_mode: "parallel",
     prize_amount_sats: 25000,
@@ -263,7 +263,7 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     description:
       "Pick seven recipes you've never cooked before and make them within two weeks. Submit a plate shot description for each.",
     type: "streak",
-    category: "cooking",
+    tags: ["cooking"],
     verification_methods: ["creator_approval"],
     checkpoint_mode: "sequential",
     goal: 7,
@@ -291,7 +291,7 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     description:
       "Sit for at least 10 minutes every morning, 21 days in a row. Honor system — just log that you did it.",
     type: "streak",
-    category: "wellness",
+    tags: ["wellness"],
     verification_methods: ["automatic"],
     checkpoint_mode: "none",
     goal: 21,
@@ -312,7 +312,7 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     description:
       "Construí un proyecto sobre Nostr durante el Hackathon #2 de La Crypta. Publicá tu proyecto en Nostr (nota kind:1) con el hashtag #arenahackathon para registrarlo automáticamente, o mandá el link por aprobación manual. Todos los participantes válidos reciben la badge. Los 3 proyectos con más votos del jurado se llevan el pozo en zaps.",
     type: "competition",
-    category: "hackathon",
+    tags: ["hackathon"],
     verification_methods: ["nostr_hashtag", "creator_approval"],
     nostr_hashtag: "arenahackathon",
     checkpoint_mode: "none",
@@ -335,7 +335,7 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     description:
       "Write at least one paragraph in your journal every day for two weeks. Share a highlight line each day as proof.",
     type: "streak",
-    category: "wellness",
+    tags: ["wellness"],
     verification_methods: ["creator_approval"],
     checkpoint_mode: "none",
     goal: 14,
@@ -454,7 +454,7 @@ async function main() {
         title: mc.title,
         description: mc.description,
         type: mc.type,
-        category: mc.category,
+        tags: mc.tags,
         verification_methods: mc.verification_methods,
         nostr_hashtag: mc.nostr_hashtag ?? null,
         checkpoint_mode: mc.checkpoint_mode,

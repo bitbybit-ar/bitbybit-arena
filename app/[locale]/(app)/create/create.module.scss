@@ -1,0 +1,16 @@
+@use "@/styles/spacing" as *;
+@use "@/styles/media-mixins" as *;
+
+.page {
+  position: relative;
+  max-width: $container-max-width;
+  margin: 0 auto;
+  padding: $spacing-32 $container-padding;
+  padding-top: calc($navbar-height + #{$spacing-32});
+  min-height: 100vh;
+
+  @include mobile {
+    padding: $spacing-16 $container-padding-mobile;
+    padding-top: calc($navbar-height + #{$spacing-16});
+  }
+}
