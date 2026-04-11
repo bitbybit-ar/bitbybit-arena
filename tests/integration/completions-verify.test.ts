@@ -40,7 +40,7 @@ describe("Integration: Completions & Verify", () => {
     challenge = await seedChallenge(creator.id, {
       title: "Complete Test",
       status: "open",
-      verification_type: "creator_approval",
+      verification_methods: ["creator_approval"],
       goal: 2,
     });
     await seedParticipant(challenge.id, participant.id, { status: "active" });

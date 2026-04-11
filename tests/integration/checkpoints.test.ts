@@ -53,7 +53,7 @@ async function seedChallengeWithCheckpoints(
       title: "Checkpoint Challenge",
       description: "Challenge with multiple checkpoints",
       type: "one_time",
-      verification_type: "automatic",
+      verification_methods: ["automatic"],
       checkpoint_mode: mode,
       goal: titles.length,
       unit: "checkpoints",
@@ -68,7 +68,7 @@ async function seedChallengeWithCheckpoints(
         challenge_id: challenge.id,
         order: idx,
         title,
-        verification_type: "automatic",
+        verification_methods: ["automatic" as const],
       }))
     )
     .returning();
@@ -102,9 +102,9 @@ describe("Integration: Checkpoints", () => {
           type: "one_time",
           checkpoint_mode: "sequential",
           checkpoints: [
-            { title: "Step one", verification_type: "automatic" },
-            { title: "Step two", verification_type: "automatic" },
-            { title: "Step three", verification_type: "automatic" },
+            { title: "Step one", verification_methods: ["automatic"] },
+            { title: "Step two", verification_methods: ["automatic"] },
+            { title: "Step three", verification_methods: ["automatic"] },
           ],
         })
       );

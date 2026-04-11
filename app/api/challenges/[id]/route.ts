@@ -10,10 +10,15 @@ import {
   checkpoint_completions,
 } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth";
-import type { ChallengeType, VerificationType, PrizeDistribution } from "@/lib/types";
+import type { ChallengeType, VerificationMethod, PrizeDistribution } from "@/lib/types";
 
 const VALID_TYPES: ChallengeType[] = ["one_time", "streak", "competition", "race", "creative"];
-const VALID_VERIFICATION: VerificationType[] = ["creator_approval", "automatic", "nostr_action"];
+const VALID_VERIFICATION: VerificationMethod[] = [
+  "creator_approval",
+  "automatic",
+  "nostr_action",
+  "nostr_hashtag",
+];
 const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "winner_takes_all", "split", "tiered", "none"];
 const VALID_STATUSES = ["open", "in_progress", "completed", "cancelled"];
 const HEX_64 = /^[0-9a-f]{64}$/i;
@@ -122,9 +127,20 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db, params }) 
     if (!VALID_TYPES.includes(body.type)) throw new BadRequestError("Invalid type");
     updates.type = body.type;
   }
-  if (body.verification_type !== undefined) {
-    if (!VALID_VERIFICATION.includes(body.verification_type)) throw new BadRequestError("Invalid verification type");
-    updates.verification_type = body.verification_type;
+  if (body.verification_methods !== undefined) {
+    if (!Array.isArray(body.verification_methods) || body.verification_methods.length === 0) {
+      throw new BadRequestError("verification_methods must be a non-empty array");
+    }
+    const seen = new Set<VerificationMethod>();
+    for (const m of body.verification_methods) {
+      if (typeof m !== "string" || !VALID_VERIFICATION.includes(m as VerificationMethod)) {
+        throw new BadRequestError(
+          `verification_methods contains an invalid value. Must be one of: ${VALID_VERIFICATION.join(", ")}`
+        );
+      }
+      seen.add(m as VerificationMethod);
+    }
+    updates.verification_methods = Array.from(seen);
   }
   if (body.status !== undefined) {
     if (!VALID_STATUSES.includes(body.status)) throw new BadRequestError("Invalid status");

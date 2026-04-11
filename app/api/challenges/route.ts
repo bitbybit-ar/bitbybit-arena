@@ -6,23 +6,59 @@ import { challenges, challenge_checkpoints, users } from "@/lib/db/schema";
 import { slugify } from "@/lib/utils";
 import type {
   ChallengeType,
-  VerificationType,
+  VerificationMethod,
   PrizeDistribution,
   CheckpointMode,
 } from "@/lib/types";
 
 const VALID_TYPES: ChallengeType[] = ["one_time", "streak", "competition", "race", "creative"];
-const VALID_VERIFICATION: VerificationType[] = ["creator_approval", "automatic", "nostr_action"];
+const VALID_VERIFICATION: VerificationMethod[] = [
+  "creator_approval",
+  "automatic",
+  "nostr_action",
+  "nostr_hashtag",
+];
 const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "winner_takes_all", "split", "tiered", "none"];
 const PAYOUT_DISTRIBUTIONS: PrizeDistribution[] = ["first_to_complete", "split", "tiered"];
 const VALID_CHECKPOINT_MODE: CheckpointMode[] = ["none", "sequential", "parallel"];
 const HEX_64 = /^[0-9a-f]{64}$/i;
+const HASHTAG = /^[a-z0-9_]{2,50}$/;
+
+function normalizeHashtag(raw: unknown): string {
+  if (typeof raw !== "string") {
+    throw new BadRequestError("nostr_hashtag must be a string");
+  }
+  const cleaned = raw.trim().toLowerCase().replace(/^#/, "");
+  if (!HASHTAG.test(cleaned)) {
+    throw new BadRequestError(
+      "nostr_hashtag must be 2-50 characters, letters/digits/underscore only"
+    );
+  }
+  return cleaned;
+}
+
+function normalizeMethods(raw: unknown, field: string): VerificationMethod[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new BadRequestError(`${field} must be a non-empty array`);
+  }
+  const seen = new Set<VerificationMethod>();
+  for (const m of raw) {
+    if (typeof m !== "string" || !VALID_VERIFICATION.includes(m as VerificationMethod)) {
+      throw new BadRequestError(
+        `${field} contains an invalid value. Must be one of: ${VALID_VERIFICATION.join(", ")}`
+      );
+    }
+    seen.add(m as VerificationMethod);
+  }
+  return Array.from(seen);
+}
 
 interface CheckpointInput {
   title: string;
   description?: string | null;
-  verification_type?: VerificationType;
+  verification_methods: VerificationMethod[];
   nostr_action_target_event_id?: string | null;
+  nostr_hashtag?: string | null;
 }
 
 function normalizeCheckpoints(raw: unknown): CheckpointInput[] {
@@ -44,12 +80,14 @@ function normalizeCheckpoints(raw: unknown): CheckpointInput[] {
     if (typeof title !== "string" || title.trim().length < 3) {
       throw new BadRequestError(`Checkpoint #${idx + 1}: title must be at least 3 characters`);
     }
-    const verification = (obj.verification_type as VerificationType | undefined) ?? "creator_approval";
-    if (!VALID_VERIFICATION.includes(verification)) {
-      throw new BadRequestError(`Checkpoint #${idx + 1}: invalid verification_type`);
-    }
+    const methodsRaw = obj.verification_methods ?? ["creator_approval"];
+    const methods = normalizeMethods(
+      methodsRaw,
+      `Checkpoint #${idx + 1}: verification_methods`
+    );
     let targetEventId: string | null = null;
-    if (verification === "nostr_action") {
+    let hashtag: string | null = null;
+    if (methods.includes("nostr_action")) {
       const raw = obj.nostr_action_target_event_id;
       if (typeof raw !== "string" || !HEX_64.test(raw)) {
         throw new BadRequestError(
@@ -58,14 +96,18 @@ function normalizeCheckpoints(raw: unknown): CheckpointInput[] {
       }
       targetEventId = raw.toLowerCase();
     }
+    if (methods.includes("nostr_hashtag")) {
+      hashtag = normalizeHashtag(obj.nostr_hashtag);
+    }
     return {
       title: title.trim(),
       description:
         typeof obj.description === "string" && obj.description.trim().length > 0
           ? obj.description.trim()
           : null,
-      verification_type: verification,
+      verification_methods: methods,
       nostr_action_target_event_id: targetEventId,
+      nostr_hashtag: hashtag,
     };
   });
 }
@@ -87,7 +129,10 @@ export const GET = apiHandler(
     if (status) conditions.push(eq(challenges.status, status));
     if (type) conditions.push(eq(challenges.type, type));
     if (category) conditions.push(eq(challenges.category, category));
-    if (verification) conditions.push(eq(challenges.verification_type, verification));
+    if (verification) {
+      // Match challenges whose methods array contains this method
+      conditions.push(sql`${verification} = ANY(${challenges.verification_methods})`);
+    }
     if (search) {
       conditions.push(
         or(
@@ -159,7 +204,7 @@ export const GET = apiHandler(
 export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
   const body = await req.json();
 
-  const { title, description, type, category, goal, unit, verification_type, nostr_action_target_event_id, checkpoint_mode, checkpoints: checkpointsInput, prize_amount_sats, prize_distribution, zap_goal_event_id, badge_name, starts_at, ends_at } = body;
+  const { title, description, type, category, goal, unit, verification_methods, nostr_action_target_event_id, nostr_hashtag, checkpoint_mode, checkpoints: checkpointsInput, prize_amount_sats, prize_distribution, zap_goal_event_id, badge_name, starts_at, ends_at } = body;
 
   if (!title || typeof title !== "string" || title.trim().length < 3) {
     throw new BadRequestError("Title must be at least 3 characters");
@@ -169,9 +214,6 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
   }
   if (type && !VALID_TYPES.includes(type)) {
     throw new BadRequestError(`Invalid type. Must be one of: ${VALID_TYPES.join(", ")}`);
-  }
-  if (verification_type && !VALID_VERIFICATION.includes(verification_type)) {
-    throw new BadRequestError(`Invalid verification type. Must be one of: ${VALID_VERIFICATION.join(", ")}`);
   }
   if (prize_distribution && !VALID_DISTRIBUTION.includes(prize_distribution)) {
     throw new BadRequestError(`Invalid prize_distribution. Must be one of: ${VALID_DISTRIBUTION.join(", ")}`);
@@ -202,13 +244,24 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
     );
   }
 
-  const resolvedVerification: VerificationType = verification_type || "creator_approval";
+  const resolvedMethods: VerificationMethod[] = verification_methods
+    ? normalizeMethods(verification_methods, "verification_methods")
+    : ["creator_approval"];
   let resolvedTargetEventId: string | null = null;
-  if (resolvedVerification === "nostr_action") {
-    if (typeof nostr_action_target_event_id !== "string" || !HEX_64.test(nostr_action_target_event_id)) {
-      throw new BadRequestError("nostr_action_target_event_id must be a 64-character hex event id");
+  if (resolvedMethods.includes("nostr_action")) {
+    if (
+      typeof nostr_action_target_event_id !== "string" ||
+      !HEX_64.test(nostr_action_target_event_id)
+    ) {
+      throw new BadRequestError(
+        "nostr_action_target_event_id must be a 64-character hex event id"
+      );
     }
     resolvedTargetEventId = nostr_action_target_event_id.toLowerCase();
+  }
+  let resolvedHashtag: string | null = null;
+  if (resolvedMethods.includes("nostr_hashtag")) {
+    resolvedHashtag = normalizeHashtag(nostr_hashtag);
   }
 
   if (
@@ -240,8 +293,9 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
     // directly against checkpoint count.
     goal: normalizedCheckpoints.length > 0 ? normalizedCheckpoints.length : goal || null,
     unit: normalizedCheckpoints.length > 0 ? "checkpoints" : unit || null,
-    verification_type: resolvedVerification,
+    verification_methods: resolvedMethods,
     nostr_action_target_event_id: resolvedTargetEventId,
+    nostr_hashtag: resolvedHashtag,
     checkpoint_mode: resolvedMode,
     prize_amount_sats: prize_amount_sats || 0,
     prize_distribution: prize_distribution || "none",
@@ -267,8 +321,9 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
         order: idx,
         title: cp.title,
         description: cp.description ?? null,
-        verification_type: cp.verification_type ?? "creator_approval",
+        verification_methods: cp.verification_methods,
         nostr_action_target_event_id: cp.nostr_action_target_event_id ?? null,
+        nostr_hashtag: cp.nostr_hashtag ?? null,
       }))
     ),
   ]);

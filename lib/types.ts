@@ -21,10 +21,11 @@ export type ChallengeType =
 
 export type ChallengeStatus = "open" | "in_progress" | "completed" | "cancelled";
 
-export type VerificationType =
+export type VerificationMethod =
   | "creator_approval"
   | "automatic"
-  | "nostr_action";
+  | "nostr_action"
+  | "nostr_hashtag";
 
 export type CheckpointMode = "none" | "sequential" | "parallel";
 
@@ -46,8 +47,9 @@ export interface Challenge {
   category: string | null;
   goal: number | null;
   unit: string | null;
-  verification_type: VerificationType;
+  verification_methods: VerificationMethod[];
   nostr_action_target_event_id: string | null;
+  nostr_hashtag: string | null;
   checkpoint_mode: CheckpointMode;
   zap_goal_event_id: string | null;
   rewards_paid_at: string | null;
@@ -97,8 +99,9 @@ export interface Checkpoint {
   order: number;
   title: string;
   description: string | null;
-  verification_type: VerificationType;
+  verification_methods: VerificationMethod[];
   nostr_action_target_event_id: string | null;
+  nostr_hashtag: string | null;
 }
 
 export interface CheckpointCompletion {

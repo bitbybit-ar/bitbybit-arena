@@ -2,23 +2,39 @@
 
 This document describes the three Nostr-native flows added to BitByBit Arena on top of the base challenge platform:
 
-1. **Nostr-action proof-of-completion** — auto-verify completions via NIP-25 kind 7 reactions
+1. **Nostr proof-of-completion** — auto-verify completions via NIP-25 kind 7 reactions or NIP-12 hashtag posts
 2. **Checkpoints** — sequential or parallel sub-tasks, each independently verifiable
 3. **Zap rewards** — NIP-75 Zap Goals for funding + NIP-57 client-side payouts to winners
 
 All three are optional and compose cleanly: a challenge can have any combination of them (or none).
 
-## 1. Nostr-action proof-of-completion
+## 1. Nostr proof-of-completion
 
 ### What it replaces
 
 The legacy flow accepts a **text proof** that the creator manually reviews. It works, but it's trust-based and slow.
 
-### How it works
+### Verification methods
 
-The challenge creator picks `verification_type = "nostr_action"` at creation time and pins a **target event id** (a 64-char hex note id). Participants prove completion by **liking that exact note on Nostr** from their normal client (Damus, Amethyst, nos2x, etc.).
+Each challenge (and each checkpoint) carries a `verification_methods: text[]` column — an ordered array of the methods participants can use to complete it. A challenge may enable **multiple methods at once** so participants can pick their path:
 
-### Verification path
+| Value | How it's verified | Approval |
+|---|---|---|
+| `creator_approval` | Participant submits text proof, creator reviews in-app | Manual |
+| `automatic` | Honor system — any text proof auto-approves | Automatic |
+| `nostr_action` | NIP-25 kind 7 reaction (like) to a target event id the creator pinned | Automatic (queries relays) |
+| `nostr_hashtag` | NIP-12 kind:1 note by the participant tagged with a specific `#t` hashtag the creator set | Automatic (queries relays) |
+
+When the challenge has more than one method, the client must pass `method: <value>` in the completions POST body. Single-method challenges default to their sole method.
+
+### Example configurations
+
+- **Like-to-enter raffle** → `["nostr_action"]` + `nostr_action_target_event_id`
+- **Hashtag campaign** → `["nostr_hashtag"]` + `nostr_hashtag`
+- **Hackathon (multi-method)** → `["nostr_hashtag", "creator_approval"]` + hashtag set. Participants who post on nostr with the tag get auto-verified; anyone who can't use their nostr client can still submit a link for manual review.
+- **Text-proof only (legacy)** → `["creator_approval"]`
+
+### Verification path — `nostr_action`
 
 1. Participant clicks "Verify my like on Nostr" on the challenge detail page.
 2. The API queries the configured relays in parallel for:
@@ -28,13 +44,30 @@ The challenge creator picks `verification_type = "nostr_action"` at creation tim
 3. The first matching event that passes signature verification is accepted as proof.
 4. The completion is inserted with `status='approved'` and `proof_event_id=<like_event_id>`, and the participant's `progress` is incremented.
 
-A partial unique index on `completions(challenge_id, user_id, proof_event_id) WHERE proof_event_id IS NOT NULL` prevents the same like from being submitted twice as proof for the same challenge — including the race between two concurrent "Verify my like" clicks.
+### Verification path — `nostr_hashtag`
+
+1. Participant publishes a kind:1 note from their normal client (Damus, Amethyst, nos2x, etc.) with the `#t` tag the challenge specifies — e.g. `["t", "arenahackathon"]`.
+2. Participant opens the challenge and submits the completion.
+3. The API queries:
+   ```
+   { kinds: [1], authors: [<participant_pubkey>], "#t": [<hashtag variants>], limit: 1 }
+   ```
+   Lowercase, uppercase, and capitalized variants are all tried since not every client normalizes tags.
+4. The returned event's `t` tags are re-checked case-insensitively before it's accepted as proof.
+5. The completion is auto-approved with `proof_event_id=<note_event_id>`.
+
+### Duplicate protection
+
+A partial unique index on `completions(challenge_id, user_id, proof_event_id) WHERE proof_event_id IS NOT NULL` prevents the same event from being submitted twice as proof for the same challenge — including the race between two concurrent verification clicks.
 
 ### Files
 
 - `lib/nostr/fetch-events.ts` — generic server-side relay `REQ` helper
 - `lib/nostr/verify-like.ts` — NIP-25 kind 7 wrapper
-- `app/api/challenges/[id]/completions/route.ts` — branches on `verification_type`
+- `lib/nostr/verify-hashtag-post.ts` — NIP-12 `#t` wrapper with multi-case fallback
+- `lib/api/verification-methods.ts` — `pickVerificationMethod(input, allowed)` helper shared by both completion routes
+- `app/api/challenges/[id]/completions/route.ts` — branches on the picked method
+- `app/api/challenges/[id]/checkpoints/[checkpointId]/complete/route.ts` — same branching per checkpoint
 
 ## 2. Checkpoints
 
@@ -46,7 +79,7 @@ A challenge can be split into ordered or unordered sub-tasks. The creator picks 
 - **`sequential`** — each earlier checkpoint must be approved before the next can be completed. Good for streaks and multi-step quests.
 - **`parallel`** — checkpoints can be completed in any order. Good for "do these three things" bundles.
 
-Each checkpoint has its own `verification_type`, so you can mix: one checkpoint uses a creator_approval text proof, the next uses nostr_action kind 7, the third is automatic.
+Each checkpoint has its own `verification_methods` array, so you can mix: one checkpoint uses a creator_approval text proof, the next uses nostr_action kind 7, the third is automatic, and a fourth asks for a nostr_hashtag post.
 
 ### Data model
 
@@ -57,7 +90,9 @@ challenges
 challenge_checkpoints
   (challenge_id, order) UNIQUE
   title, description
-  verification_type, nostr_action_target_event_id
+  verification_methods: text[]
+  nostr_action_target_event_id
+  nostr_hashtag
 
 checkpoint_completions
   (participant_id, checkpoint_id) UNIQUE
@@ -158,9 +193,9 @@ No invoices cross our server. No sats sit on our server. No custody.
 Imagine a hackathon practice challenge:
 
 - Creator publishes a challenge with `checkpoint_mode: "sequential"`, three checkpoints, and a 10000-sat prize pool with `reward_zap_mode: "first_to_complete"`.
-- Checkpoint 1 uses `nostr_action` targeting a specific note id ("like this announcement").
-- Checkpoint 2 is `creator_approval` with a text proof.
-- Checkpoint 3 is another `nostr_action` targeting a different note.
+- Checkpoint 1 uses `verification_methods: ["nostr_action"]` targeting a specific note id ("like this announcement").
+- Checkpoint 2 is `verification_methods: ["creator_approval"]` with a text proof.
+- Checkpoint 3 uses `verification_methods: ["nostr_hashtag"]` with `nostr_hashtag: "arenahack"` — participants publish a kind:1 note tagged `#arenahack` to pass.
 - The creator also publishes a Zap Goal so the community can fund the pot before kickoff.
 
 A participant:
