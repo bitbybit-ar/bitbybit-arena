@@ -5,6 +5,7 @@
 @use "@/styles/media-mixins" as *;
 
 .page {
+  position: relative;
   max-width: $container-max-width;
   margin: 0 auto;
   padding: $spacing-32 $container-padding;
@@ -15,40 +16,6 @@
     padding: $spacing-16 $container-padding-mobile;
     padding-top: calc($navbar-height + #{$spacing-16});
   }
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: $spacing-24;
-  gap: $spacing-16;
-
-  @include mobile {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-.headerActions {
-  display: flex;
-  align-items: center;
-  gap: $spacing-8;
-  flex-shrink: 0;
-
-  @include mobile {
-    justify-content: stretch;
-
-    > * {
-      flex: 1;
-    }
-  }
-}
-
-.title {
-  font-family: $font-display;
-  font-size: $font-size-2xl;
-  font-weight: $font-weight-extrabold;
 }
 
 .controls {
