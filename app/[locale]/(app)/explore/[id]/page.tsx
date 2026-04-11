@@ -51,7 +51,7 @@ interface ChallengeDetail {
   checkpoint_mode: "none" | "sequential" | "parallel";
   goal: number | null;
   unit: string | null;
-  category: string | null;
+  tags: string[];
   badge_name: string | null;
   starts_at: string | null;
   ends_at: string | null;

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { eq, sql, and, asc } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
 import { NotFoundError, ForbiddenError, BadRequestError } from "@/lib/api/errors";
+import { normalizeTags } from "@/lib/api/normalize-tags";
 import {
   challenges,
   users,
@@ -22,9 +23,9 @@ const VALID_VERIFICATION: VerificationMethod[] = [
 const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "winner_takes_all", "split", "tiered", "none"];
 const VALID_STATUSES = ["open", "in_progress", "completed", "cancelled"];
 const HEX_64 = /^[0-9a-f]{64}$/i;
-const MAX_CATEGORY_LEN = 50;
 const MAX_UNIT_LEN = 30;
 const MAX_BADGE_NAME_LEN = 100;
+const MAX_BADGE_IMAGE_URL_LEN = 2048;
 
 // GET /api/challenges/[id] — get single challenge with creator and participant count
 export const GET = apiHandler(
@@ -150,11 +151,8 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db, params }) 
     if (!VALID_DISTRIBUTION.includes(body.prize_distribution)) throw new BadRequestError("Invalid prize distribution");
     updates.prize_distribution = body.prize_distribution;
   }
-  if (body.category !== undefined) {
-    if (body.category !== null && (typeof body.category !== "string" || body.category.length > MAX_CATEGORY_LEN)) {
-      throw new BadRequestError(`category must be a string of at most ${MAX_CATEGORY_LEN} characters`);
-    }
-    updates.category = body.category;
+  if (body.tags !== undefined) {
+    updates.tags = normalizeTags(body.tags);
   }
   if (body.goal !== undefined) {
     if (body.goal !== null && (!Number.isInteger(body.goal) || body.goal < 0)) {
@@ -179,6 +177,12 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db, params }) 
       throw new BadRequestError(`badge_name must be a string of at most ${MAX_BADGE_NAME_LEN} characters`);
     }
     updates.badge_name = body.badge_name;
+  }
+  if (body.badge_image_url !== undefined) {
+    if (body.badge_image_url !== null && (typeof body.badge_image_url !== "string" || body.badge_image_url.length > MAX_BADGE_IMAGE_URL_LEN)) {
+      throw new BadRequestError(`badge_image_url must be a string of at most ${MAX_BADGE_IMAGE_URL_LEN} characters`);
+    }
+    updates.badge_image_url = body.badge_image_url || null;
   }
   if (body.starts_at !== undefined) {
     if (body.starts_at !== null) {

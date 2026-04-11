@@ -215,6 +215,53 @@
   },
   "createChallenge": {
     "title": "Crear desafío",
+    "sections": {
+      "general": "Información general",
+      "details": "Detalles",
+      "badge": "Badge"
+    },
+    "tooltips": {
+      "name": {
+        "text": "Un título corto y claro que diga de qué se trata el desafío.",
+        "example": "Ej: 30 días de lectura"
+      },
+      "description": {
+        "text": "Explicá las reglas, qué cuenta como completado, y cualquier restricción.",
+        "example": "Ej: Leé al menos 20 minutos por día durante 30 días seguidos."
+      },
+      "dates": {
+        "text": "Cuándo arranca y cuándo termina el desafío. Opcional si es abierto.",
+        "example": "Ej: del 1 al 30 del mes"
+      },
+      "type": {
+        "text": "Define cómo se estructura el desafío: una sola tarea, racha diaria, competencia, etc.",
+        "example": "Ej: \"Racha\" si hay que hacer algo todos los días"
+      },
+      "tags": {
+        "text": "Hasta 10 etiquetas para ayudar a descubrir tu desafío. Minúsculas, guiones, sin espacios.",
+        "example": "Ej: fitness, meditacion, lectura"
+      },
+      "verification": {
+        "text": "Podés elegir más de un método. El participante tiene que cumplir con todos los seleccionados.",
+        "example": "Ej: Aprobación del creador + hashtag en Nostr"
+      },
+      "checkpoints": {
+        "text": "Dividí el desafío en sub-tareas. Secuencial fuerza un orden, paralelo permite cualquier orden.",
+        "example": "Ej: Leer capítulo 1, luego 2, luego 3"
+      },
+      "prize": {
+        "text": "Premio total en sats. Se reparte entre los ganadores según el modo elegido.",
+        "example": "Ej: 10000 sats"
+      },
+      "badgeName": {
+        "text": "Nombre del badge NIP-58 que reciben los ganadores en su identidad Nostr.",
+        "example": "Ej: Maestro Zen 30 Días"
+      },
+      "badgeImage": {
+        "text": "URL pública de una imagen para el badge. Usá un servicio de hosting (Imgur, Nostr.build, etc).",
+        "example": "Ej: https://nostr.build/i/badge.png"
+      }
+    },
     "nameLabel": "Título",
     "namePlaceholder": "Ej: 30 días de meditación",
     "descriptionLabel": "Descripción",
@@ -227,8 +274,16 @@
       "race": "Carrera",
       "creative": "Creativo"
     },
-    "categoryLabel": "Categoría",
-    "categoryPlaceholder": "Ej: fitness, aprendizaje, creatividad",
+    "typeDescriptions": {
+      "one_time": "Una sola tarea que hay que completar.",
+      "streak": "Repetir algo todos los días durante una cantidad fija.",
+      "competition": "Varios participantes compiten por los mejores resultados.",
+      "race": "El primero en llegar a la meta gana.",
+      "creative": "Trabajo creativo evaluado por el creador o la comunidad."
+    },
+    "tagsLabel": "Tags",
+    "tagsPlaceholder": "Ej: fitness, aprendizaje, creatividad",
+    "tagsHint": "Hasta 10 tags. Minúsculas, números y guiones.",
     "goalLabel": "Meta",
     "goalPlaceholder": "Ej: 30",
     "unitLabel": "Unidad",
@@ -240,6 +295,13 @@
       "nostr_action": "Like en Nostr (automático)",
       "nostr_hashtag": "Post en Nostr con hashtag (automático)"
     },
+    "verificationDescriptions": {
+      "creator_approval": "El creador revisa y aprueba cada prueba enviada.",
+      "automatic": "Se aprueba sola al enviarla (sistema de honor).",
+      "nostr_action": "El participante debe darle like a un evento específico.",
+      "nostr_hashtag": "El participante debe postear con un hashtag específico."
+    },
+    "verificationEmptyError": "Seleccioná al menos un método de verificación.",
     "nostrActionTargetLabel": "ID del evento objetivo",
     "nostrActionTargetPlaceholder": "64 caracteres hex del evento que los participantes deben likear",
     "nostrActionTargetError": "El ID del evento debe ser un string hexadecimal de 64 caracteres",
@@ -251,6 +313,11 @@
       "none": "Sin checkpoints",
       "sequential": "Secuenciales (en orden)",
       "parallel": "Paralelos (cualquier orden)"
+    },
+    "checkpointModeDescriptions": {
+      "none": "El desafío se completa con una sola prueba.",
+      "sequential": "Hay que completar las sub-tareas en orden.",
+      "parallel": "Las sub-tareas se pueden completar en cualquier orden."
     },
     "checkpointsHint": "Dividí el desafío en sub-tareas. Cada checkpoint se verifica por separado.",
     "checkpointIndex": "Checkpoint {index}",
@@ -276,6 +343,11 @@
     "zapGoalPublishFailed": "El desafío se creó pero no pudimos publicar el Zap Goal en los relays. Intentá de nuevo más tarde.",
     "badgeNameLabel": "Nombre del badge",
     "badgeNamePlaceholder": "Ej: Maestro Zen 30 Días",
+    "badgeImageUrlLabel": "Imagen del badge (URL)",
+    "badgeImageUrlPlaceholder": "https://...",
+    "badgeImageUrlPreviewFallback": "Vista previa del badge",
+    "badgeImageUrlLoadError": "No se pudo cargar la imagen. Revisá la URL.",
+    "createFailed": "No se pudo crear el desafío. Intentá de nuevo.",
     "startsAtLabel": "Fecha de inicio",
     "endsAtLabel": "Fecha de fin",
     "creating": "Creando...",

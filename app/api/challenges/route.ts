@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { eq, and, ilike, or, sql, desc, asc } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { BadRequestError } from "@/lib/api/errors";
+import { normalizeTags } from "@/lib/api/normalize-tags";
 import { challenges, challenge_checkpoints, users } from "@/lib/db/schema";
 import { slugify } from "@/lib/utils";
 import type {
@@ -118,7 +119,7 @@ export const GET = apiHandler(
     const search = url.searchParams.get("search");
     const status = url.searchParams.get("status");
     const type = url.searchParams.get("type");
-    const category = url.searchParams.get("category");
+    const tag = url.searchParams.get("tag");
     const verification = url.searchParams.get("verification");
     const sort = url.searchParams.get("sort") || "newest";
     const cursor = url.searchParams.get("cursor");
@@ -128,7 +129,7 @@ export const GET = apiHandler(
 
     if (status) conditions.push(eq(challenges.status, status));
     if (type) conditions.push(eq(challenges.type, type));
-    if (category) conditions.push(eq(challenges.category, category));
+    if (tag) conditions.push(sql`${tag} = ANY(${challenges.tags})`);
     if (verification) {
       // Match challenges whose methods array contains this method
       conditions.push(sql`${verification} = ANY(${challenges.verification_methods})`);
@@ -204,7 +205,16 @@ export const GET = apiHandler(
 export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
   const body = await req.json();
 
-  const { title, description, type, category, goal, unit, verification_methods, nostr_action_target_event_id, nostr_hashtag, checkpoint_mode, checkpoints: checkpointsInput, prize_amount_sats, prize_distribution, zap_goal_event_id, badge_name, starts_at, ends_at } = body;
+  const { title, description, type, tags, goal, unit, verification_methods, nostr_action_target_event_id, nostr_hashtag, checkpoint_mode, checkpoints: checkpointsInput, prize_amount_sats, prize_distribution, zap_goal_event_id, badge_name, badge_image_url, starts_at, ends_at } = body;
+
+  const resolvedTags = normalizeTags(tags);
+  let resolvedBadgeImageUrl: string | null = null;
+  if (badge_image_url !== undefined && badge_image_url !== null && badge_image_url !== "") {
+    if (typeof badge_image_url !== "string" || badge_image_url.length > 2048) {
+      throw new BadRequestError("badge_image_url must be a string of at most 2048 characters");
+    }
+    resolvedBadgeImageUrl = badge_image_url.trim();
+  }
 
   if (!title || typeof title !== "string" || title.trim().length < 3) {
     throw new BadRequestError("Title must be at least 3 characters");
@@ -287,7 +297,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
     title: title.trim(),
     description: description.trim(),
     type: type || "one_time",
-    category: category || null,
+    tags: resolvedTags,
     // When checkpoints are used, goal is the number of checkpoints and
     // unit is always "checkpoints" so participant.progress compares
     // directly against checkpoint count.
@@ -301,6 +311,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
     prize_distribution: prize_distribution || "none",
     zap_goal_event_id: resolvedZapGoalEventId,
     badge_name: badge_name || null,
+    badge_image_url: resolvedBadgeImageUrl,
     starts_at: starts_at ? new Date(starts_at) : null,
     ends_at: ends_at ? new Date(ends_at) : null,
   };

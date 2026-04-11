@@ -1,0 +1,80 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: $spacing-12;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $spacing-8;
+  padding: $spacing-16;
+  background: $color-surface;
+  border: 2px solid $color-border;
+  border-radius: $border-radius-md;
+  text-align: left;
+  cursor: pointer;
+  font-family: $font-family-base;
+  color: $color-text-primary;
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+
+  &:hover {
+    border-color: $color-primary;
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+}
+
+.selected {
+  border-color: $color-primary;
+  background: color-mix(in srgb, $color-primary 10%, $color-surface);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  font-size: $font-size-body;
+  font-weight: $font-weight-bold;
+}
+
+.description {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  line-height: 1.5;
+}
+
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border: 2px solid $color-border;
+  background: $color-bg;
+  color: $color-primary;
+}
+
+.indicatorRadio {
+  border-radius: $border-radius-full;
+}
+
+.indicatorCheck {
+  border-radius: $border-radius-sm;
+}
+
+.selected .indicator {
+  border-color: $color-primary;
+  background: $color-primary;
+  color: $static-white;
+}

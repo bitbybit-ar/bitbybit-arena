@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { Tabs, panelIdFor } from "@/components/ui/tabs";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
-import { CreateChallengeModal } from "@/components/challenges/CreateChallengeModal";
+import { useRouter } from "@/i18n/routing";
 import { useSignerContext } from "@/lib/signer-context";
 import styles from "./my-challenges.module.scss";
 
@@ -31,10 +31,10 @@ export default function MyChallengesPage() {
   const tCreate = useTranslations("createChallenge");
   const tExplore = useTranslations("explore");
   const { needsSigner, requestReSignIn } = useSignerContext();
+  const router = useRouter();
   const [data, setData] = useState<{ created: MyChallengeItem[]; joined: MyChallengeItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("joined");
-  const [showCreate, setShowCreate] = useState(false);
 
   const fetchMyChallenges = useCallback(() => {
     setLoading(true);
@@ -49,11 +49,6 @@ export default function MyChallengesPage() {
     fetchMyChallenges();
   }, [fetchMyChallenges]);
 
-  const handleCreated = () => {
-    setShowCreate(false);
-    fetchMyChallenges();
-  };
-
   const handleCreateClick = async () => {
     if (needsSigner) {
       try {
@@ -62,7 +57,7 @@ export default function MyChallengesPage() {
         return;
       }
     }
-    setShowCreate(true);
+    router.push("/create");
   };
 
   if (loading) return <div className={styles.loadingState}><BlockLoader label={tCommon("loading")} /></div>;
@@ -122,12 +117,6 @@ export default function MyChallengesPage() {
         )}
       </div>
 
-      {showCreate && (
-        <CreateChallengeModal
-          onClose={() => setShowCreate(false)}
-          onCreated={handleCreated}
-        />
-      )}
     </div>
   );
 }

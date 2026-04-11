@@ -8,7 +8,7 @@ import { BlockLoader } from "@/components/ui/block-loader";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
-import { CreateChallengeModal } from "@/components/challenges/CreateChallengeModal";
+import { useRouter } from "@/i18n/routing";
 import { useSignerContext } from "@/lib/signer-context";
 import styles from "./explore.module.scss";
 
@@ -18,7 +18,7 @@ interface ChallengeItem {
   description: string;
   type: string;
   status: string;
-  category: string | null;
+  tags: string[];
   participant_count: number;
   ends_at: string | null;
   created_at: string;
@@ -34,13 +34,13 @@ export default function ExplorePage() {
   const tCommon = useTranslations("common");
   const tCreate = useTranslations("createChallenge");
   const { session, needsSigner, requestReSignIn } = useSignerContext();
+  const router = useRouter();
 
   const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [type, setType] = useState("");
   const [sort, setSort] = useState("newest");
-  const [showCreate, setShowCreate] = useState(false);
 
   const fetchChallenges = useCallback(async () => {
     setLoading(true);
@@ -67,22 +67,17 @@ export default function ExplorePage() {
     fetchChallenges();
   }, [fetchChallenges]);
 
-  const handleCreated = () => {
-    setShowCreate(false);
-    fetchChallenges();
-  };
-
   const handleCreateClick = async () => {
-    // Anonymous or reattach users: prompt to sign in first so we don't end
-    // up stacking CreateChallengeModal on top of ReSignInModal.
+    // Anonymous or reattach users: prompt to sign in first so we don't
+    // land on /explore/create without a usable signer.
     if (needsSigner) {
       try {
         await requestReSignIn();
       } catch {
-        return; // user cancelled
+        return;
       }
     }
-    setShowCreate(true);
+    router.push("/create");
   };
 
   const typeOptions = ["one_time", "streak", "competition", "race", "creative"];
@@ -186,12 +181,6 @@ export default function ExplorePage() {
         </div>
       )}
 
-      {showCreate && (
-        <CreateChallengeModal
-          onClose={() => setShowCreate(false)}
-          onCreated={handleCreated}
-        />
-      )}
     </div>
   );
 }

@@ -50,7 +50,11 @@ export const challenges = pgTable(
     description: text("description").notNull(),
     image_url: text("image_url"),
     type: varchar("type", { length: 20 }).notNull().default("one_time"), // one_time, streak, competition, race, creative
-    category: varchar("category", { length: 50 }),
+    tags: text("tags")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`)
+      .$type<string[]>(),
     goal: integer("goal"), // target number (e.g., 30 days, 5 books)
     unit: varchar("unit", { length: 30 }), // days, completions, points
     verification_methods: text("verification_methods")

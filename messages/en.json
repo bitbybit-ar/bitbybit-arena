@@ -215,6 +215,53 @@
   },
   "createChallenge": {
     "title": "Create Challenge",
+    "sections": {
+      "general": "General info",
+      "details": "Details",
+      "badge": "Badge"
+    },
+    "tooltips": {
+      "name": {
+        "text": "A short, clear title that says what the challenge is about.",
+        "example": "E.g., 30 days of reading"
+      },
+      "description": {
+        "text": "Spell out the rules, what counts as completion, and any constraints.",
+        "example": "E.g., Read at least 20 minutes every day for 30 straight days."
+      },
+      "dates": {
+        "text": "When the challenge starts and ends. Optional if it's open-ended.",
+        "example": "E.g., from the 1st to the 30th"
+      },
+      "type": {
+        "text": "How the challenge is structured: one task, daily streak, competition, etc.",
+        "example": "E.g., \"Streak\" if you need to do something every day"
+      },
+      "tags": {
+        "text": "Up to 10 tags to help people discover your challenge. Lowercase, hyphens, no spaces.",
+        "example": "E.g., fitness, meditation, reading"
+      },
+      "verification": {
+        "text": "You can pick more than one method. Participants must satisfy every method you choose.",
+        "example": "E.g., Creator approval + Nostr hashtag"
+      },
+      "checkpoints": {
+        "text": "Split the challenge into sub-tasks. Sequential forces an order, parallel allows any order.",
+        "example": "E.g., Read chapter 1, then 2, then 3"
+      },
+      "prize": {
+        "text": "Total prize in sats. Distributed among the winners according to the chosen mode.",
+        "example": "E.g., 10000 sats"
+      },
+      "badgeName": {
+        "text": "Name of the NIP-58 badge winners receive on their Nostr identity.",
+        "example": "E.g., 30-Day Zen Master"
+      },
+      "badgeImage": {
+        "text": "Public URL of an image for the badge. Use a hosting service (Imgur, Nostr.build, etc).",
+        "example": "E.g., https://nostr.build/i/badge.png"
+      }
+    },
     "nameLabel": "Title",
     "namePlaceholder": "E.g., 30-day meditation challenge",
     "descriptionLabel": "Description",
@@ -227,8 +274,16 @@
       "race": "Race",
       "creative": "Creative"
     },
-    "categoryLabel": "Category",
-    "categoryPlaceholder": "E.g., fitness, learning, creativity",
+    "typeDescriptions": {
+      "one_time": "A single task to complete.",
+      "streak": "Repeat something every day for a fixed count.",
+      "competition": "Multiple participants compete for the best results.",
+      "race": "First one to reach the goal wins.",
+      "creative": "Creative work judged by the creator or the community."
+    },
+    "tagsLabel": "Tags",
+    "tagsPlaceholder": "E.g., fitness, learning, creativity",
+    "tagsHint": "Up to 10 tags. Lowercase letters, digits, and hyphens.",
     "goalLabel": "Goal",
     "goalPlaceholder": "E.g., 30",
     "unitLabel": "Unit",
@@ -240,6 +295,13 @@
       "nostr_action": "Nostr like (automatic)",
       "nostr_hashtag": "Nostr post with hashtag (automatic)"
     },
+    "verificationDescriptions": {
+      "creator_approval": "The creator reviews and approves each submitted proof.",
+      "automatic": "Auto-approved on submit (honor system).",
+      "nostr_action": "The participant must like a specific Nostr event.",
+      "nostr_hashtag": "The participant must post with a specific hashtag."
+    },
+    "verificationEmptyError": "Select at least one verification method.",
     "nostrActionTargetLabel": "Target event id",
     "nostrActionTargetPlaceholder": "64-character hex id of the event participants must like",
     "nostrActionTargetError": "Event id must be a 64-character hex string",
@@ -251,6 +313,11 @@
       "none": "No checkpoints",
       "sequential": "Sequential (in order)",
       "parallel": "Parallel (any order)"
+    },
+    "checkpointModeDescriptions": {
+      "none": "The challenge is completed with a single proof.",
+      "sequential": "Sub-tasks must be completed in order.",
+      "parallel": "Sub-tasks can be completed in any order."
     },
     "checkpointsHint": "Split the challenge into sub-tasks. Each checkpoint is verified independently.",
     "checkpointIndex": "Checkpoint {index}",
@@ -276,6 +343,11 @@
     "zapGoalPublishFailed": "The challenge was created but we couldn't publish the Zap Goal to the relays. Try again later.",
     "badgeNameLabel": "Badge name",
     "badgeNamePlaceholder": "E.g., 30-Day Zen Master",
+    "badgeImageUrlLabel": "Badge image (URL)",
+    "badgeImageUrlPlaceholder": "https://...",
+    "badgeImageUrlPreviewFallback": "Badge preview",
+    "badgeImageUrlLoadError": "Couldn't load that image. Check the URL.",
+    "createFailed": "Could not create the challenge. Try again.",
     "startsAtLabel": "Start date",
     "endsAtLabel": "End date",
     "creating": "Creating...",

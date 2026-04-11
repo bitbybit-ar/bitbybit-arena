@@ -1,0 +1,29 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: $spacing-16;
+  margin: $spacing-32 0 $spacing-16;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.label {
+  flex: 0 0 auto;
+  font-family: $font-family-display;
+  font-size: $font-size-md;
+  font-weight: $font-weight-extrabold;
+  color: $color-text-primary;
+  letter-spacing: $letter-spacing-heading;
+}
+
+.line {
+  flex: 1 1 auto;
+  height: 1px;
+  background: $color-border;
+}
