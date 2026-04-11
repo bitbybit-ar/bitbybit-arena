@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { FlagIcon } from "@/components/icons";
-import { Spinner } from "@/components/ui/spinner";
+import { BlockLoader } from "@/components/ui/block-loader";
 import { Tag } from "@/components/ui/tag";
 import { Tabs, panelIdFor } from "@/components/ui/tabs";
 import styles from "./my-challenges.module.scss";
@@ -37,7 +37,7 @@ export default function MyChallengesPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className={styles.loadingState}><Spinner size="lg" /></div>;
+  if (loading) return <div className={styles.loadingState}><BlockLoader label={tCommon("loading")} /></div>;
 
   const items = tab === "created" ? data?.created : data?.joined;
 

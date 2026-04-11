@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { FormInput, FormTextarea, FormButton } from "@/components/ui/form";
-import { Spinner } from "@/components/ui/spinner";
+import { BlockLoader } from "@/components/ui/block-loader";
 import { useToast } from "@/components/ui/toast";
 import styles from "./settings.module.scss";
 
@@ -82,7 +82,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className={styles.loadingState}>
-        <Spinner size="lg" />
+        <BlockLoader label={tCommon("loading")} />
       </div>
     );
   }

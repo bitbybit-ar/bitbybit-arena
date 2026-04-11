@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
 import { useRouter } from "@/i18n/routing";
 import { ArrowRightIcon, BadgeIcon, BoltIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
-import { Spinner } from "@/components/ui/spinner";
+import { BlockLoader } from "@/components/ui/block-loader";
 import { Block } from "@/components/common/Block";
 import { buildJoinEvent, buildCompletionEvent, buildBadgeAwardEvent, buildZapRequestEvent } from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
@@ -433,20 +433,13 @@ export default function ChallengeDetailPage() {
   if (loading) {
     return (
       <div className={styles.loadingState}>
-        <Spinner size="lg" />
+        <BlockLoader label={tCommon("loading")} />
       </div>
     );
   }
 
   if (!challenge) {
-    return (
-      <div className={styles.emptyState}>
-        <p>Challenge not found</p>
-        <Button variant="outline" onClick={() => router.push("/explore")}>
-          {tCommon("back")}
-        </Button>
-      </div>
-    );
+    notFound();
   }
 
   return (
