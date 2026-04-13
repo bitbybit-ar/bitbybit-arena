@@ -71,7 +71,7 @@ export const challenges = pgTable(
       .notNull()
       .default("none"), // none, sequential, parallel
     prize_amount_sats: integer("prize_amount_sats").default(0),
-    prize_distribution: varchar("prize_distribution", { length: 30 }), // first_to_complete, winner_takes_all, split, tiered, none — drives zap payouts when prize_amount_sats > 0
+    prize_distribution: varchar("prize_distribution", { length: 30 }), // first_to_complete, split, tiered, none — drives zap payouts when prize_amount_sats > 0
     // NIP-57 + NIP-75 zap rewards
     zap_goal_event_id: varchar("zap_goal_event_id", { length: 64 }), // NIP-75 kind 9041 event id published by the creator to fund the prize
     rewards_paid_at: timestamp("rewards_paid_at"), // set when the creator finishes paying zaps to winners

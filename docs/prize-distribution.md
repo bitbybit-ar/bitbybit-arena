@@ -30,24 +30,25 @@ For challenges with a funded prize:
 
 ## Distribution Rules
 
-The creator selects a rule when creating the challenge:
+The creator selects a rule when creating the challenge. The field on the `challenges` row is `prize_distribution`, one of:
 
 ### First to Complete
 - The earliest participant to reach `status='completed'` takes the full pot
-- `reward_zap_mode = "first_to_complete"`
+- `prize_distribution = "first_to_complete"`
 
 ### Split Among Completers
 - Prize divided equally among every completer; rounding remainder added to the first-place winner
-- `reward_zap_mode = "split"`
+- `prize_distribution = "split"`
 
 ### Tiered Podium
 - Top 3 by completion time, split 50% / 30% / 20%
 - If fewer than 3 completers exist, the weights renormalize over the available slots (the full pot is always paid out)
-- `reward_zap_mode = "tiered"`
+- `prize_distribution = "tiered"`
 
 ### No Prize (Badge Only)
 - No sats involved, just a NIP-58 badge
 - Simplest option, expected to be the most common
+- `prize_distribution = "none"` (or left null with `prize_amount_sats = 0`)
 
 ## What the App Does vs Doesn't Do
 

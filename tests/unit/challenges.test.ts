@@ -98,6 +98,18 @@ describe("POST /api/challenges", () => {
     expect(res.status).toBe(400);
   });
 
+  it("rejects winner_takes_all as prize_distribution", async () => {
+    const res = await POST(buildRequest("POST", "/api/challenges", {
+      title: "Valid",
+      description: "Valid description here",
+      prize_amount_sats: 1000,
+      prize_distribution: "winner_takes_all",
+    }));
+    const { status, body } = await parseResponse(res);
+    expect(status).toBe(400);
+    expect(body.error).toContain("prize_distribution");
+  });
+
   it("creates challenge with valid data", async () => {
     setMutationResult([makeChallenge({ title: "Meditation" })]);
     const res = await POST(buildRequest("POST", "/api/challenges", {

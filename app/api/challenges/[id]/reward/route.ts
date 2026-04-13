@@ -17,7 +17,6 @@ import type { PrizeDistribution } from "@/lib/types";
 
 const PAYOUT_DISTRIBUTIONS: PrizeDistribution[] = [
   "first_to_complete",
-  "winner_takes_all",
   "split",
   "tiered",
 ];
@@ -96,7 +95,7 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
   let selected: typeof completers = [];
   let amounts: number[] = [];
 
-  if (distribution === "first_to_complete" || distribution === "winner_takes_all") {
+  if (distribution === "first_to_complete") {
     selected = completers.slice(0, 1);
     amounts = [challenge.prize_amount_sats];
   } else if (distribution === "split") {

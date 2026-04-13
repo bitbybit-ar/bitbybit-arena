@@ -656,13 +656,21 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
       {prizeAmountSats && Number(prizeAmountSats) > 0 && (
         <>
           <div className={styles.fieldGroup}>
-            <FieldLabel>{t("rewardZapModeLabel")}</FieldLabel>
+            <FieldLabel
+              tooltip={{
+                text: t("tooltips.rewardZapMode.text"),
+                example: t("tooltips.rewardZapMode.example"),
+              }}
+            >
+              {t("rewardZapModeLabel")}
+            </FieldLabel>
             <OptionCardGroup label={t("rewardZapModeLabel")}>
               {(["first_to_complete", "split", "tiered"] as RewardZapMode[]).map(
                 (mode) => (
                   <OptionCard
                     key={mode}
                     title={t(`rewardZapModes.${mode}`)}
+                    description={t(`rewardZapModeDescriptions.${mode}`)}
                     selected={rewardZapMode === mode}
                     onToggle={() => setRewardZapMode(mode)}
                   />

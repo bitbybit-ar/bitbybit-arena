@@ -258,6 +258,10 @@
         "text": "Total prize in sats. Distributed among the winners according to the chosen mode.",
         "example": "E.g., 10000 sats"
       },
+      "rewardZapMode": {
+        "text": "Choose how sats are split among people who complete the challenge. Pick the mode that matches your challenge.",
+        "example": "E.g., Podium for contests, Split for participation challenges"
+      },
       "badgeName": {
         "text": "Name of the NIP-58 badge winners receive on their Nostr identity.",
         "example": "E.g., 30-Day Zen Master"
@@ -339,9 +343,13 @@
     "rewardZapModeLabel": "How the prize is distributed",
     "rewardZapModes": {
       "first_to_complete": "First to complete takes all",
-      "winner_takes_all": "Winner takes all",
       "split": "Split evenly among all completers",
       "tiered": "Podium (50% / 30% / 20%)"
+    },
+    "rewardZapModeDescriptions": {
+      "first_to_complete": "The first person to complete takes the whole pot. Best for races and speedruns.",
+      "split": "Everyone who completes shares the pot equally. Best for participation-style challenges.",
+      "tiered": "Top three finishers split 50% / 30% / 20%. Best for ranked contests."
     },
     "publishZapGoalLabel": "Publish a Zap Goal (NIP-75) on Nostr so others can fund the prize",
     "zapGoalSkippedNoSigner": "The challenge was created but we couldn't publish the Zap Goal: your Nostr signer isn't active. You can publish it later from the challenge page.",

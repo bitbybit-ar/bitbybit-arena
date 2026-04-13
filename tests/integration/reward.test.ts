@@ -252,6 +252,27 @@ describe("Integration: Zap rewards", () => {
       );
       expect(res.status).toBe(400);
     });
+
+    it("400 when prize_distribution is 'none'", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        prize_distribution: "none",
+        status: "open",
+      });
+      const p = await seedParticipant(challenge.id, winnerA.id, {
+        status: "active",
+      });
+      await markParticipantCompleted(p.id);
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { status, body } = await parseResponse(res);
+      expect(status).toBe(400);
+      expect(body.error).toContain("payout-eligible");
+    });
   });
 
   describe("PATCH /api/challenges/[id]/reward", () => {

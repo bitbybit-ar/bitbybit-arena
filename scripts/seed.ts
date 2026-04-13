@@ -10,7 +10,7 @@ import {
   checkpoint_completions,
   badges,
 } from "@/lib/db/schema";
-import type { VerificationMethod } from "@/lib/types";
+import type { PrizeDistribution, VerificationMethod } from "@/lib/types";
 
 config({ path: ".env.local" });
 config({ path: ".env" });
@@ -103,7 +103,7 @@ type MockChallenge = {
   goal?: number;
   unit?: string;
   prize_amount_sats?: number;
-  prize_distribution?: "first_to_complete" | "winner_takes_all" | "split" | "tiered" | "none";
+  prize_distribution?: PrizeDistribution;
   ends_in_days?: number;
   badge_name?: string;
   checkpoints?: { title: string; description: string }[];
@@ -234,13 +234,13 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     creator: "mock-luna-ibarra",
     title: "Pixel Art Weekend",
     description:
-      "Make one piece of pixel art per day for the weekend. Share it on nostr with #pixelart. The jury picks one winner to take the full pot.",
+      "Make one piece of pixel art per day for the weekend. Share it on nostr with #pixelart. Top 3 finishers split the pot 50% / 30% / 20%.",
     type: "creative",
     tags: ["creativity"],
     verification_methods: ["nostr_action"],
     checkpoint_mode: "parallel",
     prize_amount_sats: 25000,
-    prize_distribution: "winner_takes_all",
+    prize_distribution: "tiered",
     ends_in_days: 3,
     checkpoints: [
       { title: "Friday piece", description: "Post your Friday pixel." },
