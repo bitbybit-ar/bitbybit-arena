@@ -1,6 +1,7 @@
 "use client";
 
 import { Block } from "@/components/common/Block";
+import { cn } from "@/lib/utils";
 import styles from "./pixel-icon.module.scss";
 
 type BlockColor = "purple" | "gold" | "green" | "red";
@@ -96,7 +97,7 @@ export function PixelIcon({
 
   return (
     <div
-      className={`${styles.pixelIcon} ${className}`}
+      className={cn(styles.pixelIcon, className)}
       style={{
         display: "grid",
         gridTemplateColumns: `repeat(${cols}, ${blockSize}px)`,

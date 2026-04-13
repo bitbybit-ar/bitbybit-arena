@@ -211,7 +211,12 @@
     "empty": "No challenges yet. Be the first to create one!",
     "emptyFiltered": "No challenges found with these filters.",
     "signInToJoin": "Sign in to join",
-    "signInToCreate": "Sign in to create"
+    "signInToCreate": "Sign in to create",
+    "popularTags": "Popular tags",
+    "activeTagFilters": "Active filters",
+    "clearTagFilters": "Clear filters",
+    "removeTagFilter": "Remove {tag} filter",
+    "toggleTagFilter": "Filter by {tag}"
   },
   "createChallenge": {
     "title": "Create Challenge",

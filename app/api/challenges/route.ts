@@ -120,6 +120,7 @@ export const GET = apiHandler(
     const status = url.searchParams.get("status");
     const type = url.searchParams.get("type");
     const tag = url.searchParams.get("tag");
+    const tagsParam = url.searchParams.get("tags");
     const verification = url.searchParams.get("verification");
     const sort = url.searchParams.get("sort") || "newest";
     const cursor = url.searchParams.get("cursor");
@@ -130,6 +131,19 @@ export const GET = apiHandler(
     if (status) conditions.push(eq(challenges.status, status));
     if (type) conditions.push(eq(challenges.type, type));
     if (tag) conditions.push(sql`${tag} = ANY(${challenges.tags})`);
+    if (tagsParam) {
+      const tagList = tagsParam
+        .split(",")
+        .map((t) => t.trim().toLowerCase())
+        .filter((t) => /^[a-z0-9-]{1,30}$/.test(t));
+      if (tagList.length > 0) {
+        const tagChecks = tagList.map(
+          (t) => sql`${t} = ANY(${challenges.tags})`
+        );
+        const orClause = or(...tagChecks);
+        if (orClause) conditions.push(orClause);
+      }
+    }
     if (verification) {
       // Match challenges whose methods array contains this method
       conditions.push(sql`${verification} = ANY(${challenges.verification_methods})`);

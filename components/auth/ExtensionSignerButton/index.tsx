@@ -13,6 +13,7 @@ import {
   loginError,
   reSignInError,
 } from "@/lib/nostr/auth-errors";
+import { cn } from "@/lib/utils";
 import styles from "./extension-signer-button.module.scss";
 
 interface ExtensionSignerButtonProps {
@@ -87,7 +88,7 @@ export function ExtensionSignerButton({
       type="button"
       variant="primary"
       fullWidth
-      className={[styles.extensionButton, className].filter(Boolean).join(" ")}
+      className={cn(styles.extensionButton, className)}
       onClick={handleClick}
       disabled={busy || !hasExtension}
     >

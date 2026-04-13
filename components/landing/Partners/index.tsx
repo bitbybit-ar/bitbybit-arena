@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
+import { cn } from "@/lib/utils";
 import { Block } from "@/components/common/Block";
 import { PixelDissolve } from "@/components/common/PixelDissolve";
 import { FlagIcon, BoltIcon, TrophyIcon } from "@/components/icons";
@@ -42,7 +43,7 @@ export function Partners() {
         <TrophyIcon size={22} color="white" />
       </Block>
 
-      <div className={`${styles.container} scroll-reveal`} ref={ref}>
+      <div className={cn(styles.container, "scroll-reveal")} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
         <p className={styles.subtitle}>{t("subtitle")}</p>
 
@@ -53,7 +54,7 @@ export function Partners() {
               href={partner.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${styles.partnerLink} ${styles[partner.color]}`}
+              className={cn(styles.partnerLink, styles[partner.color])}
             >
               <Image
                 src={partner.logo}

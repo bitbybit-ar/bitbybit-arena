@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { BoltIcon } from "@/components/icons";
+import { cn } from "@/lib/utils";
 import styles from "./block-loader.module.scss";
 
 interface BlockLoaderProps {
@@ -67,17 +68,17 @@ export function BlockLoader({ label, maxBlocks = 4, visible = true }: BlockLoade
 
   return (
     <div className={styles.stage}>
-      <div className={`${styles.tower} ${fading ? styles.towerFade : ""}`}>
+      <div className={cn(styles.tower, fading && styles.towerFade)}>
         {blocks.map((color, i) => (
           <div
             key={`${color}-${i}`}
-            className={`${styles.block} ${styles[color]}`}
+            className={cn(styles.block, styles[color])}
           >
             <BoltIcon size={22} className={styles.icon} />
           </div>
         ))}
       </div>
-      <div className={`${styles.glow} ${styles[`glow_${currentColor}`]}`} />
+      <div className={cn(styles.glow, styles[`glow_${currentColor}`])} />
       <p className={styles.label}>
         {displayLabel}
         <span className={styles.dots}>
