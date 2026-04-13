@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Block } from "@/components/common/Block";
+import { cn } from "@/lib/utils";
 import styles from "./pixel-dissolve.module.scss";
 
 type BlockColor = "purple" | "gold" | "green" | "red";
@@ -47,7 +48,7 @@ export function PixelDissolve({ color, className = "" }: PixelDissolveProps) {
   if (!mounted) return null;
 
   return (
-    <div className={`${styles.dissolve} ${className}`} aria-hidden="true">
+    <div className={cn(styles.dissolve, className)} aria-hidden="true">
       {PARTICLES.map((p, i) => (
         <div
           key={i}

@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
+import { cn } from "@/lib/utils";
 import { Block } from "@/components/common/Block";
 import { PixelDissolve } from "@/components/common/PixelDissolve";
 import { FlagIcon, TrophyIcon, BoltIcon } from "@/components/icons";
@@ -34,14 +35,14 @@ export function Projects() {
         <BoltIcon size={22} color="white" />
       </Block>
 
-      <div className={`${styles.container} scroll-reveal`} ref={ref}>
+      <div className={cn(styles.container, "scroll-reveal")} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
 
         <div className={styles.table}>
-          <div className={`${styles.row} ${styles.header}`}>
+          <div className={cn(styles.row, styles.header)}>
             <div className={styles.label} />
-            <div className={`${styles.cell} ${styles.gold}`}>{t("habitsName")}</div>
-            <div className={`${styles.cell} ${styles.purple}`}>{t("arenaName")}</div>
+            <div className={cn(styles.cell, styles.gold)}>{t("habitsName")}</div>
+            <div className={cn(styles.cell, styles.purple)}>{t("arenaName")}</div>
           </div>
           {rows.map((row) => (
             <div key={row} className={styles.row}>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
+import { cn } from "@/lib/utils";
 import { Block } from "@/components/common/Block";
 import { Button } from "@/components/ui/button";
 import { BoltIcon, GithubIcon } from "@/components/icons";
@@ -23,7 +24,7 @@ export function Support() {
         <GithubIcon size={22} color="white" />
       </Block>
 
-      <div className={`${styles.container} scroll-reveal`} ref={ref}>
+      <div className={cn(styles.container, "scroll-reveal")} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
         <p className={styles.subtitle}>{t("subtitle")}</p>
 

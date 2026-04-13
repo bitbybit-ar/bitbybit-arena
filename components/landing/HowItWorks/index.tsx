@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
+import { cn } from "@/lib/utils";
 import { Block } from "@/components/common/Block";
 import { PixelIcon } from "@/components/common/PixelIcon";
 import { PixelDissolve } from "@/components/common/PixelDissolve";
@@ -27,7 +28,7 @@ export function HowItWorks() {
       <Block size="small" color="gold" className={styles.floatBlock5} />
       <Block size="tiny" color="purple" className={styles.floatBlock6} />
 
-      <div className={`${styles.container} scroll-reveal-stagger`} ref={ref}>
+      <div className={cn(styles.container, "scroll-reveal-stagger")} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
         <p className={styles.subtitle}>{t("subtitle")}</p>
 
@@ -37,7 +38,7 @@ export function HowItWorks() {
             return (
               <div key={i} className={styles.step}>
                 <div className={styles.card}>
-                  <div className={`${styles.numberBadge} ${styles[step.color]}`}>
+                  <div className={cn(styles.numberBadge, styles[step.color])}>
                     <span>{num}</span>
                   </div>
                   <div className={styles.pixelIcon}>

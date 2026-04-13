@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import styles from "./bubble.module.scss";
 
 type BubbleColor = "purple" | "gold" | "green" | "red";
@@ -48,7 +49,7 @@ export function Bubble({
 
   return (
     <div
-      className={`${styles.bubble} ${styles[color]} ${variantClass} ${animClass} ${className}`}
+      className={cn(styles.bubble, styles[color], variantClass, animClass, className)}
       data-gradient-to={variant === "gradient" ? gradientTo : undefined}
       style={{
         width: size,

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
+import { cn } from "@/lib/utils";
 import { Block } from "@/components/common/Block";
 import { PixelDissolve } from "@/components/common/PixelDissolve";
 import { ExternalLinkIcon, BoltIcon } from "@/components/icons";
@@ -18,7 +19,7 @@ export function LaCrypta() {
         <BoltIcon size={22} color="white" />
       </Block>
 
-      <div className={`${styles.container} scroll-reveal`} ref={ref}>
+      <div className={cn(styles.container, "scroll-reveal")} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
 
         <div className={styles.card}>

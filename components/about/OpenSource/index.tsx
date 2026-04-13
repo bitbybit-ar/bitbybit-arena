@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
+import { cn } from "@/lib/utils";
 import { GithubIcon } from "@/components/icons";
 import styles from "./opensource.module.scss";
 
@@ -11,7 +12,7 @@ export function OpenSource() {
 
   return (
     <section className={styles.section}>
-      <div className={`${styles.container} scroll-reveal`} ref={ref}>
+      <div className={cn(styles.container, "scroll-reveal")} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
         <p className={styles.description}>{t("description")}</p>
         <p className={styles.contribute}>{t("contribute")}</p>

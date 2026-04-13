@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Block } from "@/components/common/Block";
 import { BoltIcon } from "@/components/icons";
+import { cn } from "@/lib/utils";
 import styles from "./block-tower.module.scss";
 
 const COLORS = ["purple", "gold", "green", "red"] as const;
@@ -91,7 +92,7 @@ export function BlockTower({
   const iconSize = blockSize === "large" ? 28 : blockSize === "medium" ? 20 : 14;
 
   return (
-    <div className={`${styles.tower} ${className}`} aria-hidden="true">
+    <div className={cn(styles.tower, className)} aria-hidden="true">
       <div className={styles.blocks}>
         {blocks.map((color, i) => (
           <Block

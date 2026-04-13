@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
+import { cn } from "@/lib/utils";
 import { Bubble } from "@/components/common/Bubble";
 import { GithubIcon, BoltIcon } from "@/components/icons";
 import styles from "./team.module.scss";
@@ -30,7 +31,7 @@ export function Team() {
       <Bubble size={55} color="purple" variant="solid" opacity={0.2} position={{ top: "12%", right: "6%" }} animation="float-slow" delay={0.5} />
       <Bubble size={40} color="gold" variant="solid" opacity={0.2} position={{ bottom: "15%", right: "10%" }} animation="drift" delay={2} />
 
-      <div className={`${styles.container} scroll-reveal`} ref={ref}>
+      <div className={cn(styles.container, "scroll-reveal")} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
 
         <div className={styles.grid}>
@@ -44,7 +45,7 @@ export function Team() {
                 className={styles.avatar}
               />
               <h3 className={styles.name}>{t(`${member.key}.name` as `anix.name`)}</h3>
-              <span className={`${styles.role} ${styles[`role-${member.color}`]}`}>
+              <span className={cn(styles.role, styles[`role-${member.color}`])}>
                 {t(`${member.key}.role` as `anix.role`)}
               </span>
               <p className={styles.bio}>{t(`${member.key}.bio` as `anix.bio`)}</p>

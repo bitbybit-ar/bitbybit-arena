@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/modal";
 import { BoltIcon, CopyIcon } from "@/components/icons";
 import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
 import { useClipboard } from "@/lib/hooks/useClipboard";
+import { cn } from "@/lib/utils";
 import styles from "./zap-modal.module.scss";
 
 const PRESET_AMOUNTS = [21, 100, 500, 1000, 5000];
@@ -200,9 +201,10 @@ export function ZapModal({ onClose }: ZapModalProps) {
               <button
                 key={preset}
                 type="button"
-                className={`${styles.presetBtn} ${
-                  !customAmount && amount === preset ? styles.active : ""
-                }`}
+                className={cn(
+                  styles.presetBtn,
+                  !customAmount && amount === preset && styles.active,
+                )}
                 onClick={() => {
                   setAmount(preset);
                   setCustomAmount("");

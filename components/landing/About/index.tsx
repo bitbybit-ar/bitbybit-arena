@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useScrollReveal } from "@/lib/hooks/useScrollReveal";
+import { cn } from "@/lib/utils";
 import { Bubble } from "@/components/common/Bubble";
 import { Block } from "@/components/common/Block";
 import { PixelDissolve } from "@/components/common/PixelDissolve";
@@ -30,7 +31,7 @@ export function About() {
         <BadgeIcon size={22} color="white" />
       </Block>
 
-      <div className={`${styles.container} scroll-reveal`} ref={ref}>
+      <div className={cn(styles.container, "scroll-reveal")} ref={ref}>
         <h2 className={styles.title}>{t("title")}</h2>
         <p className={styles.description}>{t("description")}</p>
 
@@ -53,7 +54,7 @@ export function About() {
             </a>
           </div>
 
-          <div className={`${styles.card} ${styles.active}`}>
+          <div className={cn(styles.card, styles.active)}>
             <div className={styles.arenaGlow} />
             <h3 className={styles.cardTitle}>{t("challengesTitle")}</h3>
             <ul className={styles.cardList}>

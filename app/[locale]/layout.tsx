@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { Nunito, Nunito_Sans } from "next/font/google";
 import { routing } from "@/i18n/routing";
+import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/lib/contexts/theme-context";
 import { SessionProvider } from "@/lib/contexts/session-context";
 import { ToastProvider } from "@/components/ui/toast";
@@ -73,7 +74,7 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={`${nunito.variable} ${nunitoSans.variable}`} suppressHydrationWarning>
+    <html lang={locale} className={cn(nunito.variable, nunitoSans.variable)} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#8B5CF6" />
         <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
