@@ -520,6 +520,8 @@
     "nostrPubkey": "Clave pública Nostr",
     "displayName": "Nombre",
     "username": "Usuario",
+    "avatarUrl": "URL del avatar",
+    "avatarPlaceholder": "https://ejemplo.com/avatar.jpg",
     "about": "Acerca de",
     "aboutPlaceholder": "Contá algo sobre vos...",
     "lightningAddress": "Dirección Lightning",

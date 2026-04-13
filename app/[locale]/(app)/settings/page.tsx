@@ -47,6 +47,7 @@ export default function SettingsPage() {
 
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [about, setAbout] = useState("");
   const [lightningAddress, setLightningAddress] = useState("");
 
@@ -54,6 +55,7 @@ export default function SettingsPage() {
     setProfile(p);
     setDisplayName(p.display_name || "");
     setUsername(p.username || "");
+    setAvatarUrl(p.avatar_url || "");
     setAbout(p.about || "");
     setLightningAddress(p.lightning_address || "");
   };
@@ -79,6 +81,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           display_name: displayName,
           username,
+          avatar_url: avatarUrl.trim() || null,
           about: about || null,
           lightning_address: lightningAddress || null,
         }),
@@ -139,6 +142,7 @@ export default function SettingsPage() {
         ...base,
         name: username.trim(),
         display_name: displayName.trim(),
+        picture: avatarUrl.trim() || undefined,
         about: about.trim() || undefined,
         lud16: lightningAddress.trim() || undefined,
       };
@@ -223,6 +227,14 @@ export default function SettingsPage() {
           value={username}
           onChange={setUsername}
           required
+        />
+
+        <FormInput
+          label={t("avatarUrl")}
+          value={avatarUrl}
+          onChange={setAvatarUrl}
+          placeholder={t("avatarPlaceholder")}
+          type="url"
         />
 
         <FormTextarea

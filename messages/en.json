@@ -520,6 +520,8 @@
     "nostrPubkey": "Nostr public key",
     "displayName": "Display name",
     "username": "Username",
+    "avatarUrl": "Avatar URL",
+    "avatarPlaceholder": "https://example.com/avatar.jpg",
     "about": "About",
     "aboutPlaceholder": "Tell us about yourself...",
     "lightningAddress": "Lightning address",

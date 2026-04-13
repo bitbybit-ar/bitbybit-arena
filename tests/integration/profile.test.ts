@@ -128,6 +128,32 @@ describe("Integration: Profile API", () => {
       expect(status).toBe(200);
       expect(body.data.locale).toBe("en");
     });
+
+    it("accepts a valid https avatar_url and clears it on null", async () => {
+      const res1 = await profileRoute.PUT(
+        buildRequest("PUT", "/api/profile", {
+          avatar_url: "https://example.com/me.png",
+        })
+      );
+      const { status: s1, body: b1 } = await parseResponse(res1);
+      expect(s1).toBe(200);
+      expect(b1.data.avatar_url).toBe("https://example.com/me.png");
+
+      const res2 = await profileRoute.PUT(
+        buildRequest("PUT", "/api/profile", { avatar_url: null })
+      );
+      const { body: b2 } = await parseResponse(res2);
+      expect(b2.data.avatar_url).toBeNull();
+    });
+
+    it("rejects avatar_url that is not an http(s) URL", async () => {
+      const res = await profileRoute.PUT(
+        buildRequest("PUT", "/api/profile", { avatar_url: "not-a-url" })
+      );
+      const { status, body } = await parseResponse(res);
+      expect(status).toBe(400);
+      expect(body.error).toContain("Avatar URL");
+    });
   });
 
   describe("DELETE /api/profile (soft delete)", () => {
