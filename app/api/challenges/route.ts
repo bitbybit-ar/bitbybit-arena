@@ -160,6 +160,21 @@ export const GET = apiHandler(
       conditions.push(sql`${challenges.created_at} < ${cursor}`);
     }
 
+    // Trending score: joins + 2 * completions within the last 7 days.
+    // Completions weigh double because actually doing the thing is a stronger
+    // signal than just joining. Tiebreak by created_at so newer challenges
+    // bubble up when two have identical momentum.
+    const trendingScore = sql<number>`(
+      (SELECT COUNT(*)::int FROM participants
+       WHERE participants.challenge_id = ${challenges.id}
+         AND participants.status != 'withdrawn'
+         AND participants.joined_at >= NOW() - INTERVAL '7 days')
+      +
+      (SELECT COUNT(*)::int FROM completions
+       WHERE completions.challenge_id = ${challenges.id}
+         AND completions.submitted_at >= NOW() - INTERVAL '7 days') * 2
+    )`;
+
     let orderBy;
     switch (sort) {
       case "ending_soon":
@@ -170,6 +185,9 @@ export const GET = apiHandler(
         break;
       case "most_active":
         orderBy = desc(challenges.updated_at);
+        break;
+      case "trending":
+        orderBy = [desc(trendingScore), desc(challenges.created_at)];
         break;
       default:
         orderBy = desc(challenges.created_at);
@@ -196,7 +214,7 @@ export const GET = apiHandler(
       .from(challenges)
       .innerJoin(users, eq(challenges.creator_id, users.id))
       .where(where)
-      .orderBy(orderBy)
+      .orderBy(...(Array.isArray(orderBy) ? orderBy : [orderBy]))
       .limit(limit + 1);
 
     const hasMore = rows.length > limit;

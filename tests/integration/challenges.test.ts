@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { cleanDb } from "./setup";
 import {
   setSession, makeSession,
-  seedUser, seedChallenge, seedParticipant,
+  seedUser, seedChallenge, seedParticipant, seedCompletion,
   buildRequest, parseResponse,
 } from "./helpers";
 
@@ -110,6 +110,48 @@ describe("Integration: Challenges CRUD", () => {
 
       expect(body.data.items).toHaveLength(1);
       expect(body.data.items[0].title).toBe("Running Marathon");
+    });
+
+    it("sort=trending orders by recent joins + 2×completions, ignoring stale activity", async () => {
+      const now = Date.now();
+      const daysAgo = (n: number) => new Date(now - n * 86_400_000);
+
+      // High-momentum: 1 recent join + 3 recent completions → score 7
+      const hot = await seedChallenge(creator.id, { title: "Hot", slug: "hot" });
+      const u1 = await seedUser({ username: "u1_trending" });
+      await seedParticipant(hot.id, u1.id, { joined_at: daysAgo(2) });
+      for (let i = 0; i < 3; i++) {
+        const u = await seedUser({ username: `hot_c${i}` });
+        await seedParticipant(hot.id, u.id, { joined_at: daysAgo(3) });
+        await seedCompletion(hot.id, u.id, { submitted_at: daysAgo(1) });
+      }
+
+      // Medium: 5 recent joins, 0 completions → score 5
+      const warm = await seedChallenge(creator.id, { title: "Warm", slug: "warm" });
+      for (let i = 0; i < 5; i++) {
+        const u = await seedUser({ username: `warm_j${i}` });
+        await seedParticipant(warm.id, u.id, { joined_at: daysAgo(2) });
+      }
+
+      // Cold: all activity is outside the 7-day window → score 0
+      const cold = await seedChallenge(creator.id, { title: "Cold", slug: "cold" });
+      for (let i = 0; i < 10; i++) {
+        const u = await seedUser({ username: `cold_j${i}` });
+        await seedParticipant(cold.id, u.id, { joined_at: daysAgo(30) });
+        await seedCompletion(cold.id, u.id, { submitted_at: daysAgo(30) });
+      }
+
+      setSession(null);
+      const res = await challengesRoute.GET(
+        buildRequest("GET", "/api/challenges", undefined, { sort: "trending" })
+      );
+      const { status, body } = await parseResponse(res);
+
+      expect(status).toBe(200);
+      const titles = body.data.items.map(
+        (c: { title: string }) => c.title
+      );
+      expect(titles).toEqual(["Hot", "Warm", "Cold"]);
     });
   });
 
