@@ -27,6 +27,7 @@ export const users = pgTable(
     nostr_metadata: jsonb("nostr_metadata"),
     nostr_metadata_updated_at: timestamp("nostr_metadata_updated_at"),
     locale: varchar("locale", { length: 5 }).notNull().default("es"),
+    deleted_at: timestamp("deleted_at"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },

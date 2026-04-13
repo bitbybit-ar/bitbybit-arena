@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { apiHandler } from "@/lib/api/handler";
 import { BadRequestError } from "@/lib/api/errors";
 import { users } from "@/lib/db/schema";
@@ -34,7 +35,12 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db }) => {
   }
   if (body.about !== undefined) updates.about = body.about;
   if (body.lightning_address !== undefined) updates.lightning_address = body.lightning_address;
-  if (body.locale !== undefined) updates.locale = body.locale;
+  if (body.locale !== undefined) {
+    if (body.locale !== "es" && body.locale !== "en") {
+      throw new BadRequestError("Invalid locale");
+    }
+    updates.locale = body.locale;
+  }
 
   if (Object.keys(updates).length === 0) {
     throw new BadRequestError("No fields to update");
@@ -49,4 +55,31 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db }) => {
     .returning();
 
   return updated;
+});
+
+// DELETE /api/profile — soft delete: scrub PII, keep row so FKs in
+// challenges/participants/completions/badges stay valid. Nostr identity
+// and relay events are untouched (we don't control those).
+export const DELETE = apiHandler(async (_req: NextRequest, { session, db }) => {
+  const shortId = session!.user_id.slice(0, 8);
+
+  await db
+    .update(users)
+    .set({
+      username: `deleted_${shortId}`,
+      display_name: "[deleted]",
+      avatar_url: null,
+      about: null,
+      lightning_address: null,
+      nostr_metadata: null,
+      nostr_metadata_updated_at: null,
+      deleted_at: new Date(),
+      updated_at: new Date(),
+    })
+    .where(eq(users.id, session!.user_id));
+
+  const cookieStore = await cookies();
+  cookieStore.delete("session");
+
+  return { deleted: true };
 });
