@@ -10,6 +10,7 @@ import { Tag } from "@/components/ui/tag";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { useRouter } from "@/i18n/routing";
 import { useSignerContext } from "@/lib/signer-context";
+import { cn } from "@/lib/utils";
 import styles from "./explore.module.scss";
 
 interface ChallengeItem {
@@ -41,12 +42,15 @@ export default function ExplorePage() {
   const [search, setSearch] = useState("");
   const [type, setType] = useState("");
   const [sort, setSort] = useState("newest");
+  const [popularTags, setPopularTags] = useState<{ tag: string; count: number }[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const fetchChallenges = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (type) params.set("type", type);
+    if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
     params.set("sort", sort);
     params.set("status", "open");
 
@@ -61,11 +65,36 @@ export default function ExplorePage() {
     } finally {
       setLoading(false);
     }
-  }, [search, type, sort]);
+  }, [search, type, sort, selectedTags]);
 
   useEffect(() => {
     fetchChallenges();
   }, [fetchChallenges]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/tags/popular?limit=20")
+      .then((res) => res.json())
+      .then((json) => {
+        if (!cancelled && json.success) {
+          setPopularTags(json.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((current) =>
+      current.includes(tag)
+        ? current.filter((t) => t !== tag)
+        : [...current, tag]
+    );
+  };
+
+  const clearTags = () => setSelectedTags([]);
 
   const handleCreateClick = async () => {
     // Anonymous or reattach users: prompt to sign in first so we don't
@@ -136,6 +165,71 @@ export default function ExplorePage() {
         </div>
       </div>
 
+      {popularTags.length > 0 && (
+        <div className={styles.tagSection}>
+          <span id="popular-tags-label" className={styles.tagSectionLabel}>
+            {t("popularTags")}
+          </span>
+          <div
+            className={styles.tagChips}
+            role="group"
+            aria-labelledby="popular-tags-label"
+          >
+            {popularTags.map(({ tag, count }) => {
+              const isActive = selectedTags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  className={cn(styles.tagChip, isActive && styles.tagChipActive)}
+                  aria-pressed={isActive}
+                  aria-label={t("toggleTagFilter", { tag })}
+                  onClick={() => toggleTag(tag)}
+                >
+                  <span className={styles.tagChipLabel}>#{tag}</span>
+                  <span className={styles.tagChipCount}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {selectedTags.length > 0 && (
+        <div className={styles.activeFilters}>
+          <span id="active-tag-filters-label" className={styles.tagSectionLabel}>
+            {t("activeTagFilters")}
+          </span>
+          <div
+            className={styles.activeFilterPills}
+            role="group"
+            aria-labelledby="active-tag-filters-label"
+          >
+            {selectedTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                className={styles.activeFilterPill}
+                aria-label={t("removeTagFilter", { tag })}
+                onClick={() => toggleTag(tag)}
+              >
+                #{tag}
+                <span aria-hidden="true" className={styles.activeFilterPillX}>
+                  ×
+                </span>
+              </button>
+            ))}
+            <button
+              type="button"
+              className={styles.clearFiltersButton}
+              onClick={clearTags}
+            >
+              {t("clearTagFilters")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className={styles.loadingState}>
           <BlockLoader label={tCommon("loading")} />
@@ -143,7 +237,11 @@ export default function ExplorePage() {
       ) : challenges.length === 0 ? (
         <div className={styles.emptyState}>
           <PixelIcon shape="flag" blockSize={8} />
-          <p>{search || type ? t("emptyFiltered") : t("empty")}</p>
+          <p>
+            {search || type || selectedTags.length > 0
+              ? t("emptyFiltered")
+              : t("empty")}
+          </p>
         </div>
       ) : (
         <div className={styles.grid}>
