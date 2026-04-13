@@ -3,8 +3,6 @@
 import type { NostrEvent, NostrMetadata } from "./types";
 import { DEFAULT_RELAYS } from "./relays";
 
-// BitByBit never publishes kind:0 metadata to relays. This module only reads.
-
 async function getRelays(): Promise<string[]> {
   try {
     if (window.nostr?.getRelays) {

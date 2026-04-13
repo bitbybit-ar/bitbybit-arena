@@ -8,6 +8,11 @@ import { BlockLoader } from "@/components/ui/block-loader";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { useTheme, type ThemePreference } from "@/lib/contexts/theme-context";
+import { useSignerContext } from "@/lib/signer-context";
+import { fetchNostrMetadata } from "@/lib/nostr/metadata";
+import { buildProfileMetadataEvent } from "@/lib/nostr/events";
+import { publishSignedEvent } from "@/lib/nostr/publish";
+import type { NostrMetadata } from "@/lib/nostr/types";
 import { useRouter, usePathname } from "@/i18n/routing";
 import styles from "./settings.module.scss";
 
@@ -27,6 +32,7 @@ export default function SettingsPage() {
   const tCommon = useTranslations("common");
   const { showToast } = useToast();
   const { preference: themePref, setThemePreference } = useTheme();
+  const { signWithPrompt, needsSigner, requestReSignIn } = useSignerContext();
   const router = useRouter();
   const pathname = usePathname();
   const currentLocale = useLocale();
@@ -35,6 +41,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -106,6 +113,43 @@ export default function SettingsPage() {
       showToast(t("syncFailed"), "error");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!profile) return;
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return;
+      }
+    }
+    setPublishing(true);
+    try {
+      // Fetch the latest kind:0 from relays so we don't clobber fields
+      // we don't manage (nip05, website, banner, etc.). If nothing is on
+      // relays yet, start from our cached metadata or an empty object.
+      const remote = await fetchNostrMetadata(profile.nostr_pubkey).catch(
+        () => null
+      );
+      const base: NostrMetadata = remote ?? {};
+
+      const merged: NostrMetadata = {
+        ...base,
+        name: username.trim(),
+        display_name: displayName.trim(),
+        about: about.trim() || undefined,
+        lud16: lightningAddress.trim() || undefined,
+      };
+
+      const signed = await signWithPrompt(buildProfileMetadataEvent(merged));
+      await publishSignedEvent(signed);
+      showToast(t("publishSuccess"), "success");
+    } catch {
+      showToast(t("publishFailed"), "error");
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -210,6 +254,15 @@ export default function SettingsPage() {
             loadingText={t("syncing")}
           >
             {t("syncFromRelays")}
+          </FormButton>
+          <FormButton
+            type="button"
+            variant="outline"
+            onClick={handlePublish}
+            loading={publishing}
+            loadingText={t("publishing")}
+          >
+            {t("publishToNostr")}
           </FormButton>
         </div>
       </form>

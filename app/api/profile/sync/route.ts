@@ -5,8 +5,9 @@ import { BadRequestError } from "@/lib/api/errors";
 import { users } from "@/lib/db/schema";
 import { fetchNostrMetadataServer } from "@/lib/nostr/server-metadata";
 
-// POST /api/profile/sync — read-only sync of Nostr kind:0 metadata into local user row.
-// BitByBit never publishes to relays; this endpoint only pulls.
+// POST /api/profile/sync — read-only sync of Nostr kind:0 metadata into
+// the local user row. Publishing kind:0 back to relays is a separate
+// client-side action (see settings page → "Publish to Nostr").
 // Strict rate limit because each call opens WebSockets to multiple relays.
 export const POST = apiHandler(
   async (_req: NextRequest, { session, db }) => {

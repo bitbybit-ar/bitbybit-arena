@@ -46,13 +46,13 @@ Filters should be combinable (AND logic). URL query params for shareability (e.g
 
 ## Sort / Order
 
-| Sort option | Description |
-|-------------|-------------|
-| **Newest** | Most recently created (default) |
-| **Ending soon** | Challenges closest to their end date |
-| **Most participants** | Highest participant count |
-| **Most active** | Most recent completions/activity |
-| **Trending** | Combination of recent joins + completions (time-weighted) |
+| Sort option | Description | Status |
+|-------------|-------------|--------|
+| **Newest** | Most recently created (default) | Shipped |
+| **Ending soon** | Challenges closest to their end date (`ends_at` ascending) | Shipped |
+| **Most active** | Most recently updated challenge row (`challenges.updated_at` descending) — bumps on joins, completions, edits, and status changes, so it acts as a lightweight activity proxy without a per-sort aggregate query | Shipped |
+| **Most participants** | Highest participant count | Partial — the API accepts the value but currently falls back to `created_at` ordering. Proper participant-count ordering is tracked as a follow-up. |
+| **Trending** | Time-weighted combination of recent joins + completions | Post-MVP — not implemented. |
 
 ---
 
