@@ -1,519 +1,352 @@
 # Landing Page Design
 
+> Status: implemented. This doc reflects what actually ships in `app/[locale]/page.tsx` and `components/landing/*`.
+
 ## Structure
 
 ```
 ┌─────────────────────────────────────────┐
 │  Navbar                                 │
-│  [Logo]                    [Sign In]    │
+│  [Logo]  [Theme] [Locale] [Explore]     │
+│                         [Sign In]       │
 ├─────────────────────────────────────────┤
-│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   │
 │  ░░  Hero (dark, spotlight)         ░░  │
-│  ░░  Headline + pixel sword/flag    ░░  │
-│  ░░  Arena floor grid fading out    ░░  │
-│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+│  ░░  Headline + pixel sword icon    ░░  │
+│  ░░  Arena floor dot grid           ░░  │
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   │
 │  ▓▓▓ pixel dissolve transition ▓▓▓▓▓▓  │
 ├─────────────────────────────────────────┤
-│                                         │
 │  How It Works                           │
-│  3 steps: Create → Battle → Earn        │
-│  Connected by pixel trail               │
-│                                         │
-├─── ■ ■ · ■ · · ■ ■ pixel divider ──────┤
-│                                         │
-│  About BitByBit                         │
-│  Habits vs Arena (VS block between)     │
-│                                         │
-├─── ■ · ■ · ■ · · ■ pixel divider ──────┤
-│                                         │
+│  3 steps: Crear → Batallá → Ganá        │
+│  Cards with colored badges + pixel icons│
+│  ▓▓▓ pixel dissolve ▓▓▓                 │
+├─────────────────────────────────────────┤
+│  About                                  │
+│  "La familia BitByBit"                  │
+│  Habits card + Arena card (side by side)│
+│  Bubbles on Habits side, Blocks on Arena│
+│  ▓▓▓ pixel dissolve ▓▓▓                 │
+├─────────────────────────────────────────┤
 │  Partners                               │
-│  La Crypta + Nostr WoT logos            │
-│                                         │
-├─── ■ ■ · · ■ · ■ pixel divider ────────┤
-│                                         │
-│  Support the Project                    │
-│  Donate via Lightning + contribute      │
-│                                         │
+│  La Crypta + Nostr WoT cards            │
+│  ▓▓▓ pixel dissolve ▓▓▓                 │
+├─────────────────────────────────────────┤
+│  Support                                │
+│  "Zapeá a los devs" + "Estrella GitHub" │
+│  ZapModal (WebLN or QR fallback)        │
 ├─────────────────────────────────────────┤
 │  Footer                                 │
-│  Built for Hackathon #2 + La Crypta     │
+│  Hackathon #2 de La Crypta + links      │
 └─────────────────────────────────────────┘
 
-■ = decorative blocks (pixel battlefield aesthetic)
 ░ = dark hero zone with spotlight lighting
+▓ = PixelDissolve component (scattered tiny blocks)
 ```
 
 ---
 
 ## Design Philosophy: Pixel Battlefield + Arena Spotlight
 
-No glassmorphism. No generic floating circles. BitByBit Arena has a **battlefield identity** built entirely from blocks — the core BitByBit visual element.
+No glassmorphism. No generic floating circles as the dominant motif. BitByBit Arena has a **battlefield identity** built from blocks — the core BitByBit visual element.
 
 ### The Concept
 
-The landing page feels like entering a **pixel-art arena**. The hero is dark and dramatic with spotlight lighting, like walking from a tunnel into a lit arena. As you scroll down, the page gradually brightens — you've entered the battlefield and can see the full arena.
+The landing page feels like entering a **pixel-art arena**. The hero is dark and dramatic with spotlight lighting, like walking from a tunnel into a lit arena. As you scroll, the page brightens — you've entered the battlefield.
 
-### One Signature Element: Blocks
+### Blocks as the signature element
 
-Blocks are the **only** decorative element. No bubbles. Blocks represent everything:
-- **Arena terrain** — sparse pixel-art floor patterns at low opacity
-- **Pixel-art icons** — swords, shields, trophies, flags built from small colored blocks
-- **Section dividers** — pixel dissolve edges where blocks scatter along boundaries
-- **Depth and shadow** — blocks at varying opacity simulate the spotlight lighting
-- **Progress and victory** — blocks fill, stack, and assemble to show achievement
+Blocks are the primary decorative element across every section:
+- **Pixel-art icons** — sword, shield, trophy, flag built from small colored blocks (see `components/common/PixelIcon`)
+- **Floating decorators** — colored blocks with icons inside (`FlagIcon`, `TrophyIcon`, `BadgeIcon`, `BoltIcon`) drifting at section edges
+- **Section transitions** — `PixelDissolve` scatters tiny blocks along the boundary of each section
+- **Arena terrain** — a sparse radial-gradient dot pattern in the hero background
 
-### Why This Works
-- **Blocks** = the BitByBit DNA. Every visual element is built from the same primitive — reinforcing "bit by bit"
-- **Arena spotlight** = drama and stakes. The dark-to-light progression feels like entering a competition
-- **Pixel aesthetic** = distinctive, memorable, and impossible to confuse with generic SaaS landing pages
-- **Unified system** = one element (blocks) doing all the work creates visual coherence instead of competing systems
+### Bubbles are used sparingly (About section only)
+
+The `Bubble` component is kept in the design system and reused deliberately in the **About** section to represent the **Habits** side of the ecosystem comparison (organic, playful, kid-friendly). The **Arena** side uses blocks (sharp, competitive). This contrast is intentional — it makes the family vs. competition distinction visual.
 
 ---
 
 ## Color Palette
 
-Clean, high-contrast. No muddy blurs or frosted overlays.
+Clean, high-contrast. Values defined in `styles/_colors.scss` and `styles/_theme.scss`.
 
 ### Light Theme (Default)
 
-| Role | Color | Hex | Usage |
-|------|-------|-----|-------|
-| **Background** | White | `#FFFFFF` | Page background |
-| **Surface** | Warm Gray | `#F7F7F8` | Card backgrounds, alternate sections |
-| **Text Primary** | Near Black | `#1A1A2E` | Headings, body |
-| **Text Secondary** | Cool Gray | `#6B7280` | Descriptions, captions |
-| **Purple** | Nostr Purple | `#8B5CF6` | Primary actions, Nostr identity, key accents |
-| **Gold** | Sats Gold | `#F7A825` | Rewards, prizes, sats references |
-| **Green** | Success Green | `#22C55E` | Completions, progress, positive states |
-| **Red** | Energy Red | `#EF4444` | Alerts, urgency, competition heat |
+| Role | Color | Hex |
+|------|-------|-----|
+| Background | White | `#FFFFFF` |
+| Surface | Warm Gray | `#F7F7F8` |
+| Text Primary | Near Black | `#1A1A2E` |
+| Text Secondary | Cool Gray | `#6B7280` |
+| Purple (primary) | Nostr Purple | `#8B5CF6` |
+| Gold (secondary) | Sats Gold | `#F7A825` |
+| Green (accent-alt) | Success Green | `#22C55E` |
+| Red (accent) | Energy Red | `#EF4444` |
 
 ### Dark Theme
 
-| Role | Color | Hex | Usage |
-|------|-------|-----|-------|
-| **Background** | Navy | `#0F0F1A` | Page background |
-| **Surface** | Dark Navy | `#1A1A2E` | Card backgrounds, alternate sections |
-| **Text Primary** | White | `#F0F0F5` | Headings, body |
-| **Text Secondary** | Muted Lavender | `#9CA3AF` | Descriptions, captions |
-| **Purple** | Bright Purple | `#A78BFA` | Slightly lighter for dark bg contrast |
-| **Gold** | Sats Gold | `#F7A825` | Same as light |
-| **Green** | Bright Green | `#34D399` | Slightly lighter for dark bg |
-| **Red** | Bright Red | `#F87171` | Slightly lighter for dark bg |
+| Role | Color | Hex |
+|------|-------|-----|
+| Background | Navy | `#0F0F1A` |
+| Surface | Dark Navy | `#1A1A2E` |
+| Text Primary | White | `#F0F0F5` |
+| Text Secondary | Muted Lavender | `#9CA3AF` |
+| Purple | Bright Purple | `#A78BFA` |
+| Gold | Sats Gold | `#F7A825` |
+| Green | Bright Green | `#34D399` |
+| Red | Bright Red | `#F87171` |
 
-### Accent Usage Rules
+### Accent Usage
 - **Purple**: Primary buttons, links, Nostr-related elements, active states
-- **Gold**: Sat amounts, prizes, rewards, lightning bolt icons
-- **Green**: Completed states, progress bars, success messages, badge earned
-- **Red**: Competition elements (timers, "hot" challenges), error states
+- **Gold**: Sat amounts, zap CTA, rewards
+- **Green**: Completed states, progress, success
+- **Red**: Competition heat, decorative energy blocks
 
 ### Card Styling (No Glass)
 
-Cards use **solid backgrounds with subtle borders and shadows** instead of glassmorphism:
-
-```scss
-// Light theme card
-background: $color-surface;
-border: 1px solid rgba($color-text-primary, 0.08);
-border-radius: $border-radius-lg;
-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-
-// Dark theme card
-background: $color-surface;
-border: 1px solid rgba(255, 255, 255, 0.06);
-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-
-// Hover: lift + colored shadow based on context
-&:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba($color-purple, 0.12);
-}
-```
-
-No blur, no transparency, no backdrop-filter. Clean, solid, fast.
+Solid surface backgrounds with subtle borders. No blur, no backdrop-filter.
 
 ---
 
 ## Arena Lighting System
 
-### The Spotlight Effect
+### Spotlight Effect (Hero only)
 
-The hero section uses a dark background (navy `#0F0F1A`) with **radial gradient spotlights** that simulate arena lighting. These are pure CSS — no images, no blur filters.
+The hero uses a dark background with two CSS radial-gradient spotlights — no images, no blur filters. Implemented as `.spotlight` inside `hero.module.scss`, animated by `spotlight-pulse` (8s infinite, very subtle).
 
-```scss
-// Hero spotlight — centered on content area
-.hero {
-  background:
-    radial-gradient(ellipse 600px 400px at 50% 40%, rgba($color-purple, 0.08) 0%, transparent 70%),
-    radial-gradient(ellipse 300px 300px at 30% 60%, rgba($color-gold, 0.04) 0%, transparent 70%),
-    $color-background-dark;
-}
-```
-
-**Rules:**
-- Spotlights use accent colors at very low opacity (4-8%) — atmospheric, not flashy
-- Max 2-3 spotlights per section to avoid muddy overlaps
-- The primary spotlight is always purple (Nostr/Arena identity)
-- A secondary gold spotlight hints at the sats reward
+- Primary spotlight is purple, low opacity (atmospheric, not flashy).
+- Secondary spotlight is gold, hinting at sats rewards.
 
 ### Dark-to-Light Progression
 
-The landing page transitions from dark to light as you scroll:
+The hero is always dark; subsequent sections use theme-aware backgrounds so the page brightens (or stays dark in dark mode).
 
-| Section | Background | Feel |
-|---------|-----------|------|
-| **Hero** | Dark navy + spotlights | Walking into the arena tunnel |
-| **How It Works** | Dark navy, no spotlights | Inside the arena, eyes adjusting |
-| **About** | Surface color (light gray / dark navy) | The open arena floor |
-| **Partners** | Background color | Full daylight |
-| **Support** | Surface color (slightly darker) | Calm, grounded |
-| **Footer** | Surface color | Grounded |
+| Section | Background |
+|---------|-----------|
+| Hero | Dark navy + spotlights (always dark) |
+| How It Works | Theme background |
+| About | Theme surface |
+| Partners | Theme background |
+| Support | Theme surface |
+| Footer | Theme surface |
 
-In dark mode, the entire page stays dark but the spotlight intensity increases in the hero.
-In light mode, the hero is still dark (forced) and the transition goes to the light palette.
+### Arena Floor Grid (Hero)
 
-### Blocks in the Shadows
-
-Decorative blocks at the edges of the hero have **varying opacity** (3-15%) to simulate depth. Blocks closer to a spotlight are brighter; blocks in the shadows are almost invisible. This creates a sense of 3D space without any actual 3D rendering.
-
-```scss
-.block-shadow {
-  opacity: 0.05;
-  transition: opacity 0.6s ease;
-
-  // Blocks near spotlight get brighter
-  &.lit { opacity: 0.15; }
-}
-```
+A sparse pixel-art dot pattern sits behind the hero content as `.arenaFloor`, implemented as a repeating radial-gradient at low opacity. Hidden on mobile where it would be too subtle to read.
 
 ---
 
-## Block System (Evolved from Loader)
+## Block System
 
-### The BlockLoader DNA
+### Block component
 
-The habits BlockLoader stacks colored squares (52px) with a drop-in bounce animation, glass highlights, and a colored glow underneath. We keep the soul but evolve it:
-
-### What Changes
-
-| Aspect | Habits Loader | Arena Design System |
-|--------|---------------|--------------------------|
-| **Context** | Loading indicator only | Full design element (decorative, interactive, structural) |
-| **Glass effect** | Glass highlight on each block | Solid fill with subtle inner shadow (no glass) |
-| **Glow** | Blurred ellipse under tower | Colored shadow that matches block color |
-| **Colors** | 5 colors, random shuffle | 4 colors (purple, gold, green, red), contextual assignment |
-| **Sizes** | Fixed 52px | Variable: 16px (tiny), 32px (small), 48px (medium), 64px (large) |
-| **Animation** | Drop-in + fade cycle | Multiple: drop, stack, scatter, pulse, assemble |
-
-### Block Uses on the Landing
-
-**1. Hero Pixel Weapon (signature visual)**
-Instead of a generic block tower, the hero features a **pixel-art sword, flag, or shield** built from colored blocks. It's recognizably pixel art but uses the BitByBit block style (rounded corners, colored shadows, inner highlights). The weapon assembles block by block with the familiar drop-bounce animation, as if being forged in the arena.
-
-```
-        ■              (purple — blade tip)
-        ■■             (purple — blade)
-        ■■             (purple — blade)
-       ■■■             (purple — blade widens)
-        ██             (gold — crossguard)
-      ██████           (gold — crossguard)
-        ██             (red — grip)
-        ██             (red — grip)
-        ■■             (green — pommel)
-```
-
-Alternative: a **pixel flag** (simpler, more neutral) or a **pixel trophy** (reward-focused). The weapon/flag sits to the right of the hero text and is lit by the spotlight from below.
-
-**2. Arena Floor Grid**
-The hero background includes a very sparse **pixel grid pattern** — tiny blocks (4-8px) at 2-4% opacity arranged in a loose grid, fading toward the edges. This suggests an arena floor or battlefield terrain without being literal. The grid is denser near the center (under the spotlight) and dissolves into nothing at the edges.
-
-```scss
-// CSS-only arena floor (repeating gradient or SVG pattern)
-.arena-floor {
-  background-image:
-    radial-gradient(circle 2px, rgba($color-purple, 0.03) 100%, transparent 100%);
-  background-size: 32px 32px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 30%, transparent 80%);
-}
-```
-
-**3. Pixel Dissolve Section Transitions**
-Instead of clean section boundaries, sections transition through a **pixel dissolve edge** — tiny blocks scattered along the boundary, denser in the middle and sparse at the sides. This looks like terrain breaking apart or a pixelated fade.
-
-```
-Section A content
-                ■   ■
-          ■ ■ ■   ■   ■
-      ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
-  ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Section B content
-```
-
-**4. Pixel-Art Icons**
-Small icons built from blocks (8-16px blocks in 3x3 to 5x5 grids) placed near relevant sections:
-- **Sword** (hero) — competition, battle
-- **Shield** (how it works) — defense, proof, verification
-- **Trophy** (earn step) — victory, badges
-- **Lightning bolt** (support) — sats, zaps
-- **Flag** (create step) — starting a challenge
-
-These are not SVGs — they're actual Block components arranged in a grid, so they inherit all block styling (shadows, colors, hover effects).
-
-**5. Shadow Blocks (depth decorations)**
-Blocks at varying opacities scattered at section edges, simulating depth from the arena lighting. Blocks closer to spotlights are brighter (10-15% opacity), blocks in shadows are near-invisible (3-5%). They drift very slowly (20s+ animation cycle) to add subtle life.
-
-**6. Progress Blocks**
-In challenge cards, progress is shown as a row of blocks filling left-to-right:
-
-```
-[■][■][■][■][■][□][□][□][□][□]  5/10 completed
- G   G   P   R   G                (colored per completion)
-```
-
-**7. Interactive Block Confetti**
-On hover over cards or CTA buttons, tiny blocks (4-8px) burst outward from the hover point like pixel sparks. Subtle, fast (300ms), arena-themed — like sparks flying from a clash of swords.
-
-### Block Component
+Source: `components/common/Block/index.tsx`.
 
 ```tsx
 interface BlockProps {
-  size: 'tiny' | 'small' | 'medium' | 'large';  // 16, 32, 48, 64px
+  size: 'tiny' | 'small' | 'medium' | 'large'; // 16, 32, 48, 64
   color: 'purple' | 'gold' | 'green' | 'red';
   animation?: 'drop' | 'pulse' | 'none';
   delay?: number;
-  radius?: number;  // border-radius, default 4px (more angular than bubbles)
+  flat?: boolean;
+  children?: ReactNode; // used to embed icons inside the block
 }
 ```
 
-### Block Styling (No Glass)
+Blocks accept children — the landing pattern is to drop an icon (`FlagIcon`, `BoltIcon`, `TrophyIcon`, `BadgeIcon`, `GithubIcon`) inside a colored block, producing "floating labeled tiles" scattered around each section.
 
-```scss
-.block {
-  background: $block-color;
-  border-radius: 4px;
-  box-shadow:
-    0 2px 4px rgba($block-color, 0.2),       // colored shadow
-    inset 0 1px 0 rgba(255, 255, 255, 0.15); // subtle inner highlight (not glass, just depth)
+### PixelIcon component
 
-  // Hover: slight scale + brighter shadow
-  &:hover {
-    transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba($block-color, 0.3);
-  }
-}
-```
+Source: `components/common/PixelIcon/index.tsx`.
+
+Renders pixel art from a 2D grid of colored mini-blocks. Available `shape` values: `sword`, `shield`, `trophy`, `flag`, `vs`, `lightning`. Used on the landing:
+
+- **Hero**: `shape="sword"` (purple blade, gold crossguard, red grip, green pommel) — the signature hero visual.
+- **HowItWorks**: `flag` (step 1), `shield` (step 2), `trophy` (step 3), one per card.
+
+`vs` and `lightning` shapes exist in the component but are not currently used on the landing.
+
+### PixelDissolve component
+
+Source: `components/common/PixelDissolve/index.tsx`. Renders a fixed pattern of tiny scattered blocks (purple/gold/green/red, opacity 0.06–0.25). Placed at the **bottom** of Hero, HowItWorks, About, and Partners as a section-boundary effect. It is *not* used between cards within a section.
+
+### BlockTower
+
+`components/common/BlockTower` exists for app-level loaders but is **not used** on the landing page.
+
+### Bubble
+
+Source: `components/common/Bubble/index.tsx`. Used **only in About** to decorate the Habits card (organic/playful counterweight to the block motif).
 
 ---
 
 ## Sections Detail
 
+All i18n keys below live under the `landing.*` namespace in `messages/es.json` and `messages/en.json`. Spanish strings are shown.
+
 ### 1. Navbar
 
-Fixed top. Transparent initially, solid background on scroll (white in light, navy in dark).
+Source: `components/layout/Navbar/index.tsx`.
 
-| Left | Right |
-|------|-------|
-| BitByBit Arena logo (small block icon + text) | "Sign In with Nostr" button (purple solid, white text) |
-
-**Behavior:**
-- On scroll: Background fades in, subtle bottom border appears (1px, 8% opacity)
-- Mobile: Logo icon only, compact sign in button
-- No nav links, no hamburger — just logo + sign in
-- Sign In opens a modal with NIP-07 flow
-
-**Logo:** The "BitByBit" text with a small 3-block stack icon to the left (like a mini tower of purple, gold, green blocks).
+- **Left**: Logo — three tiny blocks (purple, gold, green) + "BitByBit Arena" wordmark.
+- **Right**: Theme toggle, locale toggle (ES/EN), "Explore" button, and either a "Sign In" button or the signed-in user's avatar menu.
+- **Scroll behavior**: Adds a `.scrolled` class on scroll (background fades in, bottom border appears). Can auto-hide on scroll-down via `.hidden`.
 
 ### 2. Hero
 
-Full viewport height. **Always dark** (even in light mode). Dramatic, high-stakes.
+Source: `components/landing/Hero/index.tsx`. Always dark, even in light mode.
 
-**Layout:**
-```
-┌──────────────────────────────────────────────────────┐
-│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
-│  ░░  "Built on Nostr" badge              ░░░░░░░░░  │
-│  ░░                             ·  ·  ·  ░░░░░░░░░  │
-│  ░░  Enter the Arena.           ·■■·     ░░░░░░░░░  │
-│  ░░  Battle for Sats.          ·■■■■·    ░░░░░░░░░  │
-│  ░░                             ████     ░░░░░░░░░  │
-│  ░░  Subtitle text...           ██       ░░░░░░░░░  │
-│  ░░                             ██       ░░░░░░░░░  │
-│  ░░  [Explore the Arena] [→]   ■■       ░░░░░░░░░  │
-│  ░░                          (pixel sword)░░░░░░░░  │
-│  ░░░ · · · · arena floor grid · · · · · ░░░░░░░░░  │
-│  ▓▓▓▓▓▓ pixel dissolve into next section ▓▓▓▓▓▓▓▓  │
-└──────────────────────────────────────────────────────┘
-```
+**Content** (keys under `landing.hero`):
+- Headline (two lines): **"Entrá a la Arena."** (purple) / **"Conquistá Sats."** (gold)
+- Subtitle / manifesto: *"¿Y si cualquiera pudiera desafiar a cualquiera, y las victorias vivieran en Nostr para siempre?"*
+- CTA primary: **"Explorar la Arena"** → `/explore`
+- CTA secondary: **"Lanzar un desafío"** → `/explore`
 
-**Content:**
-- Manifesto: "What if anyone could challenge anyone, and the victories lived on Nostr forever?" — Italic, secondary text color, displayed as a quiet question above the headline. Not a pill/badge — a full sentence that sets the philosophical tone before the action headline
-- Headline: "Enter the Arena." — Large, bold, purple with subtle text-shadow glow. Below it, "BATTLE FOR SATS" in gold, smaller (0.5em), uppercase, tracked wide — a battle cry tagline, not a second headline
-- Subtitle: "The open arena where anyone can create challenges, compete for sats, and earn badges on their Nostr identity."
-- CTAs: "Explore the Arena" (purple solid button with subtle glow) + "Launch a Challenge" (outline button, light border)
+**Visual elements:**
+- **Pixel sword** (`PixelIcon shape="sword" blockSize={16} animate`) sits to the right of the headline. Blocks assemble with the drop animation.
+- **Arena floor grid** — `.arenaFloor` radial-gradient dot pattern, 32px spacing, masked to fade at edges. Hidden on mobile.
+- **Spotlights** — two radial gradients (purple primary, gold secondary) animated by `spotlight-pulse` (8s infinite, ~2% opacity shift).
+- **Floating decorator blocks** — 5 medium blocks with icons (purple+Flag, gold+Trophy, green+Badge, red+Bolt, purple+Flag), drifting via `hero-drift-a` / `hero-drift-b` (4.5–6s infinite).
+- **PixelDissolve** at the bottom.
 
-**Visual Elements:**
-- **Pixel weapon** (right side): A pixel sword/flag assembled from blocks with drop-bounce animation. Lit from below by the spotlight glow. Each block drops in to "forge" the weapon
-- **Arena floor grid**: Sparse dot grid at 2-4% opacity, masked to fade at edges. Suggests the arena ground
-- **Shadow blocks**: 6-8 blocks at 3-10% opacity scattered at edges, some partially off-screen. They drift very slowly
-- **Spotlight**: 1-2 radial gradients (purple primary, gold secondary) creating the arena lighting effect
-- **Pixel dissolve**: Bottom edge of hero dissolves into scattered blocks that transition to the next section
+**Entrance animations:** `fadeInUp` (0.6s cubic-bezier) staggered across headline → subtitle → CTAs → pixel sword.
 
-**Animations:**
-- Staggered entrance: badge → headline → subtitle → CTAs (fadeInUp, 0.15s intervals)
-- Pixel weapon assembles after text appears (0.6s delay, blocks drop one by one at 250ms intervals)
-- Shadow blocks fade in at different times (1-2s, staggered)
-- Spotlight subtly pulses (very slow, 8s cycle, 2% opacity change — almost imperceptible but adds life)
-- Desktop: Parallax on scroll (shadow blocks and weapon move at different speeds)
-
-**Mobile:**
-- Pixel weapon above the text (centered, smaller blocks 32px)
-- Fewer shadow blocks (3-4)
-- Spotlight simpler (single gradient)
-- Arena floor grid hidden on mobile (too subtle at small sizes)
+**Note:** There is no separate "Built on Nostr" pill/badge and no "BATTLE FOR SATS" secondary tagline — the two-line headline plus manifesto subtitle carry the tone.
 
 ### 3. How It Works
 
-Three steps with connecting pixel trail. Still on dark background (transition from hero).
+Source: `components/landing/HowItWorks/index.tsx`.
 
-**Steps:**
+**Content** (keys under `landing.howItWorks`):
+- Title: **"Cómo funciona"**
+- Subtitle: *"Creá desafíos, competí por sats y ganá badges que viven en tu identidad Nostr."*
 
-| # | Title | Description | Pixel Icon |
-|---|-------|-------------|------------|
-| 1 | **Create** | Set the rules, duration, and fund it with sats. Your arena awaits challengers. | Pixel flag (purple blocks) |
-| 2 | **Battle** | Enter challenges, submit your proof of victory, and track your progress. | Pixel shield (green blocks) |
-| 3 | **Earn** | Conquer challenges to earn NIP-58 badges. Your victories live on Nostr. | Pixel trophy (gold blocks) |
+**Three steps:**
 
-**Layout (desktop):** Three cards in a row connected by a **pixel trail** — small blocks (8px) scattered between cards like a path across the arena floor. The trail animates in block by block.
+| # | Badge color | PixelIcon | Title | Description |
+|---|-------------|-----------|-------|-------------|
+| 1 | Purple | `flag` | **Creá** | "Definí las reglas, duración y fondeá con sats. Tu arena se publica en Nostr para que cualquiera la descubra." |
+| 2 | Green | `shield` | **Batallá** | "Entrá a desafíos, enviá tu prueba de victoria y seguí tu progreso." |
+| 3 | Gold | `trophy` | **Ganá** | "Conquistá desafíos para ganar badges NIP-58 en tu identidad Nostr. Tus victorias se celebran en toda la red." |
 
-```
-  [Card 1] ■ · ■ · · ■ [Card 2] · ■ · ■ · · ■ [Card 3]
-```
+**Layout:** Three cards in a row on desktop, stacked on mobile. Each card has:
+- Colored numbered badge in the top-left (solid square tile, not glass).
+- `PixelIcon` inside the card body (`blockSize={8}`).
+- Title + description.
 
-**Layout (mobile):** Vertical stack, pixel trail runs down the left edge between cards.
+**Decoration:** 6 floating blocks scattered around the section (purple/gold/green/red, various sizes) with `drift-a` / `drift-b` / `drift-c` animations (4–6s infinite). **There is no pixel trail or scattered-block path *between* the cards** — the only `PixelDissolve` is at the section boundary.
 
-**Card styling:**
-- Dark surface background with subtle border (arena wall feel)
-- Left border accent (4px, colored per step: purple, green, gold)
-- Pixel icon in the top-right corner of each card (3x3 or 4x4 block grid forming the icon)
-- Number badge: block-shaped (square, rounded corners, colored fill, white number)
-- Hover: lift + colored shadow from spotlight + block confetti sparks
+**Scroll reveal:** cards use `scroll-reveal-stagger` and fade in on scroll.
 
-**Animation:**
-- Cards appear via `scroll-reveal-stagger`
-- Pixel trail animates block by block (scatter in from random directions, 50ms per block)
-- Number badges do a mini "drop" animation when entering view
-- Pixel icons assemble on scroll-reveal (blocks appear one by one)
+### 4. About
 
-### 4. About BitByBit
+Source: `components/landing/About/index.tsx`.
 
-This section marks the transition to lighter background. Pixel dissolve at the top edge.
+**Content** (keys under `landing.about`):
+- Title: **"La familia BitByBit"**
+- Description: *"BitByBit cree que el esfuerzo merece bitcoin. Empezamos premiando a los chicos por sus hábitos. Ahora, la arena premia a todos los que se animan a competir."*
 
-**Content:**
-- Title: "Part of the BitByBit Ecosystem"
-- Text: "BitByBit started as a habit tracker that rewards kids with real sats for completing tasks. Now we're taking the same idea — real rewards for real effort — and built an arena on Nostr."
-- Two comparison cards with a **pixel "VS"** between them:
+**Two comparison cards:**
 
-| BitByBit Habits | BitByBit Arena |
-|-----------------|---------------------|
-| Private, family-focused | Public, competitive |
-| Daily routines | Time-bounded battles |
-| Sponsor rewards kid | The arena crowns champions |
-| [Visit bitbybit.com.ar →] | You're here |
+| BitByBit Habits (left) | BitByBit Arena (right, `.active`) |
+|------------------------|-----------------------------------|
+| Privado y familiar | Público y competitivo |
+| Rutinas diarias | Batallas con tiempo límite |
+| El sponsor premia al chico | La arena corona campeones |
+| Link: "Visitar bitbybit.com.ar →" | Badge: "Estás acá" |
 
-**Visual:**
-- Cards have a colored top border (habits = gold, arena = purple)
-- Between the cards: a **pixel-art "VS"** built from red blocks (3x5 block grid). On mobile it sits between the stacked cards
-- A few shadow blocks at the edges (continuing the depth effect)
-- The Arena card has a subtle purple spotlight glow behind it (radial gradient, 4% opacity)
+The Arena card has an `.arenaGlow` (subtle purple radial gradient behind it) and a colored border accent; it is marked active.
+
+**Decoration — two competing motifs:**
+- **Bubbles** (Habits identity): three `Bubble` components at the left edge of the section — gold+Bolt, green+Heart, gold+Trophy — with `float` / `drift` / `float-slow` animations.
+- **Blocks** (Arena identity): three medium `Block`s with icons — purple+Flag, red+Bolt, green+Badge — with `block-drift-a` / `block-drift-b` animations.
+
+**There is no pixel "VS" divider between the cards.** The contrast between bubbles and blocks carries the comparison.
+
+**PixelDissolve** at the bottom of the section.
 
 ### 5. Partners
 
-**Layout:** Centered row of partner logos. Light background, clean.
+Source: `components/landing/Partners/index.tsx`.
 
-| Partner | Logo |
-|---------|------|
-| **La Crypta** | Logo from their branding |
-| **Nostr WoT** | Web of Trust logo |
+**Content** (keys under `landing.partners`):
+- Title: **"Partners"**
+- Subtitle: *"Construyendo el futuro de Nostr, juntos."*
 
-**Visual:**
-- Title: "Partners" (simple, centered)
-- Logos displayed at ~48px height, with generous spacing
-- Grayscale by default → full color on hover (CSS `filter: grayscale(1)` → `grayscale(0)`)
-- Each logo sits on a subtle card (surface bg, light border)
-- Small pixel-art handshake icon (block-built) beside the title
+**Two partner cards:**
 
-### 6. Support the Project
-
-**Content:**
-- Title: "Support BitByBit"
-- Subtitle: "Open source and community-driven. Help us keep building."
-- Two action areas:
-
-| Donate Sats | Contribute Code |
-|------------|-----------------|
-| Lightning address display | GitHub repo link |
-| Copy button + QR expand | "Star on GitHub" + "Open Issues" |
-| Zap button (if WebLN available) | |
+| Partner | Logo | Description | Link |
+|---------|------|-------------|------|
+| **La Crypta** | GitHub avatar (lacrypta.png) | "Comunidad Bitcoin en Argentina" | https://lacrypta.ar |
+| **Nostr WoT** | /images/partners/nostr-wot.webp | "Web of Trust para Nostr" | https://nostr-wot.com/ |
 
 **Visual:**
-- Slightly different background (surface color)
-- Pixel-art lightning bolt (gold blocks, 4x7 grid) beside the donate card — gently pulsing
-- Scattered shadow blocks at edges (sparse, low opacity)
-- The donation card has a gold left border accent
-- QR code styled cleanly with rounded container
+- Logo opacity is 0.6 by default and animates to 1 on hover. This is an **opacity fade** plus a **colored hover shadow** (La Crypta: gold; Nostr WoT: purple) — *not* a grayscale-to-color filter.
+- Each card has a colored accent tied to its partner identity.
+- Three floating blocks (purple+Flag, gold+Bolt, green+Trophy) drift via `partner-drift-a` / `partner-drift-b`.
+- PixelDissolve at the bottom.
+
+### 6. Support
+
+Source: `components/landing/Support/index.tsx` (+ `components/landing/ZapModal/index.tsx`).
+
+**Content** (keys under `landing.support`):
+- Title: **"Apoyá a BitByBit"**
+- Subtitle: *"Código abierto y hecho por la comunidad. Ayudanos a seguir construyendo."*
+
+**Two CTAs:**
+- **"Zapeá a los devs"** (gold button, BoltIcon) — opens the `ZapModal`.
+- **"Dar estrella en GitHub"** (surface button, GithubIcon) — links to https://github.com/bitbybit-ar/bitbybit-arena.
+
+**Decoration:** two medium floating blocks (gold+Bolt, purple+Github) with `support-drift-a` / `support-drift-b` animations.
+
+#### ZapModal
+
+The Lightning payment flow:
+- Preset amounts: **21, 100, 500, 1000, 5000** sats.
+- Optional custom amount + optional comment (≤140 chars).
+- **WebLN first**: tries the browser extension (e.g. Alby); if unavailable, falls back to a **QR code** plus copy-invoice button.
+- Polls for payment status and shows a success state with **pixel confetti** (24 particles in 5 colors, `confetti-fall` animation).
+- Error handling with retry.
+
+There is no standalone QR code or Lightning address rendered directly on the section — everything lives inside the modal.
 
 ### 7. Footer
 
-**Content:**
-- Left: "Built for Hackathon #2 de La Crypta" + La Crypta logo
-- Center: BitByBit logo (small block stack)
-- Right: Links — GitHub, Nostr, BitByBit Habits
-- Bottom: "Made by BitByBit" in small text
+Source: `components/layout/Footer/index.tsx`.
 
-**Visual:**
-- Subtle top border (1px, 8% opacity)
-- Surface background color
-- Compact, not too tall
-- No bubbles in footer — clean and grounded
+- **Brand**: three tiny blocks (purple/gold/green) + "BitByBit Arena".
+- **Links**: "Sobre nosotros", GitHub, "BitByBit Habits".
+- **Hackathon credit**: *"Construido para Hackathon #2 de La Crypta"*, rendered alongside the La Crypta logo.
+- **Motto**: "Bitcoin o Muerte" with a purple → gold → green gradient text effect.
+- Subtle top border, surface background, compact height.
 
 ---
 
 ## Animation Inventory
 
-### Reused from Habits (adapted)
-| Animation | Where | Changes |
-|-----------|-------|---------|
-| `fadeInUp` | Staggered section entrances | Same |
-| `scroll-reveal` | All sections | Same intersection observer approach |
-| `block-drop` | Hero pixel weapon, step numbers | Larger, slower, more dramatic |
-| `block-fade` | Weapon completion | Same concept |
-| `dotBounce` | Loading states | Same |
+Actual class/keyframe names present in the landing SCSS and the shared `styles/globals.scss` reveal utilities.
 
-### New for Arena
-| Animation | Where | Description |
-|-----------|-------|-------------|
-| `block-forge` | Hero pixel weapon | Blocks assemble one by one to build the weapon shape |
-| `block-scatter` | How It Works connectors | Blocks fly in from random directions to form the pixel trail |
-| `block-pulse` | Hero weapon (after build) | Gentle opacity/scale pulse, simulates glowing in spotlight |
-| `block-confetti` | Card/CTA hover | Tiny blocks burst outward like pixel sparks (300ms) |
-| `block-drift` | Shadow blocks | Very slow movement (20s cycle), blocks drift at section edges |
-| `pixel-dissolve` | Section transitions | Blocks scatter along boundary, denser in middle |
-| `pixel-assemble` | Pixel-art icons | Icon blocks appear one by one on scroll-reveal |
-| `spotlight-pulse` | Hero background | Radial gradient opacity shifts (8s, 2% change) |
-| `color-fill` | Progress blocks | Blocks fill left-to-right with color |
-| `grayscale-reveal` | Partner logos | Filter transition on hover |
-| `parallax-scroll` | Shadow blocks + weapon | Different scroll speeds via CSS transform |
+| Animation | Where | Notes |
+|-----------|-------|-------|
+| `fadeInUp` | Hero headline / subtitle / CTAs / pixel sword | 0.6s cubic-bezier, staggered |
+| `spotlight-pulse` | Hero spotlight gradients | 8s infinite, subtle opacity shift |
+| `hero-drift-a` / `hero-drift-b` | Hero floating blocks | 4.5–6s infinite |
+| `drift-a` / `drift-b` / `drift-c` | HowItWorks floating blocks | 4–6s infinite |
+| `block-drift-a` / `block-drift-b` | About floating blocks | 4.5–6s infinite |
+| `partner-drift-a` / `partner-drift-b` | Partners floating blocks | 4.5–6s infinite |
+| `support-drift-a` / `support-drift-b` | Support floating blocks | 5–5.5s infinite |
+| `float` / `drift` / `float-slow` | About Bubbles (Habits identity) | Shared bubble animations |
+| `scroll-reveal` / `scroll-reveal-stagger` | HowItWorks cards, About cards, Partners cards | Driven by `useScrollReveal` hook |
+| `block-drop` / `block-pulse` | Shared Block component | Reused from habits BlockLoader DNA |
+| `confetti-fall` | ZapModal success state | 24 particles, 5 colors |
+| `bolt-bounce` / `fade-in` / `pulse-text` | ZapModal states | |
 
-### Reduced Motion
-All animations collapse to static states:
-```scss
-@media (prefers-reduced-motion: reduce) {
-  .block-decorative, .shadow-block { animation: none; }
-  .scroll-reveal { opacity: 1; transform: none; }
-  .spotlight { animation: none; }
-  .pixel-dissolve { opacity: 1; }
-}
-```
+### Reduced motion
+
+All decorative animations collapse via `@media (prefers-reduced-motion: reduce)`: floating blocks, spotlight pulse, and scroll-reveal transforms become static while content remains fully visible.
 
 ---
 
@@ -522,60 +355,43 @@ All animations collapse to static states:
 ```
 components/
   common/
-    Block/                     <- Reusable block element
-      index.tsx
-      block.module.scss
-    BlockTower/                <- Animated stacking tower (loader)
-      index.tsx
-      block-tower.module.scss
-    PixelIcon/                 <- Pixel-art icons built from blocks
-      index.tsx
-      pixel-icon.module.scss
-    PixelDissolve/             <- Section transition dissolve effect
-      index.tsx
-      pixel-dissolve.module.scss
-    ArenaFloor/                <- Sparse grid background pattern
-      index.tsx
-      arena-floor.module.scss
+    Block/                 <- Colored tile with optional inner icon
+    BlockTower/            <- Loader (not used on landing)
+    Bubble/                <- Organic circular decorator (About only)
+    PixelIcon/             <- sword | shield | trophy | flag | vs | lightning
+    PixelDissolve/         <- Scattered-block section boundary
+    Tooltip/ OptionCard/ TagInput/ FormDivider/   (non-landing)
   landing/
-    Hero/
-      index.tsx
-      hero.module.scss
+    Hero/                  <- index.tsx + hero.module.scss
     HowItWorks/
-      index.tsx
-      how-it-works.module.scss
     About/
-      index.tsx
-      about.module.scss
     Partners/
-      index.tsx
-      partners.module.scss
     Support/
-      index.tsx
-      support.module.scss
+    ZapModal/              <- Lightning payment flow (WebLN + QR fallback)
   layout/
     Navbar/
-      index.tsx
-      navbar.module.scss
     Footer/
-      index.tsx
-      footer.module.scss
-    NostrLoginModal/
-      index.tsx
-      nostr-login-modal.module.scss
+    SignerProviderClient.tsx
+    ReSignInModal/
+    SignerRequiredNotice/
+    AppBackgroundDecor/ AppPageHeader/   (app-shell, not landing)
+  icons/                   <- SVG icons as React components
 ```
+
+Notes:
+- There is **no** `ArenaFloor` component — the hero dot grid is a SCSS class (`.arenaFloor`) inside `hero.module.scss`, not an extracted component.
+- `NostrLoginModal` referenced in older drafts is implemented as `ReSignInModal` under `components/layout/`.
+- `ZapModal` is a landing-scoped component and does not exist in older versions of this doc.
 
 ---
 
 ## Mobile Considerations
 
-- Hero: Pixel weapon above text (centered), smaller blocks (32px), single spotlight
-- How It Works: Vertical layout, pixel trail runs down left edge
-- About: Cards stack vertically, pixel VS between them
-- Partners: Logos wrap or shrink
-- Support: Single column, QR below text
-- Navbar: Logo icon only, compact button
-- Arena floor grid: Hidden on mobile (too subtle)
-- Shadow blocks: Reduced to 3-4 per section, lower opacity
-- Pixel dissolve transitions: Simpler (fewer blocks, less dense)
-- Safe-area-inset padding for iPhone notch
+- **Hero**: pixel sword moves above the headline (centered), spotlights remain, arena floor grid is hidden.
+- **HowItWorks**: cards stack vertically; floating blocks reduced.
+- **About**: cards stack vertically; bubbles and blocks both remain but with reduced density.
+- **Partners**: cards wrap to a single column.
+- **Support**: buttons stack; `ZapModal` is full-height friendly.
+- **Navbar**: compact — logo + Sign In, theme/locale toggles condense.
+- **PixelDissolve**: same markup, smaller footprint at section boundaries.
+- Safe-area-inset padding for iPhone notch handled in the global layout.

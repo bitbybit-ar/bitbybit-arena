@@ -15,6 +15,7 @@ import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
 import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
+import type { PrizeDistribution } from "@/lib/types";
 import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
 import styles from "./challenge-detail.module.scss";
 
@@ -60,13 +61,7 @@ interface ChallengeDetail {
   creator_id: string;
   slug: string;
   prize_amount_sats: number;
-  prize_distribution:
-    | "first_to_complete"
-    | "winner_takes_all"
-    | "split"
-    | "tiered"
-    | "none"
-    | null;
+  prize_distribution: PrizeDistribution | null;
   zap_goal_event_id: string | null;
   rewards_paid_at: string | null;
   creator: { id: string; display_name: string; username: string; nostr_pubkey: string; lightning_address?: string };

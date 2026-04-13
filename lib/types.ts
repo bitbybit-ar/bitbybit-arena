@@ -31,7 +31,6 @@ export type CheckpointMode = "none" | "sequential" | "parallel";
 
 export type PrizeDistribution =
   | "first_to_complete"
-  | "winner_takes_all"
   | "split"
   | "tiered"
   | "none";

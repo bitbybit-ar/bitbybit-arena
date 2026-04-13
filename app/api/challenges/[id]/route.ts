@@ -20,7 +20,7 @@ const VALID_VERIFICATION: VerificationMethod[] = [
   "nostr_action",
   "nostr_hashtag",
 ];
-const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "winner_takes_all", "split", "tiered", "none"];
+const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "split", "tiered", "none"];
 const VALID_STATUSES = ["open", "in_progress", "completed", "cancelled"];
 const HEX_64 = /^[0-9a-f]{64}$/i;
 const MAX_UNIT_LEN = 30;

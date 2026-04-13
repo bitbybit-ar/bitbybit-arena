@@ -258,6 +258,10 @@
         "text": "Premio total en sats. Se reparte entre los ganadores según el modo elegido.",
         "example": "Ej: 10000 sats"
       },
+      "rewardZapMode": {
+        "text": "Definí cómo se reparten los sats entre quienes completen el desafío. Elegí el modo que mejor represente tu desafío.",
+        "example": "Ej: Podio para concursos, División pareja para desafíos de participación"
+      },
       "badgeName": {
         "text": "Nombre del badge NIP-58 que reciben los ganadores en su identidad Nostr.",
         "example": "Ej: Maestro Zen 30 Días"
@@ -339,9 +343,13 @@
     "rewardZapModeLabel": "Cómo se reparte el premio",
     "rewardZapModes": {
       "first_to_complete": "El primero que termina se lleva todo",
-      "winner_takes_all": "El ganador se lleva todo",
       "split": "División pareja entre todos los que terminan",
       "tiered": "Podio (50% / 30% / 20%)"
+    },
+    "rewardZapModeDescriptions": {
+      "first_to_complete": "El primero que completa se lleva todos los sats. Ideal para carreras y speedruns.",
+      "split": "Todos los que terminan reciben una parte igual. Ideal para desafíos de participación.",
+      "tiered": "Los tres más rápidos se llevan 50% / 30% / 20%. Ideal para concursos con podio."
     },
     "publishZapGoalLabel": "Publicar Zap Goal (NIP-75) en Nostr para que otros financien el premio",
     "zapGoalSkippedNoSigner": "El desafío se creó pero no pudimos publicar el Zap Goal: tu firmante Nostr no está activo. Podés publicarlo más tarde desde la página del desafío.",
