@@ -64,6 +64,13 @@
       "when": 1776100000001,
       "tag": "0008_drop_category",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1776050227134,
+      "tag": "0009_add_users_deleted_at",
+      "breakpoints": true
     }
   ]
 }

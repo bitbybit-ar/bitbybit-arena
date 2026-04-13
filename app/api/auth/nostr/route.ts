@@ -56,6 +56,24 @@ export const POST = apiHandler(
 
     let user = existingUsers[0];
 
+    // Reactivate soft-deleted account: signing in with the same Nostr key
+    // restores access; PII fields will be re-populated by the background
+    // metadata sync below.
+    if (user && user.deleted_at) {
+      const shortPubkey = pubkey.slice(0, 8);
+      const [reactivated] = await db
+        .update(users)
+        .set({
+          username: `nostr_${shortPubkey}`,
+          display_name: `Nostr ${shortPubkey}`,
+          deleted_at: null,
+          updated_at: new Date(),
+        })
+        .where(eq(users.id, user.id))
+        .returning();
+      user = reactivated;
+    }
+
     if (!user) {
       const shortPubkey = pubkey.slice(0, 8);
       const [newUser] = await db
@@ -68,8 +86,12 @@ export const POST = apiHandler(
         })
         .returning();
       user = newUser;
+    }
 
-      // Sync metadata from relays (best-effort, non-blocking)
+    // Sync metadata from relays (best-effort, non-blocking).
+    // Runs for both fresh signups and reactivations so the profile
+    // re-populates from the user's latest kind:0 event.
+    if (!existingUsers[0] || existingUsers[0].deleted_at) {
       fetchNostrMetadataServer(pubkey)
         .then(async (metadata) => {
           if (metadata) {

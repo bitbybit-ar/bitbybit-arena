@@ -37,10 +37,55 @@
   display: flex;
   flex-direction: column;
   gap: $spacing-16;
+  margin-bottom: $spacing-20;
 
   @include mobile {
     padding: $spacing-20;
   }
+}
+
+.dangerCard {
+  border-color: alpha($color-accent, 40%);
+}
+
+.actionsRow {
+  display: flex;
+  gap: $spacing-12;
+  flex-wrap: wrap;
+
+  > * {
+    flex: 1 1 180px;
+  }
+}
+
+.hint {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  margin: 0;
+}
+
+.dangerButton {
+  color: $color-accent;
+  border-color: alpha($color-accent, 60%);
+
+  &:hover:not(:disabled) {
+    background: alpha($color-accent, 10%);
+    border-color: $color-accent;
+  }
+}
+
+.modalBody {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  margin: 0 0 $spacing-20;
+}
+
+.modalActions {
+  display: flex;
+  gap: $spacing-12;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .sectionTitle {
