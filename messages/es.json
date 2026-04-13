@@ -512,6 +512,26 @@
     "lightningAddress": "Dirección Lightning",
     "lightningPlaceholder": "usuario@getalby.com",
     "saving": "Guardando...",
-    "saved": "¡Perfil guardado!"
+    "saved": "¡Perfil guardado!",
+    "syncFromRelays": "Sincronizar desde relays",
+    "syncing": "Sincronizando...",
+    "syncSuccess": "Perfil sincronizado desde Nostr",
+    "syncFailed": "No se pudo sincronizar desde los relays",
+    "syncHint": "Traemos tu perfil desde los relays de Nostr. BitByBit nunca publica cambios a los relays.",
+    "preferences": "Preferencias",
+    "theme": "Tema",
+    "themeSystem": "Sistema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "language": "Idioma",
+    "languageEs": "Español",
+    "languageEn": "Inglés",
+    "dangerZone": "Zona peligrosa",
+    "deleteAccount": "Eliminar cuenta",
+    "deleteAccountHint": "Elimina tus datos de BitByBit Arena. Tu identidad Nostr y los eventos publicados en relays no se pueden borrar desde acá — no tenemos control sobre ellos.",
+    "deleteAccountConfirmTitle": "¿Eliminar tu cuenta?",
+    "deleteAccountConfirmBody": "Se eliminará tu perfil, progreso y badges de BitByBit Arena. Tu identidad Nostr (clave pública) y cualquier evento publicado en relays permanecen intactos — no los controlamos. Si volvés a iniciar sesión con la misma clave, tu cuenta se reactivará.",
+    "confirmDelete": "Sí, eliminar",
+    "deleting": "Eliminando..."
   }
 }

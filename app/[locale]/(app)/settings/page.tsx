@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
-import { FormInput, FormTextarea, FormButton } from "@/components/ui/form";
+import { useTranslations, useLocale } from "next-intl";
+import { FormInput, FormTextarea, FormButton, FormSelect } from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
 import { BlockLoader } from "@/components/ui/block-loader";
+import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
+import { useTheme, type ThemePreference } from "@/lib/contexts/theme-context";
+import { useRouter, usePathname } from "@/i18n/routing";
 import styles from "./settings.module.scss";
 
 interface UserProfile {
@@ -22,28 +26,36 @@ export default function SettingsPage() {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const { showToast } = useToast();
+  const { preference: themePref, setThemePreference } = useTheme();
+  const router = useRouter();
+  const pathname = usePathname();
+  const currentLocale = useLocale();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [about, setAbout] = useState("");
   const [lightningAddress, setLightningAddress] = useState("");
 
+  const applyProfile = (p: UserProfile) => {
+    setProfile(p);
+    setDisplayName(p.display_name || "");
+    setUsername(p.username || "");
+    setAbout(p.about || "");
+    setLightningAddress(p.lightning_address || "");
+  };
+
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
       .then((json) => {
-        if (json.success && json.data) {
-          const p = json.data;
-          setProfile(p);
-          setDisplayName(p.display_name || "");
-          setUsername(p.username || "");
-          setAbout(p.about || "");
-          setLightningAddress(p.lightning_address || "");
-        }
+        if (json.success && json.data) applyProfile(json.data);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -67,7 +79,7 @@ export default function SettingsPage() {
 
       const json = await res.json();
       if (json.success) {
-        setProfile(json.data);
+        applyProfile(json.data);
         showToast(t("saved"), "success");
       } else {
         showToast(json.error || tCommon("error"), "error");
@@ -76,6 +88,61 @@ export default function SettingsPage() {
       showToast(tCommon("error"), "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/profile/sync", { method: "POST" });
+      const json = await res.json();
+      if (json.success && json.data) {
+        applyProfile(json.data);
+        showToast(t("syncSuccess"), "success");
+      } else {
+        showToast(json.error || t("syncFailed"), "error");
+      }
+    } catch {
+      showToast(t("syncFailed"), "error");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleThemeChange = (value: string) => {
+    setThemePreference(value as ThemePreference);
+  };
+
+  const handleLanguageChange = async (value: string) => {
+    if (value === currentLocale) return;
+    // Persist on the server so future sessions remember the choice.
+    try {
+      await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: value }),
+      });
+    } catch {
+      // Navigation still succeeds even if persistence fails.
+    }
+    router.replace(pathname, { locale: value as "es" | "en" });
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/profile", { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) {
+        // Session cookie is cleared server-side. Redirect to landing.
+        window.location.href = `/${currentLocale}`;
+      } else {
+        showToast(json.error || tCommon("error"), "error");
+        setDeleting(false);
+      }
+    } catch {
+      showToast(tCommon("error"), "error");
+      setDeleting(false);
     }
   };
 
@@ -129,10 +196,88 @@ export default function SettingsPage() {
           placeholder={t("lightningPlaceholder")}
         />
 
-        <FormButton type="submit" loading={saving} loadingText={t("saving")}>
-          {tCommon("save")}
-        </FormButton>
+        <p className={styles.hint}>{t("syncHint")}</p>
+
+        <div className={styles.actionsRow}>
+          <FormButton type="submit" loading={saving} loadingText={t("saving")}>
+            {tCommon("save")}
+          </FormButton>
+          <FormButton
+            type="button"
+            variant="outline"
+            onClick={handleSync}
+            loading={syncing}
+            loadingText={t("syncing")}
+          >
+            {t("syncFromRelays")}
+          </FormButton>
+        </div>
       </form>
+
+      <section className={styles.card}>
+        <h2 className={styles.sectionTitle}>{t("preferences")}</h2>
+
+        <FormSelect
+          label={t("theme")}
+          value={themePref}
+          onChange={handleThemeChange}
+        >
+          <option value="system">{t("themeSystem")}</option>
+          <option value="light">{t("themeLight")}</option>
+          <option value="dark">{t("themeDark")}</option>
+        </FormSelect>
+
+        <FormSelect
+          label={t("language")}
+          value={currentLocale}
+          onChange={handleLanguageChange}
+        >
+          <option value="es">{t("languageEs")}</option>
+          <option value="en">{t("languageEn")}</option>
+        </FormSelect>
+      </section>
+
+      <section className={`${styles.card} ${styles.dangerCard}`}>
+        <h2 className={styles.sectionTitle}>{t("dangerZone")}</h2>
+        <p className={styles.hint}>{t("deleteAccountHint")}</p>
+        <Button
+          variant="outline"
+          className={styles.dangerButton}
+          onClick={() => setShowDeleteModal(true)}
+        >
+          {t("deleteAccount")}
+        </Button>
+      </section>
+
+      {showDeleteModal && (
+        <Modal
+          title={t("deleteAccountConfirmTitle")}
+          onClose={() => {
+            if (!deleting) setShowDeleteModal(false);
+          }}
+          size="sm"
+        >
+          <p className={styles.modalBody}>{t("deleteAccountConfirmBody")}</p>
+          <div className={styles.modalActions}>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={deleting}
+            >
+              {tCommon("cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              className={styles.dangerButton}
+              onClick={handleDelete}
+              disabled={deleting}
+              aria-busy={deleting || undefined}
+            >
+              {deleting ? t("deleting") : t("confirmDelete")}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

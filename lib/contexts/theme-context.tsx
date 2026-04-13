@@ -20,12 +20,23 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   );
 }
 
+export type ThemePreference = "system" | "light" | "dark";
+
 export function useTheme() {
-  const { theme, setTheme } = useNextTheme();
+  const { theme, setTheme, resolvedTheme } = useNextTheme();
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
-  return { theme: (theme ?? "light") as "light" | "dark", toggleTheme };
+  const setThemePreference = (value: ThemePreference) => setTheme(value);
+
+  return {
+    // Resolved theme is what's actually rendered (honors "system")
+    theme: (resolvedTheme ?? "light") as "light" | "dark",
+    // Raw preference — what's persisted, used by the settings UI
+    preference: (theme ?? "system") as ThemePreference,
+    toggleTheme,
+    setThemePreference,
+  };
 }
