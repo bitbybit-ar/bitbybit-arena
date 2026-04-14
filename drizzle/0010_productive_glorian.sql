@@ -1,0 +1,1 @@
+ALTER TABLE "completions" ADD COLUMN "image_url" text;

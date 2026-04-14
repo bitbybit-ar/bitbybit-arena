@@ -66,6 +66,20 @@ describe("POST /api/challenges/[id]/completions — submit proof", () => {
     );
     expect([400, 403]).toContain(res.status);
   });
+
+  it("rejects image_url that is not an http(s) URL", async () => {
+    setDbRows([makeChallenge({ id: "challenge-1" })]);
+    const res = await completionsRoute.POST(
+      buildRequest("POST", "/api/challenges/challenge-1/completions", {
+        content: "Did it today!",
+        image_url: "javascript:alert(1)",
+      }),
+      routeCtx
+    );
+    const { status, body } = await parseResponse(res);
+    expect(status).toBe(400);
+    expect(body.error).toContain("image_url");
+  });
 });
 
 describe("GET /api/challenges/[id]/completions — list", () => {

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { BlockLoader } from "@/components/ui/block-loader";
 import { Block } from "@/components/common/Block";
+import { ImageUpload } from "@/components/common/ImageUpload";
 import { buildJoinEvent, buildCompletionEvent, buildBadgeAwardEvent, buildZapRequestEvent } from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
@@ -80,6 +81,7 @@ interface RewardWinner {
 interface CompletionItem {
   id: string;
   content: string | null;
+  image_url: string | null;
   proof_event_id: string | null;
   status: string;
   submitted_at: string;
@@ -111,6 +113,7 @@ export default function ChallengeDetailPage() {
   const [isCreator, setIsCreator] = useState(false);
   const [isParticipant, setIsParticipant] = useState(false);
   const [proofContent, setProofContent] = useState("");
+  const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedWinners, setSelectedWinners] = useState<Set<string>>(new Set());
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -198,7 +201,7 @@ export default function ChallengeDetailPage() {
   };
 
   const handleSubmitProof = async () => {
-    if (!proofContent.trim()) return;
+    if (!proofContent.trim() && !proofImageUrl) return;
     if (needsSigner) {
       try {
         await requestReSignIn();
@@ -210,7 +213,10 @@ export default function ChallengeDetailPage() {
     await fetch(`/api/challenges/${challengeId}/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: proofContent }),
+      body: JSON.stringify({
+        content: proofContent || null,
+        image_url: proofImageUrl,
+      }),
     });
     if (challenge) {
       try {
@@ -219,12 +225,14 @@ export default function ChallengeDetailPage() {
             creatorPubkey: challenge.creator.nostr_pubkey,
             challengeSlug: challenge.slug,
             content: proofContent,
+            imageUrl: proofImageUrl ?? undefined,
           })
         );
         await publishSignedEvent(signed);
       } catch { /* non-blocking */ }
     }
     setProofContent("");
+    setProofImageUrl(null);
     await fetchAll();
     setActionLoading(null);
   };
@@ -672,10 +680,19 @@ export default function ChallengeDetailPage() {
               onChange={(e) => setProofContent(e.target.value)}
               rows={3}
             />
+            <ImageUpload
+              value={proofImageUrl}
+              onChange={setProofImageUrl}
+              alt={t("proofImageAlt")}
+              maxSizeMB={5}
+            />
             <Button
               size="sm"
               onClick={handleSubmitProof}
-              disabled={!proofContent.trim() || actionLoading === "proof"}
+              disabled={
+                (!proofContent.trim() && !proofImageUrl) ||
+                actionLoading === "proof"
+              }
             >
               {actionLoading === "proof" ? t("submitting") : tCommon("submit")}
             </Button>
@@ -699,6 +716,14 @@ export default function ChallengeDetailPage() {
                   </div>
                   {comp.content && (
                     <p className={styles.completionContent}>{comp.content}</p>
+                  )}
+                  {comp.image_url && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={comp.image_url}
+                      alt={comp.content ?? t("proofImageAlt")}
+                      className={styles.completionImage}
+                    />
                   )}
                   {comp.proof_event_id && (
                     <p className={styles.completionContent}>

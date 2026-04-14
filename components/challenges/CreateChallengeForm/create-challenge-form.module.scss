@@ -128,34 +128,6 @@
   }
 }
 
-.badgePreview {
-  display: flex;
-  align-items: center;
-  gap: $spacing-12;
-  padding: $spacing-12;
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-md;
-}
-
-.badgePreviewImage {
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
-  border-radius: $border-radius-sm;
-  background: $color-bg;
-}
-
-.badgePreviewText {
-  font-size: $font-size-xs;
-  color: $color-text-secondary;
-}
-
-.badgePreviewError {
-  font-size: $font-size-xs;
-  color: $color-accent;
-}
-
 .error {
   padding: $spacing-12;
   background: color-mix(in srgb, $color-accent 12%, transparent);

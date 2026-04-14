@@ -74,6 +74,7 @@ export interface Completion {
   user_id: string;
   step: number | null;
   content: string | null;
+  image_url: string | null;
   proof_event_id: string | null;
   reward_zap_receipt_id: string | null;
   status: CompletionStatus;

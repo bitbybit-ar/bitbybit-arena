@@ -3,29 +3,40 @@
 
 ## The Problem
 
-How does a user prove they actually completed a challenge? Different challenges need different proof mechanisms, but for MVP we keep it simple: text-only proofs.
+How does a user prove they actually completed a challenge? Different challenges need different proof mechanisms. BitByBit Arena supports two: text descriptions, and photos uploaded to a Blossom server.
 
-## Proof Type (MVP)
+## Proof Types
 
-### Text Description
+### Text description
 
-User writes what they did. Simple, fast, works for any challenge type.
+User writes what they did. Fast, works for any challenge type.
 
-**Flow:**
-1. User taps "Submit Proof" on the challenge
-2. Text input opens (title + description)
-3. Completion event (kind: 7101) published to Nostr with the text as content
-4. Verification process begins based on challenge settings
+### Photo (Blossom)
+
+User attaches a photo alongside (or instead of) the text. Photos are uploaded to a Blossom server (BUD-01/BUD-02) before the completion is submitted:
+
+1. Client hashes the file with SHA-256.
+2. Builds an unsigned kind 24242 upload-auth event with the hash, size, `t=upload`, and a 5-minute expiration.
+3. Signs it via the active Nostr signer (`signWithPrompt` — the re-sign-in modal auto-opens for nsec/NIP-46 users).
+4. PUTs the raw bytes to `<server>/upload` with the signed event in the `Authorization: Nostr <base64>` header.
+5. Server returns `{ url, sha256, size, type }`.
+6. The returned `url` is sent to `POST /api/challenges/[id]/completions` as `image_url` and mirrored onto the kind 7101 event (appended to `content` and as an `imeta` tag per NIP-92) so other Nostr clients render it inline.
+
+Default Blossom server: `NEXT_PUBLIC_BLOSSOM_SERVER` at build time, fallback `https://blossom.primal.net`. Swap it per-deployment if needed — blobs are content-addressed, so the `sha256` will still resolve on any Blossom server that also holds them.
+
+### Submission flow (shared)
+
+1. User taps "Submit Proof" on the challenge.
+2. Types the description, optionally picks an image (the `ImageUpload` component handles the Blossom round-trip and shows a preview).
+3. `POST /api/challenges/[id]/completions` with `content` and/or `image_url`. At least one must be present: text alone needs ≥5 characters, an image alone is accepted without text because the photo is itself evidence.
+4. Kind 7101 event published to Nostr with the text (plus the image URL appended on a new line) as content.
+5. Verification process begins based on challenge settings.
 
 **Use cases:**
 - "Read a chapter of a book" → "Finished chapter 5 of The Bitcoin Standard"
 - "Meditate for 10 minutes" → "Did a 15-minute session this morning"
-- "Run a 5K" → "Ran 5.2km in 28 minutes at the park"
-- "Best sunset photo" → "Caught an amazing sunset from the rooftop" (description only for MVP)
-
-### Future: Photo/Video Proof (Post-MVP)
-
-Photo uploads via Blossom (NIP-B7) are planned but deferred. They add complexity (upload flow, file size limits, Blossom server selection) without being essential for the core demo flow.
+- "Run a 5K" → "Ran 5.2km in 28 minutes at the park" + photo of the GPS trail
+- "Best sunset photo" → photo-only submission, no text required
 
 ## Verification Methods
 

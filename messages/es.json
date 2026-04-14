@@ -41,6 +41,16 @@
     "active": "Activo",
     "withdrawn": "Retirado"
   },
+  "imageUpload": {
+    "chooseFile": "Elegí una imagen",
+    "hint": "PNG, JPG, WEBP o GIF hasta {max}MB",
+    "uploading": "Subiendo...",
+    "replace": "Reemplazar",
+    "remove": "Quitar",
+    "invalidType": "Tipo de imagen no soportado. Usá PNG, JPG, WEBP o GIF.",
+    "tooLarge": "Esa imagen es demasiado grande (máx {max}MB).",
+    "uploadFailed": "No se pudo subir la imagen. Intentá de nuevo."
+  },
   "landing": {
     "hero": {
       "headline1": "Entrá a la Arena.",
@@ -267,8 +277,8 @@
         "example": "Ej: Maestro Zen 30 Días"
       },
       "badgeImage": {
-        "text": "URL pública de una imagen para el badge. Usá un servicio de hosting (Imgur, Nostr.build, etc).",
-        "example": "Ej: https://nostr.build/i/badge.png"
+        "text": "Subí una imagen para el badge. La guardamos en un servidor Blossom (direccionada por SHA-256) para que cualquier cliente de Nostr pueda mostrarla.",
+        "example": "PNG, JPG, WEBP o GIF hasta 2MB"
       }
     },
     "nameLabel": "Título",
@@ -356,10 +366,7 @@
     "zapGoalPublishFailed": "El desafío se creó pero no pudimos publicar el Zap Goal en los relays. Intentá de nuevo más tarde.",
     "badgeNameLabel": "Nombre del badge",
     "badgeNamePlaceholder": "Ej: Maestro Zen 30 Días",
-    "badgeImageUrlLabel": "Imagen del badge (URL)",
-    "badgeImageUrlPlaceholder": "https://...",
-    "badgeImageUrlPreviewFallback": "Vista previa del badge",
-    "badgeImageUrlLoadError": "No se pudo cargar la imagen. Revisá la URL.",
+    "badgeImageLabel": "Imagen del badge",
     "createFailed": "No se pudo crear el desafío. Intentá de nuevo.",
     "startsAtLabel": "Fecha de inicio",
     "endsAtLabel": "Fecha de fin",
@@ -378,6 +385,7 @@
     "progress": "Progreso",
     "submitProof": "Enviar prueba",
     "proofPlaceholder": "Describí lo que hiciste...",
+    "proofImageAlt": "Foto de la prueba",
     "submitting": "Enviando...",
     "proofSubmitted": "¡Prueba enviada!",
     "verifyLikeTitle": "Verificar tu like",

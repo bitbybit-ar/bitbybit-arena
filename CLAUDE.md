@@ -22,7 +22,7 @@
 - **ORM**: Drizzle ORM
 - **Auth**: Nostr solamente (NIP-07 browser extension, NIP-42 challenge-response)
 - **Zaps**: NIP-57 (client-side only, no server-side Lightning/invoices)
-- **Media**: Text-only proofs for MVP (photo upload deferred)
+- **Media**: Photo uploads via Blossom (BUD-01/BUD-02) — text + optional image proofs, badge images
 - **Badges**: NIP-58
 - **Fuente**: Nunito / Nunito Sans (Google Fonts)
 
@@ -161,7 +161,7 @@ bitbybit-arena/
 - **NIP-57**: Zaps (client-side zap requests, read zap receipts from relays)
 - **NIP-58**: Badges (logros por completar desafios)
 - **NIP-75**: Zap Goals (funding de premio para desafios)
-- **NIP-B7**: Blossom (deferred — text-only proofs for MVP)
+- **Blossom (BUD-01/BUD-02)**: content-addressed image uploads for completion photos and badge images. Default server is `NEXT_PUBLIC_BLOSSOM_SERVER` (fallback `https://blossom.primal.net`). Upload auth is a short-lived kind 24242 event signed by the active signer.
 
 ## Modelo de datos clave
 

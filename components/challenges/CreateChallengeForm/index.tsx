@@ -8,6 +8,8 @@ import { Tooltip } from "@/components/common/Tooltip";
 import { FormDivider } from "@/components/common/FormDivider";
 import { OptionCard, OptionCardGroup } from "@/components/common/OptionCard";
 import { TagInput } from "@/components/common/TagInput";
+import { ImageUpload } from "@/components/common/ImageUpload";
+import { validateHttpUrl } from "@/lib/api/validate-http-url";
 import { buildChallengeEvent, buildZapGoalEvent } from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
@@ -107,8 +109,7 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
   const [publishZapGoal, setPublishZapGoal] = useState(false);
 
   const [badgeName, setBadgeName] = useState("");
-  const [badgeImageUrl, setBadgeImageUrl] = useState("");
-  const [badgeImageLoadError, setBadgeImageLoadError] = useState(false);
+  const [badgeImageUrl, setBadgeImageUrl] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -171,6 +172,16 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
       !/^#?[a-z0-9_]{2,50}$/i.test(nostrHashtag.trim())
     ) {
       setError(t("nostrHashtagError"));
+      return;
+    }
+
+    // Blossom-hosted URLs are always https://, but guard the field anyway
+    // so dev-tools edits or future paste-URL affordances can't slip a
+    // non-http(s) value past the client into the API.
+    try {
+      validateHttpUrl(badgeImageUrl, "badge_image_url");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("createFailed"));
       return;
     }
 
@@ -718,40 +729,15 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
             example: t("tooltips.badgeImage.example"),
           }}
         >
-          {t("badgeImageUrlLabel")}
+          {t("badgeImageLabel")}
         </FieldLabel>
-        <FormInput
+        <ImageUpload
           id="cc-badge-image"
-          type="url"
-          placeholder={t("badgeImageUrlPlaceholder")}
-          value={badgeImageUrl}
-          onChange={(next) => {
-            setBadgeImageUrl(next);
-            setBadgeImageLoadError(false);
-          }}
+          value={badgeImageUrl || null}
+          onChange={(next) => setBadgeImageUrl(next ?? "")}
+          alt={badgeName || t("badgeImageLabel")}
+          maxSizeMB={2}
         />
-        {badgeImageUrl && /^https?:\/\//.test(badgeImageUrl) && (
-          <div className={styles.badgePreview}>
-            {badgeImageLoadError ? (
-              <span className={styles.badgePreviewError}>
-                {t("badgeImageUrlLoadError")}
-              </span>
-            ) : (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={badgeImageUrl}
-                  alt={badgeName || t("badgeImageUrlLabel")}
-                  className={styles.badgePreviewImage}
-                  onError={() => setBadgeImageLoadError(true)}
-                />
-                <span className={styles.badgePreviewText}>
-                  {badgeName || t("badgeImageUrlPreviewFallback")}
-                </span>
-              </>
-            )}
-          </div>
-        )}
       </div>
 
       {error && <p className={styles.error}>{error}</p>}
