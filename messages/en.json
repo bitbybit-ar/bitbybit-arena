@@ -438,9 +438,18 @@
     "title": "My Challenges",
     "created": "Created",
     "joined": "Joined",
+    "achievements": "Achievements",
     "empty": "No challenges yet. Explore and join one!",
     "emptyCreated": "You haven't created any challenges yet.",
-    "emptyJoined": "You haven't joined any challenges yet."
+    "emptyJoined": "You haven't joined any challenges yet.",
+    "emptyAchievements": "No badges yet. Complete a challenge to earn your first one.",
+    "acceptBadge": "Accept on Nostr",
+    "accepting": "Accepting...",
+    "acceptedOnNostr": "On your Nostr profile",
+    "acceptSuccess": "Badge added to your Nostr profile",
+    "acceptFailed": "Could not publish your profile badges. Try again.",
+    "acceptMissingIds": "This badge is missing its Nostr event ids and can't be added to a profile yet.",
+    "acceptMissingSession": "You need to be signed in with a Nostr key to accept a badge."
   },
   "about": {
     "story": {

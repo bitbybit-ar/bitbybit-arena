@@ -78,6 +78,13 @@
       "when": 1776128741088,
       "tag": "0010_productive_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1776134729020,
+      "tag": "0011_flimsy_abomination",
+      "breakpoints": true
     }
   ]
 }

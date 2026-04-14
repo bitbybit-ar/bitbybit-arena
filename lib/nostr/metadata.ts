@@ -3,27 +3,14 @@
 import type { NostrEvent, NostrMetadata } from "./types";
 import { DEFAULT_RELAYS } from "./relays";
 
-async function getRelays(): Promise<string[]> {
-  try {
-    if (window.nostr?.getRelays) {
-      const relayMap = await window.nostr.getRelays();
-      const urls = Object.keys(relayMap);
-      if (urls.length > 0) return urls;
-    }
-  } catch { /* fall through */ }
-  return DEFAULT_RELAYS;
-}
-
-/**
- * Fetch the latest kind 0 (metadata) event for a pubkey from relays.
- * Queries multiple relays in parallel and returns the most recent content.
- */
-export async function fetchNostrMetadata(
+/** Fetch the latest event matching the given kind + author from relays. */
+export async function fetchLatestEventOfKind(
   pubkey: string,
+  kind: number,
   relayUrls?: string[],
   timeoutMs = 5000
-): Promise<NostrMetadata | null> {
-  const urls = relayUrls ?? await getRelays();
+): Promise<NostrEvent | null> {
+  const urls = relayUrls ?? (await getRelays());
 
   return new Promise((resolve) => {
     let bestEvent: NostrEvent | null = null;
@@ -36,15 +23,7 @@ export async function fetchNostrMetadata(
       for (const s of sockets) {
         try { s.close(); } catch { /* ignore */ }
       }
-      if (bestEvent) {
-        try {
-          resolve(JSON.parse(bestEvent.content) as NostrMetadata);
-        } catch {
-          resolve(null);
-        }
-      } else {
-        resolve(null);
-      }
+      resolve(bestEvent);
     };
 
     const timer = setTimeout(finish, timeoutMs);
@@ -62,14 +41,16 @@ export async function fetchNostrMetadata(
       try {
         const ws = new WebSocket(url);
         sockets.push(ws);
-        const subId = `meta_${Math.random().toString(36).slice(2, 8)}`;
+        const subId = `evt_${Math.random().toString(36).slice(2, 8)}`;
 
         ws.onopen = () => {
-          ws.send(JSON.stringify([
-            "REQ",
-            subId,
-            { kinds: [0], authors: [pubkey], limit: 1 },
-          ]));
+          ws.send(
+            JSON.stringify([
+              "REQ",
+              subId,
+              { kinds: [kind], authors: [pubkey], limit: 1 },
+            ])
+          );
         };
 
         ws.onmessage = (msg) => {
@@ -84,10 +65,14 @@ export async function fetchNostrMetadata(
             if (data[0] === "EOSE") {
               ws.close();
             }
-          } catch { /* ignore parse errors */ }
+          } catch {
+            /* ignore parse errors */
+          }
         };
 
-        ws.onerror = () => { try { ws.close(); } catch { /* ignore */ } };
+        ws.onerror = () => {
+          try { ws.close(); } catch { /* ignore */ }
+        };
         ws.onclose = checkAllDone;
       } catch {
         closedCount++;
@@ -99,4 +84,33 @@ export async function fetchNostrMetadata(
       resolve(null);
     }
   });
+}
+
+async function getRelays(): Promise<string[]> {
+  try {
+    if (window.nostr?.getRelays) {
+      const relayMap = await window.nostr.getRelays();
+      const urls = Object.keys(relayMap);
+      if (urls.length > 0) return urls;
+    }
+  } catch { /* fall through */ }
+  return DEFAULT_RELAYS;
+}
+
+/**
+ * Fetch the latest kind 0 (metadata) event for a pubkey from relays and
+ * return its parsed content.
+ */
+export async function fetchNostrMetadata(
+  pubkey: string,
+  relayUrls?: string[],
+  timeoutMs = 5000
+): Promise<NostrMetadata | null> {
+  const event = await fetchLatestEventOfKind(pubkey, 0, relayUrls, timeoutMs);
+  if (!event) return null;
+  try {
+    return JSON.parse(event.content) as NostrMetadata;
+  } catch {
+    return null;
+  }
 }

@@ -240,7 +240,11 @@ export default function MyChallengesPage() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleAcceptBadge(badge)}
-                      disabled={accepting === badge.id}
+                      // Disable all accept buttons while any one is in
+                      // flight: concurrent accepts race on the latest
+                      // kind:30008 and can drop previously-merged pairs
+                      // because neither publish has hit relays yet.
+                      disabled={accepting !== null}
                     >
                       {accepting === badge.id ? t("accepting") : t("acceptBadge")}
                     </Button>

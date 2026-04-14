@@ -1,0 +1,1 @@
+ALTER TABLE "badges" ADD COLUMN "accepted_at" timestamp;
