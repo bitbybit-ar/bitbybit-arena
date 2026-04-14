@@ -19,6 +19,7 @@ import {
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import { useSignerContext } from "@/lib/signer-context";
+import { ShareOnNostrModal } from "@/components/share/ShareOnNostrModal";
 import type { VerificationMethod } from "@/lib/types";
 import styles from "./create-challenge-form.module.scss";
 
@@ -119,6 +120,9 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [shareContext, setShareContext] = useState<
+    { id: string; title: string } | null
+  >(null);
 
   const showGoal = type === "streak" || type === "competition";
 
@@ -351,12 +355,18 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
         }
       }
 
-      router.push(`/explore/${json.data.id}`);
+      setShareContext({ id: json.data.id, title });
     } catch {
       setError(t("createFailed"));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleShareClose = () => {
+    const target = shareContext;
+    setShareContext(null);
+    if (target) router.push(`/explore/${target.id}`);
   };
 
   const addCheckpoint = () => {
@@ -776,6 +786,16 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
 
       {error && <p className={styles.error}>{error}</p>}
       {warning && <p className={styles.warning}>{warning}</p>}
+
+      {shareContext && (
+        <ShareOnNostrModal
+          context={{
+            kind: "challenge-created",
+            challenge: shareContext,
+          }}
+          onClose={handleShareClose}
+        />
+      )}
     </form>
   );
 }

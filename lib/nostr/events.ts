@@ -2,6 +2,20 @@ import type { BlossomDescriptor } from "./blossom";
 import type { NostrMetadata, UnsignedNostrEvent } from "./types";
 
 /**
+ * Build a plain kind:1 short text note (NIP-01). Used by the
+ * "Share on Nostr" popup to publish a free-form shout with no e/p/imeta
+ * tagging — the content is whatever the user typed.
+ */
+export function buildNoteEvent(content: string): UnsignedNostrEvent {
+  return {
+    kind: 1,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content,
+  };
+}
+
+/**
  * Build a Profile Metadata event (kind 0, NIP-01).
  * Callers should merge their edits on top of the latest kind:0 fetched
  * from relays so unknown fields (nip05, website, etc.) are preserved.

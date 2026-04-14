@@ -6,6 +6,18 @@ on:
   push:
     branches: [main]
 
+# Serialize CI across all PRs. The integration test suite runs against a
+# single shared Neon test database; when two runs happen concurrently,
+# each one's `cleanDb()` TRUNCATE can wipe the other one's just-seeded
+# users and fail subsequent FK-constrained inserts with
+# `challenges_creator_id_users_id_fk`. Queueing runs under a single
+# workflow-level group forces them to run back-to-back instead of
+# racing. `cancel-in-progress: false` queues rather than cancelling so
+# no PR loses its CI result when a newer run arrives.
+concurrency:
+  group: ci-shared-test-db
+  cancel-in-progress: false
+
 jobs:
   ci:
     name: Typecheck, Lint, Test & Build

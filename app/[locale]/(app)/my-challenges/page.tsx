@@ -18,6 +18,10 @@ import {
 } from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import { useToast } from "@/components/ui/toast";
+import {
+  ShareOnNostrModal,
+  type ShareContext,
+} from "@/components/share/ShareOnNostrModal";
 import styles from "./my-challenges.module.scss";
 
 const TABS_ID = "my-challenges-tabs";
@@ -73,6 +77,7 @@ export default function MyChallengesPage() {
   const [loadingMoreAchievements, setLoadingMoreAchievements] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("joined");
+  const [shareContext, setShareContext] = useState<ShareContext | null>(null);
 
   const fetchAll = useCallback(() => {
     setLoading(true);
@@ -196,6 +201,14 @@ export default function MyChallengesPage() {
             )
           : prev
       );
+      setShareContext({
+        kind: "badge-received",
+        challenge: {
+          id: badge.challenge.id,
+          title: badge.challenge.title,
+        },
+        badgeName: badge.badge_name,
+      });
     } catch {
       showToast(t("acceptFailed"), "error");
     } finally {
@@ -340,7 +353,12 @@ export default function MyChallengesPage() {
           </div>
         )}
       </div>
-
+      {shareContext && (
+        <ShareOnNostrModal
+          context={shareContext}
+          onClose={() => setShareContext(null)}
+        />
+      )}
     </div>
   );
 }

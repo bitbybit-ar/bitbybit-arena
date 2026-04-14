@@ -205,6 +205,21 @@
     "anonBody": "To create or join challenges you need a Nostr identity. Use your extension, a remote signer, your nsec, or create a new account.",
     "anonCta": "Sign in"
   },
+  "shareOnNostr": {
+    "title": "Share on Nostr",
+    "placeholder": "Edit your message…",
+    "publish": "Publish",
+    "cancel": "Cancel",
+    "publishing": "Publishing…",
+    "published": "Published!",
+    "error": "We couldn't publish. Try again.",
+    "suggested": {
+      "challengeCreated": "I just launched a challenge on BitByBit Arena: {title} 🏆 Join in 👉 {link}",
+      "challengeJoined": "I joined the {title} challenge on BitByBit Arena. Dare to join? 👉 {link}",
+      "challengeCompleted": "I just completed the {title} challenge on BitByBit Arena! 🎉 {link}",
+      "badgeReceived": "I earned the {badge} badge by completing {title} on BitByBit Arena 🏅 {link}"
+    }
+  },
   "explore": {
     "title": "Explore Challenges",
     "createNew": "Create Challenge",

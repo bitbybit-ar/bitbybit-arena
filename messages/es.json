@@ -205,6 +205,21 @@
     "anonBody": "Para crear o unirte a desafíos necesitás una identidad Nostr. Usá tu extensión, un signer remoto, tu nsec, o creá una cuenta nueva.",
     "anonCta": "Iniciar sesión"
   },
+  "shareOnNostr": {
+    "title": "Compartir en Nostr",
+    "placeholder": "Editá tu mensaje…",
+    "publish": "Publicar",
+    "cancel": "Cancelar",
+    "publishing": "Publicando…",
+    "published": "¡Publicado!",
+    "error": "No pudimos publicar. Intentá de nuevo.",
+    "suggested": {
+      "challengeCreated": "Acabo de lanzar un desafío en BitByBit Arena: {title} 🏆 Sumate 👉 {link}",
+      "challengeJoined": "Me sumé al desafío {title} en BitByBit Arena. ¿Te animás? 👉 {link}",
+      "challengeCompleted": "¡Completé el desafío {title} en BitByBit Arena! 🎉 {link}",
+      "badgeReceived": "Gané el badge {badge} completando {title} en BitByBit Arena 🏅 {link}"
+    }
+  },
   "explore": {
     "title": "Explorar desafíos",
     "createNew": "Crear desafío",
