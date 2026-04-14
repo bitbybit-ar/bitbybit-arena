@@ -16,6 +16,7 @@ export { GithubIcon } from "./GithubIcon";
 export { HeartIcon } from "./HeartIcon";
 export { KeyIcon } from "./KeyIcon";
 export { LinkIcon } from "./LinkIcon";
+export { LogoutIcon } from "./LogoutIcon";
 export { MoonIcon } from "./MoonIcon";
 export { SettingsIcon } from "./SettingsIcon";
 export { SunIcon } from "./SunIcon";

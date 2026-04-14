@@ -213,6 +213,7 @@
     "allTypes": "Todos los tipos",
     "allStatuses": "Todos los estados",
     "filterByType": "Filtrar por tipo",
+    "typesSelected": "{count} tipos seleccionados",
     "sortBy": "Ordenar por",
     "newest": "Más recientes",
     "endingSoon": "Por terminar",

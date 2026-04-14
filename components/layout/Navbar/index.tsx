@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Link, useRouter, usePathname } from "@/i18n/routing";
 import { Block } from "@/components/common/Block";
 import { Button } from "@/components/ui/button";
-import { MoonIcon, SunIcon, SettingsIcon, UserIcon } from "@/components/icons";
+import { LogoutIcon, MoonIcon, SunIcon, SettingsIcon, UserIcon } from "@/components/icons";
 import { useTheme } from "@/lib/contexts/theme-context";
 import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
@@ -140,7 +140,7 @@ export function Navbar() {
                       role="menuitem"
                       onClick={handleSignOut}
                     >
-                      <UserIcon size={14} />
+                      <LogoutIcon size={14} />
                       {t("signOut")}
                     </button>
                   </div>

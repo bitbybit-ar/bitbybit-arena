@@ -6,6 +6,7 @@ import { Link } from "@/i18n/routing";
 import { PixelIcon } from "@/components/common/PixelIcon";
 import { BlockLoader } from "@/components/ui/block-loader";
 import { Button } from "@/components/ui/button";
+import { Dropdown } from "@/components/ui/dropdown";
 import { Tag } from "@/components/ui/tag";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { useRouter } from "@/i18n/routing";
@@ -40,7 +41,7 @@ export default function ExplorePage() {
   const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [type, setType] = useState("");
+  const [types, setTypes] = useState<string[]>([]);
   const [sort, setSort] = useState("newest");
   const [popularTags, setPopularTags] = useState<{ tag: string; count: number }[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -49,7 +50,7 @@ export default function ExplorePage() {
     setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set("search", search);
-    if (type) params.set("type", type);
+    if (types.length > 0) params.set("type", types.join(","));
     if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
     params.set("sort", sort);
     params.set("status", "open");
@@ -65,7 +66,7 @@ export default function ExplorePage() {
     } finally {
       setLoading(false);
     }
-  }, [search, type, sort, selectedTags]);
+  }, [search, types, sort, selectedTags]);
 
   useEffect(() => {
     fetchChallenges();
@@ -111,6 +112,17 @@ export default function ExplorePage() {
 
   const typeOptions = ["one_time", "streak", "competition", "race", "creative"];
 
+  const typeDropdownOptions = typeOptions.map((opt) => ({
+    value: opt,
+    label: tCreate(`types.${opt}`),
+  }));
+
+  const sortDropdownOptions = [
+    { value: "newest", label: t("newest") },
+    { value: "ending_soon", label: t("endingSoon") },
+    { value: "most_participants", label: t("mostParticipants") },
+  ];
+
   return (
     <div className={styles.page}>
       <AppPageHeader
@@ -139,29 +151,24 @@ export default function ExplorePage() {
           onChange={(e) => setSearch(e.target.value)}
         />
         <div className={styles.filters}>
-          <select
-            className={styles.select}
+          <Dropdown
+            multiple
+            options={typeDropdownOptions}
+            value={types}
+            onChange={setTypes}
             aria-label={t("filterByType")}
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-          >
-            <option value="">{t("allTypes")}</option>
-            {typeOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {tCreate(`types.${opt}`)}
-              </option>
-            ))}
-          </select>
-          <select
-            className={styles.select}
-            aria-label={t("sortBy")}
+            placeholder={t("allTypes")}
+            allLabel={t("allTypes")}
+            summaryFormatter={(count) => t("typesSelected", { count })}
+            className={styles.filterDropdown}
+          />
+          <Dropdown
+            options={sortDropdownOptions}
             value={sort}
-            onChange={(e) => setSort(e.target.value)}
-          >
-            <option value="newest">{t("newest")}</option>
-            <option value="ending_soon">{t("endingSoon")}</option>
-            <option value="most_participants">{t("mostParticipants")}</option>
-          </select>
+            onChange={setSort}
+            aria-label={t("sortBy")}
+            className={styles.filterDropdown}
+          />
         </div>
       </div>
 
@@ -238,7 +245,7 @@ export default function ExplorePage() {
         <div className={styles.emptyState}>
           <PixelIcon shape="flag" blockSize={8} />
           <p>
-            {search || type || selectedTags.length > 0
+            {search || types.length > 0 || selectedTags.length > 0
               ? t("emptyFiltered")
               : t("empty")}
           </p>

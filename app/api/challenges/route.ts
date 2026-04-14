@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { eq, and, ilike, or, sql, desc, asc } from "drizzle-orm";
+import { eq, and, ilike, inArray, or, sql, desc, asc } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { BadRequestError } from "@/lib/api/errors";
 import { normalizeTags } from "@/lib/api/normalize-tags";
@@ -130,7 +130,24 @@ export const GET = apiHandler(
     const conditions = [];
 
     if (status) conditions.push(eq(challenges.status, status));
-    if (type) conditions.push(eq(challenges.type, type));
+    if (type) {
+      const allowedTypes = new Set([
+        "one_time",
+        "streak",
+        "competition",
+        "race",
+        "creative",
+      ]);
+      const typeList = type
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => allowedTypes.has(t));
+      if (typeList.length === 1) {
+        conditions.push(eq(challenges.type, typeList[0]));
+      } else if (typeList.length > 1) {
+        conditions.push(inArray(challenges.type, typeList));
+      }
+    }
     if (tag) conditions.push(sql`${tag} = ANY(${challenges.tags})`);
     if (tagsParam) {
       const tagList = tagsParam
