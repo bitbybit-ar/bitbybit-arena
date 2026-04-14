@@ -160,6 +160,14 @@ export const GET = apiHandler(
       conditions.push(sql`${challenges.created_at} < ${cursor}`);
     }
 
+    // Active participant count — shared between the SELECT projection and
+    // the most_participants sort so both see the exact same subquery.
+    const participantCount = sql<number>`(
+      SELECT COUNT(*)::int FROM participants
+      WHERE participants.challenge_id = ${challenges.id}
+      AND participants.status != 'withdrawn'
+    )`;
+
     // Trending score: joins + 2 * completions within the last 7 days.
     // Completions weigh double because actually doing the thing is a stronger
     // signal than just joining. Tiebreak by created_at so newer challenges
@@ -181,7 +189,7 @@ export const GET = apiHandler(
         orderBy = asc(challenges.ends_at);
         break;
       case "most_participants":
-        orderBy = desc(challenges.created_at); // Will sort after join
+        orderBy = [desc(participantCount), desc(challenges.created_at)];
         break;
       case "most_active":
         orderBy = desc(challenges.updated_at);
@@ -205,11 +213,7 @@ export const GET = apiHandler(
           avatar_url: users.avatar_url,
           nostr_pubkey: users.nostr_pubkey,
         },
-        participant_count: sql<number>`(
-          SELECT COUNT(*)::int FROM participants
-          WHERE participants.challenge_id = ${challenges.id}
-          AND participants.status != 'withdrawn'
-        )`,
+        participant_count: participantCount,
       })
       .from(challenges)
       .innerJoin(users, eq(challenges.creator_id, users.id))

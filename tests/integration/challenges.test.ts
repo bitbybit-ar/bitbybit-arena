@@ -112,6 +112,42 @@ describe("Integration: Challenges CRUD", () => {
       expect(body.data.items[0].title).toBe("Running Marathon");
     });
 
+    it("sort=most_participants orders by active participant count and ignores withdrawn", async () => {
+      const few = await seedChallenge(creator.id, { title: "Few", slug: "few" });
+      const many = await seedChallenge(creator.id, { title: "Many", slug: "many" });
+      const mid = await seedChallenge(creator.id, { title: "Mid", slug: "mid" });
+
+      // Many: 4 active
+      for (let i = 0; i < 4; i++) {
+        const u = await seedUser({ username: `many_${i}` });
+        await seedParticipant(many.id, u.id, { status: "active" });
+      }
+      // Mid: 2 active + 5 withdrawn (withdrawn must not count)
+      for (let i = 0; i < 2; i++) {
+        const u = await seedUser({ username: `mid_a${i}` });
+        await seedParticipant(mid.id, u.id, { status: "active" });
+      }
+      for (let i = 0; i < 5; i++) {
+        const u = await seedUser({ username: `mid_w${i}` });
+        await seedParticipant(mid.id, u.id, { status: "withdrawn" });
+      }
+      // Few: 1 active
+      const u = await seedUser({ username: "few_only" });
+      await seedParticipant(few.id, u.id, { status: "active" });
+
+      setSession(null);
+      const res = await challengesRoute.GET(
+        buildRequest("GET", "/api/challenges", undefined, { sort: "most_participants" })
+      );
+      const { status, body } = await parseResponse(res);
+      expect(status).toBe(200);
+      const titles = body.data.items.map((c: { title: string }) => c.title);
+      expect(titles).toEqual(["Many", "Mid", "Few"]);
+      expect(body.data.items[0].participant_count).toBe(4);
+      expect(body.data.items[1].participant_count).toBe(2);
+      expect(body.data.items[2].participant_count).toBe(1);
+    });
+
     it("sort=trending orders by recent joins + 2×completions, ignoring stale activity", async () => {
       const now = Date.now();
       const daysAgo = (n: number) => new Date(now - n * 86_400_000);
