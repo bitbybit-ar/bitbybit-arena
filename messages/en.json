@@ -450,6 +450,7 @@
     "emptyCreated": "You haven't created any challenges yet.",
     "emptyJoined": "You haven't joined any challenges yet.",
     "emptyAchievements": "No badges yet. Complete a challenge to earn your first one.",
+    "loadMore": "Load more",
     "acceptBadge": "Accept on Nostr",
     "accepting": "Accepting...",
     "acceptedOnNostr": "On your Nostr profile",

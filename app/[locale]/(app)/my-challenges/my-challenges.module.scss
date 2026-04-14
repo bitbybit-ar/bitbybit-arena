@@ -184,3 +184,9 @@
   color: $color-text-secondary;
   margin: 0;
 }
+
+.loadMoreRow {
+  display: flex;
+  justify-content: center;
+  margin-top: $spacing-16;
+}

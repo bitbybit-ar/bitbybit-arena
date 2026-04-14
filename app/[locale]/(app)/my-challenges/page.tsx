@@ -69,6 +69,8 @@ export default function MyChallengesPage() {
   const [accepting, setAccepting] = useState<string | null>(null);
   const [data, setData] = useState<{ created: MyChallengeItem[]; joined: MyChallengeItem[] } | null>(null);
   const [achievements, setAchievements] = useState<AchievementItem[] | null>(null);
+  const [achievementsCursor, setAchievementsCursor] = useState<string | null>(null);
+  const [loadingMoreAchievements, setLoadingMoreAchievements] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("joined");
 
@@ -80,11 +82,33 @@ export default function MyChallengesPage() {
     ])
       .then(([challengesJson, badgesJson]) => {
         if (challengesJson.success) setData(challengesJson.data);
-        if (badgesJson.success) setAchievements(badgesJson.data);
+        if (badgesJson.success) {
+          setAchievements(badgesJson.data.items);
+          setAchievementsCursor(badgesJson.data.nextCursor);
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const loadMoreAchievements = useCallback(async () => {
+    if (!achievementsCursor || loadingMoreAchievements) return;
+    setLoadingMoreAchievements(true);
+    try {
+      const res = await fetch(
+        `/api/my-badges?cursor=${encodeURIComponent(achievementsCursor)}`
+      );
+      const json = await res.json();
+      if (json.success) {
+        setAchievements((prev) => [...(prev ?? []), ...json.data.items]);
+        setAchievementsCursor(json.data.nextCursor);
+      }
+    } catch {
+      /* ignore — user can retry */
+    } finally {
+      setLoadingMoreAchievements(false);
+    }
+  }, [achievementsCursor, loadingMoreAchievements]);
 
   useEffect(() => {
     fetchAll();
@@ -150,8 +174,18 @@ export default function MyChallengesPage() {
       await fetch(`/api/badges/${badge.id}`, { method: "PATCH" });
 
       showToast(t("acceptSuccess"), "success");
-      // Refresh the badge list so the accepted state flips.
-      fetchAll();
+      // Mutate the single badge in local state instead of refetching —
+      // this preserves the current "Load more" scroll depth and avoids
+      // yanking the user back to the first page of achievements.
+      setAchievements((prev) =>
+        prev
+          ? prev.map((b) =>
+              b.id === badge.id
+                ? { ...b, accepted_at: new Date().toISOString() }
+                : b
+            )
+          : prev
+      );
     } catch {
       showToast(t("acceptFailed"), "error");
     } finally {
@@ -198,6 +232,7 @@ export default function MyChallengesPage() {
               <p>{t("emptyAchievements")}</p>
             </div>
           ) : (
+            <>
             <div className={styles.achievementGrid}>
               {achievements.map((badge) => (
                 <div key={badge.id} className={styles.achievementCard}>
@@ -252,6 +287,21 @@ export default function MyChallengesPage() {
                 </div>
               ))}
             </div>
+            {achievementsCursor && (
+              <div className={styles.loadMoreRow}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={loadMoreAchievements}
+                  disabled={loadingMoreAchievements}
+                >
+                  {loadingMoreAchievements
+                    ? tCommon("loading")
+                    : t("loadMore")}
+                </Button>
+              </div>
+            )}
+            </>
           )
         ) : !items || items.length === 0 ? (
           <div className={styles.emptyState}>

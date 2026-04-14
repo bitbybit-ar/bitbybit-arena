@@ -123,6 +123,76 @@ describe("buildBadgeDefinitionEvent (kind 30009)", () => {
     expect(tagFor(event.tags, "description")).toHaveLength(0);
     expect(tagFor(event.tags, "image")).toHaveLength(0);
     expect(tagFor(event.tags, "thumb")).toHaveLength(0);
+    expect(tagFor(event.tags, "imeta")).toHaveLength(0);
+  });
+
+  it("emits a plain image tag with no imeta when only a URL string is passed", () => {
+    const event = buildBadgeDefinitionEvent({
+      slug: "url-only",
+      name: "URL only",
+      image: "https://blossom.example/badge.png",
+    });
+    expect(tagFor(event.tags, "image")).toEqual([
+      ["image", "https://blossom.example/badge.png"],
+    ]);
+    expect(tagFor(event.tags, "imeta")).toHaveLength(0);
+  });
+
+  it("emits image + a sibling NIP-92 imeta tag when a descriptor is passed", () => {
+    const event = buildBadgeDefinitionEvent({
+      slug: "rich-badge",
+      name: "Rich",
+      image: {
+        url: "https://blossom.example/badge.png",
+        sha256: "b".repeat(64),
+        size: 4096,
+        type: "image/png",
+      },
+    });
+
+    expect(tagFor(event.tags, "image")).toEqual([
+      ["image", "https://blossom.example/badge.png"],
+    ]);
+    expect(tagFor(event.tags, "imeta")).toEqual([
+      [
+        "imeta",
+        "url https://blossom.example/badge.png",
+        "m image/png",
+        `x ${"b".repeat(64)}`,
+        "size 4096",
+      ],
+    ]);
+  });
+
+  it("skips the imeta tag when a descriptor carries only a URL (would be redundant)", () => {
+    const event = buildBadgeDefinitionEvent({
+      slug: "url-descriptor",
+      name: "URL descriptor",
+      image: { url: "https://blossom.example/badge.png" },
+    });
+    expect(tagFor(event.tags, "image")).toEqual([
+      ["image", "https://blossom.example/badge.png"],
+    ]);
+    expect(tagFor(event.tags, "imeta")).toHaveLength(0);
+  });
+
+  it("emits only the metadata fields that are present on the descriptor", () => {
+    const event = buildBadgeDefinitionEvent({
+      slug: "partial",
+      name: "Partial",
+      image: {
+        url: "https://blossom.example/badge.png",
+        sha256: "c".repeat(64),
+        // size + type omitted
+      },
+    });
+    expect(tagFor(event.tags, "imeta")).toEqual([
+      [
+        "imeta",
+        "url https://blossom.example/badge.png",
+        `x ${"c".repeat(64)}`,
+      ],
+    ]);
   });
 });
 

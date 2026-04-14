@@ -116,6 +116,79 @@ The schema below is the planned shape of the event for a follow-up release, whic
 - `status`: `approved` or `rejected`
 - Once shipped, `community_vote` verification will tally multiple kind:7102 events from distinct participants; that verification method is currently rejected by the API validators.
 
+### Badge Definition (kind: 30009, NIP-58)
+
+**Status:** shipped. Published by the challenge creator from `CreateChallengeForm` right after the `kind:30100` challenge event when a badge is defined. The signed event id is persisted on `challenges.badge_nostr_event_id` via `PUT /api/challenges/[id]`. If the initial publish fails or the challenge predates NIP-58 Phase A, `handleAwardBadges` on the explore detail page lazy-publishes the definition on first award.
+
+Parameterized replaceable event per NIP-58. We use the challenge slug as the `d` tag so the badge identifier matches the challenge identifier and the corresponding `kind:8` Badge Award events can `a`-tag `30009:<creator-pubkey>:<challenge-slug>`.
+
+```json
+{
+  "kind": 30009,
+  "content": "",
+  "tags": [
+    ["d", "<challenge-slug>"],
+    ["name", "30-Day Zen Master"],
+    ["description", "Meditate every day for 30 days"],
+    ["image", "https://blossom.primal.net/<sha256>.png"],
+    ["imeta", "url https://blossom.primal.net/<sha256>.png", "m image/png", "x <sha256>", "size 12345"]
+  ]
+}
+```
+
+**Notes:**
+- `name` is required per NIP-58. We use the challenge's `badge_name` field, falling back to the challenge title.
+- `description` and `image` are optional; both are populated from the challenge fields when present.
+- When the badge image was uploaded via Blossom (see [proof-of-completion.md — Photo (Blossom)](./proof-of-completion.md#photo-blossom)), the builder emits a sibling NIP-92 `imeta` tag alongside the `image` tag with the sha256, size, and mime type. The sha256 lets recipients pull the badge image from any Blossom mirror that holds the blob, not just the server in the URL. The `imeta` tag is omitted when we only have a plain URL (legacy lazy-publish path).
+- `thumb` is supported by the builder but not currently populated.
+
+### Badge Award (kind: 8, NIP-58)
+
+**Status:** shipped. Published by the challenge creator from the explore detail page when awarding badges to selected winners. One `kind:8` event per recipient. The signed event id is persisted on `badges.nostr_event_id` via `PATCH /api/challenges/[id]/award` so the Achievements tab and Profile Badges opt-in flow can reference it later.
+
+Regular event per NIP-58. MUST `a`-tag the `kind:30009` Badge Definition (not the `kind:30100` challenge event — that was a bug fixed in Phase A).
+
+```json
+{
+  "kind": 8,
+  "content": "",
+  "tags": [
+    ["a", "30009:<creator-pubkey>:<challenge-slug>"],
+    ["p", "<recipient-pubkey>"]
+  ]
+}
+```
+
+**Notes:**
+- Only the creator of the `kind:30009` definition can validly sign an award that `a`-tags it. The server enforces creator-only on `POST /api/challenges/[id]/award`; the client passes `challenge.creator.nostr_pubkey` as the issuer.
+- No legacy `badge` tag: earlier Arena versions included `["badge", "<name>"]`, but NIP-58 doesn't define that tag and it was dropped in Phase A.
+- If the creator awards the same badge to multiple recipients in one batch, the client publishes one `kind:8` per recipient sequentially.
+
+### Profile Badges (kind: 30008, NIP-58)
+
+**Status:** shipped. Published by a badge recipient from the Achievements tab on `/my-challenges` when they click "Accept on Nostr". One `kind:30008` event per user (parameterized replaceable with `d=profile_badges`), carrying pairs of `(a, e)` tags for every badge the user has accepted onto their public profile.
+
+```json
+{
+  "kind": 30008,
+  "content": "",
+  "tags": [
+    ["d", "profile_badges"],
+    ["a", "30009:<issuer-pubkey>:<challenge-slug-1>"],
+    ["e", "<kind-8-award-event-id-1>"],
+    ["a", "30009:<issuer-pubkey>:<challenge-slug-2>"],
+    ["e", "<kind-8-award-event-id-2>"]
+  ]
+}
+```
+
+**Notes:**
+- **Preserves prior acceptances.** Before publishing, `handleAcceptBadge` fetches the user's latest `kind:30008` from relays via `fetchLatestEventOfKind`, parses out the existing `(a, e)` pairs via `parseProfileBadgesPairs`, deduplicates against the new pair, and publishes the merged set. Without this step each accept would clobber every prior accept.
+- **All Accept buttons disable while any one is in flight** to prevent a race where two concurrent accepts each fetch the "latest" 30008 (neither containing the other's pending pair) and the second publish clobbers the first.
+- **Parser is forgiving** of out-of-spec events: `parseProfileBadgesPairs` skips `a`-tags that aren't `30009:…` references, so a malformed upstream event doesn't poison the merge.
+- **`badges.accepted_at`** on the Arena DB row is stamped via `PATCH /api/badges/[id]` after the publish succeeds. The Achievements tab flips the badge card from "Accept on Nostr" button to "On your Nostr profile" pill based on this column — not on a relay re-fetch — so the UI stays snappy.
+- **Recovery from a missing award event id:** when a badge's `nostr_event_id` is null (earned before Phase A, or the `kind:8` publish failed), the Accept button surfaces an error toast rather than publishing a malformed 30008.
+
 ### Challenge Result (kind: 30101)
 
 **Status:** shipped. Published by the challenge creator from the explore detail page right after the reward payout flow finishes (`PATCH /api/challenges/[id]/reward` returns and `rewards_paid_at` is stamped). The signed event id is persisted on `challenges.result_nostr_event_id` via `PUT /api/challenges/[id]` so the client can resolve it later without re-fetching from relays. Non-blocking on relay failure — the payments themselves already landed.
