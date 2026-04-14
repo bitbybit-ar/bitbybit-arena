@@ -52,7 +52,12 @@ export function ShareOnNostrModal({
   const { signWithPrompt } = useSignerContext();
 
   const link = useMemo(() => {
-    const base = process.env.NEXT_PUBLIC_APP_URL || APP_URL_FALLBACK;
+    // Strip a trailing slash so a NEXT_PUBLIC_APP_URL of
+    // "https://arena.bitbybit.com.ar/" doesn't produce a "//es/explore/…".
+    const base = (process.env.NEXT_PUBLIC_APP_URL || APP_URL_FALLBACK).replace(
+      /\/+$/,
+      "",
+    );
     return `${base}/${locale}/explore/${context.challenge.id}`;
   }, [locale, context.challenge.id]);
 
@@ -102,7 +107,9 @@ export function ShareOnNostrModal({
         disabled={isBusy}
         aria-label={t("title")}
       />
-      <div className={styles.counter}>{content.length}</div>
+      <div className={styles.counter} aria-live="polite">
+        {content.length}
+      </div>
       {errorMessage && <p className={styles.error}>{errorMessage}</p>}
       <div className={styles.actions}>
         <Button

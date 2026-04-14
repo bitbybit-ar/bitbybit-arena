@@ -203,7 +203,11 @@ export default function ChallengeDetailPage() {
     }
     await fetchAll();
     setActionLoading(null);
-    if (challenge && !needsSigner) {
+    // No needsSigner gate: if the user cancelled re-sign-in we've
+    // already returned above, and `needsSigner` in this closure is
+    // stale — for nsec/bunker users who just re-attached it still
+    // reads `true` from the render where the handler was created.
+    if (challenge) {
       setShareContext({
         kind: "challenge-joined",
         challenge: { id: challenge.id, title: challenge.title },
@@ -260,7 +264,7 @@ export default function ChallengeDetailPage() {
     setProofImageDescriptor(null);
     await fetchAll();
     setActionLoading(null);
-    if (challenge && !needsSigner) {
+    if (challenge) {
       setShareContext({
         kind: "challenge-completed",
         challenge: { id: challenge.id, title: challenge.title },
