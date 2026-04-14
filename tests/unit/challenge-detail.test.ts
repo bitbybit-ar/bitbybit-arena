@@ -87,6 +87,19 @@ describe("PUT /api/challenges/[id]", () => {
     );
     expect(res.status).toBe(200);
   });
+
+  it("rejects badge_image_url with a non-http(s) scheme", async () => {
+    setDbRows([makeChallenge({ id: "challenge-1" })]);
+    const res = await PUT(
+      buildRequest("PUT", "/api/challenges/challenge-1", {
+        badge_image_url: "data:image/png;base64,iVBORw0KG",
+      }),
+      routeCtx
+    );
+    const { status, body } = await parseResponse(res);
+    expect(status).toBe(400);
+    expect(body.error).toContain("badge_image_url");
+  });
 });
 
 describe("DELETE /api/challenges/[id]", () => {

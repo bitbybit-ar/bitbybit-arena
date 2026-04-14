@@ -110,6 +110,17 @@ describe("POST /api/challenges", () => {
     expect(body.error).toContain("prize_distribution");
   });
 
+  it("rejects badge_image_url with a non-http(s) scheme", async () => {
+    const res = await POST(buildRequest("POST", "/api/challenges", {
+      title: "Valid Title",
+      description: "Valid description that is long enough",
+      badge_image_url: "javascript:alert(1)",
+    }));
+    const { status, body } = await parseResponse(res);
+    expect(status).toBe(400);
+    expect(body.error).toContain("badge_image_url");
+  });
+
   it("creates challenge with valid data", async () => {
     setMutationResult([makeChallenge({ title: "Meditation" })]);
     const res = await POST(buildRequest("POST", "/api/challenges", {
