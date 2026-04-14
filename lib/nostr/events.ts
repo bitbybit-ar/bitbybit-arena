@@ -1,4 +1,20 @@
-import type { UnsignedNostrEvent } from "./types";
+import type { NostrMetadata, UnsignedNostrEvent } from "./types";
+
+/**
+ * Build a Profile Metadata event (kind 0, NIP-01).
+ * Callers should merge their edits on top of the latest kind:0 fetched
+ * from relays so unknown fields (nip05, website, etc.) are preserved.
+ */
+export function buildProfileMetadataEvent(
+  metadata: NostrMetadata
+): UnsignedNostrEvent {
+  return {
+    kind: 0,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content: JSON.stringify(metadata),
+  };
+}
 
 /**
  * Build a Challenge Definition event (kind 30100).

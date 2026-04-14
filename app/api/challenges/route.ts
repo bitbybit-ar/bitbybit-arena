@@ -160,16 +160,42 @@ export const GET = apiHandler(
       conditions.push(sql`${challenges.created_at} < ${cursor}`);
     }
 
+    // Active participant count — shared between the SELECT projection and
+    // the most_participants sort so both see the exact same subquery.
+    const participantCount = sql<number>`(
+      SELECT COUNT(*)::int FROM participants
+      WHERE participants.challenge_id = ${challenges.id}
+      AND participants.status != 'withdrawn'
+    )`;
+
+    // Trending score: joins + 2 * completions within the last 7 days.
+    // Completions weigh double because actually doing the thing is a stronger
+    // signal than just joining. Tiebreak by created_at so newer challenges
+    // bubble up when two have identical momentum.
+    const trendingScore = sql<number>`(
+      (SELECT COUNT(*)::int FROM participants
+       WHERE participants.challenge_id = ${challenges.id}
+         AND participants.status != 'withdrawn'
+         AND participants.joined_at >= NOW() - INTERVAL '7 days')
+      +
+      (SELECT COUNT(*)::int FROM completions
+       WHERE completions.challenge_id = ${challenges.id}
+         AND completions.submitted_at >= NOW() - INTERVAL '7 days') * 2
+    )`;
+
     let orderBy;
     switch (sort) {
       case "ending_soon":
         orderBy = asc(challenges.ends_at);
         break;
       case "most_participants":
-        orderBy = desc(challenges.created_at); // Will sort after join
+        orderBy = [desc(participantCount), desc(challenges.created_at)];
         break;
       case "most_active":
         orderBy = desc(challenges.updated_at);
+        break;
+      case "trending":
+        orderBy = [desc(trendingScore), desc(challenges.created_at)];
         break;
       default:
         orderBy = desc(challenges.created_at);
@@ -187,16 +213,12 @@ export const GET = apiHandler(
           avatar_url: users.avatar_url,
           nostr_pubkey: users.nostr_pubkey,
         },
-        participant_count: sql<number>`(
-          SELECT COUNT(*)::int FROM participants
-          WHERE participants.challenge_id = ${challenges.id}
-          AND participants.status != 'withdrawn'
-        )`,
+        participant_count: participantCount,
       })
       .from(challenges)
       .innerJoin(users, eq(challenges.creator_id, users.id))
       .where(where)
-      .orderBy(orderBy)
+      .orderBy(...(Array.isArray(orderBy) ? orderBy : [orderBy]))
       .limit(limit + 1);
 
     const hasMore = rows.length > limit;

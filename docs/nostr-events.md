@@ -93,9 +93,11 @@ Regular event. User submits proof of completing a challenge (or a step in a stre
 - `progress` tag: current/total for streak/competition challenges
 - `step` tag: which step number this submission is for
 
-### Completion Verification (kind: 7102)
+### Completion Verification (kind: 7102) — post-MVP, not yet published
 
-Regular event. Creator or community verifies a completion submission.
+**Status:** not published by the MVP. Verification state lives inline on the `completions` row (`status`, `reviewed_by`, `reviewed_at`) and is set via `POST /api/completions/[id]/verify`. See [proof-of-completion.md — Verification architecture](./proof-of-completion.md#verification-architecture-mvp) for the rationale.
+
+The schema below is the planned shape of the event for a follow-up release, which will mirror DB decisions to relays so that verifications become publicly auditable and `community_vote` tallies become possible.
 
 ```json
 {
@@ -112,7 +114,7 @@ Regular event. Creator or community verifies a completion submission.
 
 **Notes:**
 - `status`: `approved` or `rejected`
-- For `community_vote` verification, multiple kind:7102 events are tallied
+- Once shipped, `community_vote` verification will tally multiple kind:7102 events from distinct participants; that verification method is currently rejected by the API validators.
 
 ### Challenge Result (kind: 30101)
 
@@ -146,7 +148,8 @@ Creator                          Participants                    Nostr Network
   |                                   |                              |
   |           kind:7101 (Completion) <|----------------------------->|
   |                                   |                              |
-  |-- kind:7102 (Verify) ----------->|----------------------------->|
+  |-- (verify: DB-only in MVP) ---x   |                              |
+  |-- kind:7102 (Verify, post-MVP) ->|----------------------------->|
   |-- kind:8 (Badge Award) --------->|----------------------------->|
   |-- kind:9734/9735 (Zap Prize) --->|----------------------------->|
   |                                   |                              |

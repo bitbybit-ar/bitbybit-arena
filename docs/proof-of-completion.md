@@ -29,20 +29,19 @@ Photo uploads via Blossom (NIP-B7) are planned but deferred. They add complexity
 
 ## Verification Methods
 
-The challenge creator chooses the verification method when creating the challenge:
+The challenge creator chooses the verification method when creating the challenge. BitByBit Arena stores verification state **inline in the database** (`completions.status`, `reviewed_by`, `reviewed_at`) rather than publishing verification events to relays. See the [Verification architecture](#verification-architecture-mvp) note below for the rationale and post-MVP plans.
 
 ### Creator Approval (Default)
 
-- Completions go to creator's verification queue
-- Creator reviews proof and approves/rejects (kind: 7102)
+- Completions go to the creator's verification queue in the app
+- Creator reviews proof and POSTs to `/api/completions/[id]/verify` with `status: approved | rejected`
+- The server updates `completions.status` and stamps `reviewed_by` / `reviewed_at`
+- On approval, participant progress is bumped and `status=completed` is set when `progress >= goal`
 - Simple, trusted, works well for small challenges
 
-### Community Vote
+### Community Vote (post-MVP, not implemented)
 
-- Completions are visible to all participants
-- Participants vote to approve/reject (kind: 7102 from multiple users)
-- Threshold: majority of votes within a time window
-- Better for large challenges where the creator can't review everything
+Planned: completions would be visible to all participants, who vote to approve/reject, with a majority threshold within a time window. Not available in the current MVP — `community_vote` is rejected by the challenge validators. Tracked for a future release alongside the kind:7102 verification event (see below).
 
 ### Automatic (Honor System)
 
@@ -76,25 +75,42 @@ See [docs/nostr-flows.md](./nostr-flows.md) for the full paths.
 ## Verification Flow
 
 ```
-User submits text proof (kind: 7101)
+User submits proof
+POST /api/challenges/[id]/completions
          |
          v
-    +-----------+
-    | Verification |
-    |   method?    |
-    +-----------+
-    |     |      |
-    v     v      v
- Creator  Community  Auto
- reviews  votes      approved
-    |     |          |
-    v     v          v
- kind:7102         Badge awarded (kind: 8)
- approved?
-    |
-    v
- Badge awarded (kind: 8)
+  +---------------+
+  | Verification  |
+  |   method?     |
+  +---------------+
+    |    |    |     |
+    v    v    v     v
+ Creator  Auto  Nostr  Nostr
+ review   (honor) action hashtag
+    |    |    |     |
+    |    |    |     |
+    v    v    v     v
+ completions.status = approved | rejected
+ completions.reviewed_by / reviewed_at set
+         |
+         v
+ If approved: participant.progress++,
+ status=completed when progress >= goal
+         |
+         v
+ Badge awarded (kind: 8, client-side via NIP-58)
 ```
+
+## Verification architecture (MVP)
+
+Earlier drafts of this doc and `docs/nostr-events.md` modelled verification as a dedicated Nostr event (`kind:7102`) published to relays. The shipped MVP **does not publish verification events** — it stores the verification state in the `completions` row (`status`, `reviewed_by`, `reviewed_at`) and updates participant progress in the same transaction.
+
+**Why inline state for MVP:**
+- Avoids a second round-trip to relays on every review action, which would make the creator queue feel laggy
+- Keeps the verification authoritative in a place we control — relays can drop events and reviews need to be deterministic
+- Unblocks the creator queue, auto-verification paths (`nostr_action`, `nostr_hashtag`), and the reward flow without needing a custom kind to be finalized first
+
+**Post-MVP extension:** once kind numbers are finalized, we plan to mirror each verification decision as a `kind:7102` event published by the reviewer. That makes the verification publicly auditable on relays and unlocks community-vote tallies. The DB row stays the source of truth; the relay event is a signed, shareable attestation of the same decision.
 
 ## Anti-Fraud Considerations
 

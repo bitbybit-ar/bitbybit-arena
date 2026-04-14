@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { cleanDb } from "./setup";
 import {
   setSession, makeSession,
-  seedUser, seedChallenge, seedParticipant,
+  seedUser, seedChallenge, seedParticipant, seedCompletion,
   buildRequest, parseResponse,
 } from "./helpers";
 
@@ -110,6 +110,84 @@ describe("Integration: Challenges CRUD", () => {
 
       expect(body.data.items).toHaveLength(1);
       expect(body.data.items[0].title).toBe("Running Marathon");
+    });
+
+    it("sort=most_participants orders by active participant count and ignores withdrawn", async () => {
+      const few = await seedChallenge(creator.id, { title: "Few", slug: "few" });
+      const many = await seedChallenge(creator.id, { title: "Many", slug: "many" });
+      const mid = await seedChallenge(creator.id, { title: "Mid", slug: "mid" });
+
+      // Many: 4 active
+      for (let i = 0; i < 4; i++) {
+        const u = await seedUser({ username: `many_${i}` });
+        await seedParticipant(many.id, u.id, { status: "active" });
+      }
+      // Mid: 2 active + 5 withdrawn (withdrawn must not count)
+      for (let i = 0; i < 2; i++) {
+        const u = await seedUser({ username: `mid_a${i}` });
+        await seedParticipant(mid.id, u.id, { status: "active" });
+      }
+      for (let i = 0; i < 5; i++) {
+        const u = await seedUser({ username: `mid_w${i}` });
+        await seedParticipant(mid.id, u.id, { status: "withdrawn" });
+      }
+      // Few: 1 active
+      const u = await seedUser({ username: "few_only" });
+      await seedParticipant(few.id, u.id, { status: "active" });
+
+      setSession(null);
+      const res = await challengesRoute.GET(
+        buildRequest("GET", "/api/challenges", undefined, { sort: "most_participants" })
+      );
+      const { status, body } = await parseResponse(res);
+      expect(status).toBe(200);
+      const titles = body.data.items.map((c: { title: string }) => c.title);
+      expect(titles).toEqual(["Many", "Mid", "Few"]);
+      expect(body.data.items[0].participant_count).toBe(4);
+      expect(body.data.items[1].participant_count).toBe(2);
+      expect(body.data.items[2].participant_count).toBe(1);
+    });
+
+    it("sort=trending orders by recent joins + 2×completions, ignoring stale activity", async () => {
+      const now = Date.now();
+      const daysAgo = (n: number) => new Date(now - n * 86_400_000);
+
+      // High-momentum: 1 recent join + 3 recent completions → score 7
+      const hot = await seedChallenge(creator.id, { title: "Hot", slug: "hot" });
+      const u1 = await seedUser({ username: "u1_trending" });
+      await seedParticipant(hot.id, u1.id, { joined_at: daysAgo(2) });
+      for (let i = 0; i < 3; i++) {
+        const u = await seedUser({ username: `hot_c${i}` });
+        await seedParticipant(hot.id, u.id, { joined_at: daysAgo(3) });
+        await seedCompletion(hot.id, u.id, { submitted_at: daysAgo(1) });
+      }
+
+      // Medium: 5 recent joins, 0 completions → score 5
+      const warm = await seedChallenge(creator.id, { title: "Warm", slug: "warm" });
+      for (let i = 0; i < 5; i++) {
+        const u = await seedUser({ username: `warm_j${i}` });
+        await seedParticipant(warm.id, u.id, { joined_at: daysAgo(2) });
+      }
+
+      // Cold: all activity is outside the 7-day window → score 0
+      const cold = await seedChallenge(creator.id, { title: "Cold", slug: "cold" });
+      for (let i = 0; i < 10; i++) {
+        const u = await seedUser({ username: `cold_j${i}` });
+        await seedParticipant(cold.id, u.id, { joined_at: daysAgo(30) });
+        await seedCompletion(cold.id, u.id, { submitted_at: daysAgo(30) });
+      }
+
+      setSession(null);
+      const res = await challengesRoute.GET(
+        buildRequest("GET", "/api/challenges", undefined, { sort: "trending" })
+      );
+      const { status, body } = await parseResponse(res);
+
+      expect(status).toBe(200);
+      const titles = body.data.items.map(
+        (c: { title: string }) => c.title
+      );
+      expect(titles).toEqual(["Hot", "Warm", "Cold"]);
     });
   });
 
