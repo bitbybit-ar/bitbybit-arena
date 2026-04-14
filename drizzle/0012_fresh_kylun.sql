@@ -1,0 +1,1 @@
+ALTER TABLE "challenges" ADD COLUMN "result_nostr_event_id" varchar(64);

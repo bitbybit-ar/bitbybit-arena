@@ -218,6 +218,31 @@ describe("Integration: Challenges CRUD", () => {
 
       expect(res.status).toBe(403);
     });
+
+    it("persists result_nostr_event_id (lowercased) and ignores unknown casing", async () => {
+      const challenge = await seedChallenge(creator.id, { title: "Result test" });
+      const eventId = "F".repeat(64);
+      const res = await challengeDetailRoute.PUT(
+        buildRequest("PUT", `/api/challenges/${challenge.id}`, {
+          result_nostr_event_id: eventId,
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { status, body } = await parseResponse(res);
+      expect(status).toBe(200);
+      expect(body.data.result_nostr_event_id).toBe("f".repeat(64));
+    });
+
+    it("rejects result_nostr_event_id that isn't 64-hex", async () => {
+      const challenge = await seedChallenge(creator.id, { title: "Result test 2" });
+      const res = await challengeDetailRoute.PUT(
+        buildRequest("PUT", `/api/challenges/${challenge.id}`, {
+          result_nostr_event_id: "way-too-short",
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(400);
+    });
   });
 
   describe("DELETE /api/challenges/[id]", () => {

@@ -132,6 +132,7 @@ export function makeChallenge(overrides: Record<string, unknown> = {}) {
     badge_nostr_event_id: null,
     badge_name: null,
     badge_image_url: null,
+    result_nostr_event_id: null,
     status: "open",
     starts_at: null,
     ends_at: null,

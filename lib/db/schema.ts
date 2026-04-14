@@ -75,6 +75,7 @@ export const challenges = pgTable(
     // NIP-57 + NIP-75 zap rewards
     zap_goal_event_id: varchar("zap_goal_event_id", { length: 64 }), // NIP-75 kind 9041 event id published by the creator to fund the prize
     rewards_paid_at: timestamp("rewards_paid_at"), // set when the creator finishes paying zaps to winners
+    result_nostr_event_id: varchar("result_nostr_event_id", { length: 64 }), // kind 30101 Challenge Result event id, published once rewards finish paying
     badge_nostr_event_id: varchar("badge_nostr_event_id", { length: 64 }),
     badge_name: varchar("badge_name", { length: 100 }),
     badge_image_url: text("badge_image_url"),

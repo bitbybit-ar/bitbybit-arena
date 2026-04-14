@@ -5,6 +5,8 @@ import {
   buildBadgeAwardEvent,
   buildProfileBadgesEvent,
   parseProfileBadgesPairs,
+  buildChallengeResultEvent,
+  placeLabel,
 } from "@/lib/nostr/events";
 
 const CREATOR = "a".repeat(64);
@@ -229,5 +231,132 @@ describe("parseProfileBadgesPairs", () => {
     ];
     const event = buildProfileBadgesEvent(original);
     expect(parseProfileBadgesPairs(event)).toEqual(original);
+  });
+});
+
+describe("buildChallengeResultEvent (kind 30101)", () => {
+  const winnerA = "1".repeat(64);
+  const winnerB = "2".repeat(64);
+  const winnerC = "3".repeat(64);
+  const completerD = "4".repeat(64);
+
+  it("emits d, a, winner, stats tags and defaults content to empty", () => {
+    const event = buildChallengeResultEvent({
+      slug: SLUG,
+      creatorPubkey: CREATOR,
+      winners: [
+        { pubkey: winnerA, place: "1st", amountSats: 5000 },
+        { pubkey: winnerB, place: "2nd", amountSats: 3000 },
+        { pubkey: winnerC, place: "3rd", amountSats: 2000 },
+      ],
+      completerPubkeys: [],
+      stats: {
+        participants: 45,
+        completions: 3,
+        totalSats: 10000,
+      },
+    });
+
+    expect(event.kind).toBe(30101);
+    expect(event.content).toBe("");
+
+    expect(tagFor(event.tags, "d")).toEqual([["d", `${SLUG}:results`]]);
+    expect(tagFor(event.tags, "a")).toEqual([
+      ["a", `30100:${CREATOR}:${SLUG}`],
+    ]);
+    expect(tagFor(event.tags, "winner")).toEqual([
+      ["winner", winnerA, "1st", "5000"],
+      ["winner", winnerB, "2nd", "3000"],
+      ["winner", winnerC, "3rd", "2000"],
+    ]);
+    expect(tagFor(event.tags, "stats")).toEqual([
+      ["stats", "participants:45", "completions:3", "total_sats:10000"],
+    ]);
+  });
+
+  it("passes content through when provided", () => {
+    const event = buildChallengeResultEvent({
+      slug: SLUG,
+      creatorPubkey: CREATOR,
+      content: "GG",
+      winners: [{ pubkey: winnerA, place: "1st", amountSats: 1000 }],
+      completerPubkeys: [],
+      stats: { participants: 1, completions: 1, totalSats: 1000 },
+    });
+    expect(event.content).toBe("GG");
+  });
+
+  it("adds completer tags for users who completed but aren't winners", () => {
+    const event = buildChallengeResultEvent({
+      slug: SLUG,
+      creatorPubkey: CREATOR,
+      winners: [{ pubkey: winnerA, place: "1st", amountSats: 1000 }],
+      completerPubkeys: [completerD],
+      stats: { participants: 10, completions: 2, totalSats: 1000 },
+    });
+
+    expect(tagFor(event.tags, "completer")).toEqual([
+      ["completer", completerD],
+    ]);
+  });
+
+  it("deduplicates completer entries that also appear in winners", () => {
+    const event = buildChallengeResultEvent({
+      slug: SLUG,
+      creatorPubkey: CREATOR,
+      winners: [{ pubkey: winnerA, place: "1st", amountSats: 1000 }],
+      // winnerA is also in the completer list — should be filtered out.
+      completerPubkeys: [winnerA, completerD],
+      stats: { participants: 10, completions: 2, totalSats: 1000 },
+    });
+
+    expect(tagFor(event.tags, "completer")).toEqual([
+      ["completer", completerD],
+    ]);
+  });
+});
+
+describe("placeLabel", () => {
+  // Spot-check the canonical English ordinal cases.
+  it.each([
+    [0, "1st"],
+    [1, "2nd"],
+    [2, "3rd"],
+    [3, "4th"],
+    [4, "5th"],
+    [5, "6th"],
+    [6, "7th"],
+    [7, "8th"],
+    [8, "9th"],
+    [9, "10th"],
+  ])("position %i → %s", (index, expected) => {
+    expect(placeLabel(index)).toBe(expected);
+  });
+
+  // The 11/12/13 exception is the part most likely to break in a refactor.
+  it.each([
+    [10, "11th"],
+    [11, "12th"],
+    [12, "13th"],
+    [13, "14th"],
+    [20, "21st"],
+    [21, "22nd"],
+    [22, "23rd"],
+  ])("11/12/13 exception: position %i → %s", (index, expected) => {
+    expect(placeLabel(index)).toBe(expected);
+  });
+
+  // Triple-digit edge case — the modulo logic should still hit the
+  // exception at 111/112/113 but not at 101/102/103.
+  it.each([
+    [100, "101st"],
+    [101, "102nd"],
+    [102, "103rd"],
+    [110, "111th"],
+    [111, "112th"],
+    [112, "113th"],
+    [120, "121st"],
+  ])("triple-digit: position %i → %s", (index, expected) => {
+    expect(placeLabel(index)).toBe(expected);
   });
 });

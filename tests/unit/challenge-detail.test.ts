@@ -128,6 +128,34 @@ describe("PUT /api/challenges/[id]", () => {
     );
     expect(res.status).toBe(200);
   });
+
+  it("rejects result_nostr_event_id that isn't 64-hex", async () => {
+    setDbRows([makeChallenge({ id: "challenge-1" })]);
+    const res = await PUT(
+      buildRequest("PUT", "/api/challenges/challenge-1", {
+        result_nostr_event_id: "not-hex",
+      }),
+      routeCtx
+    );
+    const { status, body } = await parseResponse(res);
+    expect(status).toBe(400);
+    expect(body.error).toContain("result_nostr_event_id");
+  });
+
+  it("accepts a valid 64-hex result_nostr_event_id", async () => {
+    const eventId = "c".repeat(64);
+    setDbRows([makeChallenge({ id: "challenge-1" })]);
+    setMutationResult([
+      makeChallenge({ id: "challenge-1", result_nostr_event_id: eventId }),
+    ]);
+    const res = await PUT(
+      buildRequest("PUT", "/api/challenges/challenge-1", {
+        result_nostr_event_id: eventId,
+      }),
+      routeCtx
+    );
+    expect(res.status).toBe(200);
+  });
 });
 
 describe("DELETE /api/challenges/[id]", () => {

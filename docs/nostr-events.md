@@ -118,23 +118,30 @@ The schema below is the planned shape of the event for a follow-up release, whic
 
 ### Challenge Result (kind: 30101)
 
-Parameterized replaceable event. Published by the challenge creator when the challenge ends.
+**Status:** shipped. Published by the challenge creator from the explore detail page right after the reward payout flow finishes (`PATCH /api/challenges/[id]/reward` returns and `rewards_paid_at` is stamped). The signed event id is persisted on `challenges.result_nostr_event_id` via `PUT /api/challenges/[id]` so the client can resolve it later without re-fetching from relays. Non-blocking on relay failure — the payments themselves already landed.
+
+Parameterized replaceable event with `d=<slug>:results`, so each challenge has exactly one Result event per creator.
 
 ```json
 {
   "kind": 30101,
-  "content": "Challenge complete! Congratulations to all participants.",
+  "content": "Challenge complete! Congratulations to all participants in <title>.",
   "tags": [
-    ["d", "<challenge-d-tag>:results"],
-    ["a", "30100:<creator-pubkey>:<challenge-d-tag>"],
+    ["d", "<challenge-slug>:results"],
+    ["a", "30100:<creator-pubkey>:<challenge-slug>"],
     ["winner", "<pubkey>", "1st", "10000"],
     ["winner", "<pubkey>", "2nd", "5000"],
-    ["completer", "<pubkey>"],
     ["completer", "<pubkey>"],
     ["stats", "participants:45", "completions:12", "total_sats:15000"]
   ]
 }
 ```
+
+**Notes:**
+- `winner` order matches the payout order returned by `POST /api/challenges/[id]/reward`. For `first_to_complete` mode there is exactly one winner; for `tiered` there are up to three; for `split` everyone who completed.
+- `place` is an English ordinal (`1st`, `2nd`, …) generated client-side. The label is consumed by third-party Nostr clients, not the Arena UI, so it isn't translated.
+- `completer` tags list participants who completed the challenge but didn't make the winner cut (e.g. 4th place in a tiered challenge). Anyone already in `winner` is omitted from `completer` to avoid double-counting.
+- `total_sats` in the `stats` tag is the sum of paid winner amounts, which always equals `challenges.prize_amount_sats` for a successful payout.
 
 ## Event Flow Diagram
 
@@ -169,4 +176,4 @@ Before launch, verify chosen kind numbers don't conflict with other proposals. C
 - https://github.com/nostr-protocol/nips (merged NIPs)
 - https://nostrbook.dev/kinds/ (known kinds in use)
 
-**TODO**: Finalize kind numbers after checking for conflicts. The numbers used above (30100, 7100-7102, 30101) are placeholders. Note that NIP-113 (Activity Events, not yet merged) also proposes kind 30100 — we may need to choose different numbers.
+**Note**: kinds 30100 (Challenge Definition), 7100 (Challenge Join), 7101 (Completion Submission), and 30101 (Challenge Result) are custom BitByBit kinds. NIP-113 (Activity Events, not yet merged) also proposes kind 30100, so we may need to migrate before any conflicting standard lands. kind:7102 (Completion Verification) is documented above as a post-MVP extension and is not yet emitted.
