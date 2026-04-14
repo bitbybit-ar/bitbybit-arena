@@ -25,7 +25,7 @@ vi.mock("@/lib/db", async () => {
   return { getDb: vi.fn(() => testDb), ...schema };
 });
 
-const { POST } = await import("@/app/api/challenges/[id]/award/route");
+const { POST, PATCH } = await import("@/app/api/challenges/[id]/award/route");
 
 describe("Integration: Award badges", () => {
   let creator: Awaited<ReturnType<typeof seedUser>>;
@@ -129,5 +129,75 @@ describe("Integration: Award badges", () => {
     );
 
     expect(res.status).toBe(409);
+  });
+
+  describe("PATCH /api/challenges/[id]/award — persist kind:8 event id", () => {
+    const eventId = "c".repeat(64);
+
+    it("stores nostr_event_id on the existing badge row", async () => {
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+
+      await POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/award`, {
+          user_ids: [participant1.id],
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+
+      const res = await PATCH(
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/award`, {
+          user_id: participant1.id,
+          nostr_event_id: eventId,
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+
+      expect(res.status).toBe(200);
+
+      const [row] = await testDb
+        .select()
+        .from(badges)
+        .where(
+          and(
+            eq(badges.challenge_id, challenge.id),
+            eq(badges.user_id, participant1.id)
+          )
+        )
+        .limit(1);
+      expect(row.nostr_event_id).toBe(eventId);
+    });
+
+    it("404 when the user isn't a badge recipient for this challenge", async () => {
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+
+      const res = await PATCH(
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/award`, {
+          user_id: participant1.id,
+          nostr_event_id: eventId,
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(404);
+    });
+
+    it("403 when called by a non-creator", async () => {
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      await POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/award`, {
+          user_ids: [participant1.id],
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+
+      setSession(makeSession(participant1.id, { nostr_pubkey: participant1.nostr_pubkey }));
+      const res = await PATCH(
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/award`, {
+          user_id: participant1.id,
+          nostr_event_id: eventId,
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(403);
+    });
   });
 });

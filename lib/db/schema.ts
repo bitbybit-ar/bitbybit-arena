@@ -225,6 +225,10 @@ export const badges = pgTable(
     badge_image_url: text("badge_image_url"),
     nostr_event_id: varchar("nostr_event_id", { length: 64 }), // kind:8 badge award event
     awarded_at: timestamp("awarded_at").notNull().defaultNow(),
+    // Set when the recipient publishes a kind:30008 Profile Badges event
+    // that adds this badge to their public Nostr profile. Null = earned
+    // but not yet displayed on their profile.
+    accepted_at: timestamp("accepted_at"),
   },
   (table) => [
     uniqueIndex("badges_unique_idx").on(table.challenge_id, table.user_id),

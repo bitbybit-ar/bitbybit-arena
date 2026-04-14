@@ -11,7 +11,11 @@ import { TagInput } from "@/components/common/TagInput";
 import { ImageUpload } from "@/components/common/ImageUpload";
 import type { BlossomDescriptor } from "@/lib/nostr/blossom";
 import { validateHttpUrl } from "@/lib/api/validate-http-url";
-import { buildChallengeEvent, buildZapGoalEvent } from "@/lib/nostr/events";
+import {
+  buildChallengeEvent,
+  buildZapGoalEvent,
+  buildBadgeDefinitionEvent,
+} from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import { useSignerContext } from "@/lib/signer-context";
@@ -290,6 +294,31 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
         await publishSignedEvent(signed);
       } catch {
         /* non-blocking */
+      }
+
+      // NIP-58: publish a Badge Definition (kind 30009) so the awards we
+      // emit later can `a`-tag it per spec. The challenge slug doubles as
+      // the badge `d` tag (unique per creator, already validated server-
+      // side). Non-blocking — if this fails the challenge itself still
+      // exists and we'll lazy-publish on first award.
+      if (badgeName) {
+        try {
+          const badgeDefinition = buildBadgeDefinitionEvent({
+            slug: json.data.slug,
+            name: badgeName,
+            description: description || undefined,
+            image: badgeImage?.url || undefined,
+          });
+          const signedDef = await signWithPrompt(badgeDefinition);
+          await publishSignedEvent(signedDef);
+          await fetch(`/api/challenges/${json.data.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ badge_nostr_event_id: signedDef.id }),
+          });
+        } catch {
+          /* non-blocking — lazy-publish on first award */
+        }
       }
 
       if (publishZapGoal && prizeAmountSats && Number(prizeAmountSats) > 0) {

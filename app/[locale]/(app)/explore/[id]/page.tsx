@@ -10,7 +10,13 @@ import { Tag } from "@/components/ui/tag";
 import { BlockLoader } from "@/components/ui/block-loader";
 import { Block } from "@/components/common/Block";
 import { ImageUpload } from "@/components/common/ImageUpload";
-import { buildJoinEvent, buildCompletionEvent, buildBadgeAwardEvent, buildZapRequestEvent } from "@/lib/nostr/events";
+import {
+  buildJoinEvent,
+  buildCompletionEvent,
+  buildBadgeAwardEvent,
+  buildBadgeDefinitionEvent,
+  buildZapRequestEvent,
+} from "@/lib/nostr/events";
 import type { BlossomDescriptor } from "@/lib/nostr/blossom";
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
@@ -56,6 +62,8 @@ interface ChallengeDetail {
   unit: string | null;
   tags: string[];
   badge_name: string | null;
+  badge_image_url: string | null;
+  badge_nostr_event_id: string | null;
   starts_at: string | null;
   ends_at: string | null;
   participant_count: number;
@@ -411,19 +419,49 @@ export default function ChallengeDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_ids: Array.from(selectedWinners) }),
     });
+
+    // NIP-58 requires the kind:8 award event to `a`-tag a kind:30009
+    // badge definition. Legacy challenges created before Phase A may not
+    // have one — lazy-publish here, then reuse that event id for every
+    // award we emit below.
     try {
+      if (!challenge.badge_nostr_event_id) {
+        const definition = buildBadgeDefinitionEvent({
+          slug: challenge.slug,
+          name: challenge.badge_name || challenge.title,
+          description: undefined,
+          image: challenge.badge_image_url || undefined,
+        });
+        const signedDef = await signWithPrompt(definition);
+        await publishSignedEvent(signedDef);
+        await fetch(`/api/challenges/${challengeId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ badge_nostr_event_id: signedDef.id }),
+        });
+      }
+
       const winners = participants.filter((p) => selectedWinners.has(p.user_id));
       for (const winner of winners) {
         if (winner.user.nostr_pubkey) {
           const signed = await signWithPrompt(
             buildBadgeAwardEvent({
-              badgeName: challenge.badge_name || challenge.title,
-              challengeSlug: challenge.slug,
-              creatorPubkey: challenge.creator.nostr_pubkey,
+              badgeDefinitionSlug: challenge.slug,
+              issuerPubkey: challenge.creator.nostr_pubkey,
               recipientPubkey: winner.user.nostr_pubkey,
             })
           );
           await publishSignedEvent(signed);
+          // Record the event id so badges.nostr_event_id stops being
+          // dead storage. Non-blocking on failure.
+          fetch(`/api/challenges/${challengeId}/award`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id: winner.user_id,
+              nostr_event_id: signed.id,
+            }),
+          }).catch(() => {});
         }
       }
     } catch { /* non-blocking */ }

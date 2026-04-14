@@ -184,6 +184,20 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db, params }) 
       "badge_image_url"
     );
   }
+  if (body.badge_nostr_event_id !== undefined) {
+    if (body.badge_nostr_event_id === null) {
+      updates.badge_nostr_event_id = null;
+    } else if (
+      typeof body.badge_nostr_event_id !== "string" ||
+      !HEX_64.test(body.badge_nostr_event_id)
+    ) {
+      throw new BadRequestError(
+        "badge_nostr_event_id must be a 64-character hex event id"
+      );
+    } else {
+      updates.badge_nostr_event_id = body.badge_nostr_event_id.toLowerCase();
+    }
+  }
   if (body.starts_at !== undefined) {
     if (body.starts_at !== null) {
       const d = new Date(body.starts_at);

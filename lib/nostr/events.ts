@@ -138,25 +138,112 @@ export function buildCompletionEvent(params: {
 }
 
 /**
+ * Build a Badge Definition event (kind 30009, NIP-58).
+ *
+ * Parameterized replaceable — the `d` tag is the badge's unique identifier
+ * (we use the challenge slug, which is already unique per creator). A
+ * creator publishes one definition per challenge; the corresponding
+ * Badge Award events (kind 8) `a`-tag this event.
+ */
+export function buildBadgeDefinitionEvent(params: {
+  slug: string;
+  name: string;
+  description?: string;
+  image?: string;
+  thumb?: string;
+}): UnsignedNostrEvent {
+  const tags: string[][] = [
+    ["d", params.slug],
+    ["name", params.name],
+  ];
+  if (params.description) tags.push(["description", params.description]);
+  if (params.image) tags.push(["image", params.image]);
+  if (params.thumb) tags.push(["thumb", params.thumb]);
+  return {
+    kind: 30009,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: "",
+  };
+}
+
+/**
  * Build a Badge Award event (kind 8, NIP-58).
- * The creator signs this to award a badge to a participant.
+ *
+ * MUST `a`-tag the `kind:30009` Badge Definition it awards. Previously this
+ * function pointed at our `kind:30100` challenge event, which isn't a
+ * NIP-58 badge definition — so wallets like Amethyst / Coracle wouldn't
+ * render it as a badge. Use `buildBadgeDefinitionEvent` first to publish
+ * the definition, then pass that definition's `d` tag + issuer pubkey here.
  */
 export function buildBadgeAwardEvent(params: {
-  badgeName: string;
-  challengeSlug: string;
-  creatorPubkey: string;
+  badgeDefinitionSlug: string;
+  issuerPubkey: string;
   recipientPubkey: string;
 }): UnsignedNostrEvent {
   return {
     kind: 8,
     created_at: Math.floor(Date.now() / 1000),
     tags: [
-      ["a", `30100:${params.creatorPubkey}:${params.challengeSlug}`],
+      ["a", `30009:${params.issuerPubkey}:${params.badgeDefinitionSlug}`],
       ["p", params.recipientPubkey],
-      ["badge", params.badgeName],
     ],
     content: "",
   };
+}
+
+/**
+ * Build a Profile Badges event (kind 30008, NIP-58).
+ *
+ * Parameterized replaceable with `d=profile_badges` — one per user. The
+ * event carries pairs of `a` + `e` tags (definition + award) for each
+ * badge the user wants to display on their public profile. Callers should
+ * fetch the user's latest 30008 first and merge the new pair in so prior
+ * accepted badges are preserved.
+ */
+export interface ProfileBadgePair {
+  /** `30009:<issuer>:<d>` — a-tag referencing the badge definition */
+  definitionATag: string;
+  /** Event id of the kind:8 award event */
+  awardEventId: string;
+}
+
+export function buildProfileBadgesEvent(
+  pairs: ProfileBadgePair[]
+): UnsignedNostrEvent {
+  const tags: string[][] = [["d", "profile_badges"]];
+  for (const pair of pairs) {
+    tags.push(["a", pair.definitionATag]);
+    tags.push(["e", pair.awardEventId]);
+  }
+  return {
+    kind: 30008,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: "",
+  };
+}
+
+/**
+ * Parse a signed kind:30008 event back into a list of (a, e) pairs. Used
+ * when merging an "Accept badge" click with the user's existing profile
+ * badges so we don't drop previously accepted ones.
+ */
+export function parseProfileBadgesPairs(event: {
+  tags: string[][];
+}): ProfileBadgePair[] {
+  const pairs: ProfileBadgePair[] = [];
+  for (let i = 0; i < event.tags.length; i++) {
+    const tag = event.tags[i];
+    if (tag[0] === "a" && tag[1]?.startsWith("30009:")) {
+      const next = event.tags[i + 1];
+      if (next && next[0] === "e" && typeof next[1] === "string") {
+        pairs.push({ definitionATag: tag[1], awardEventId: next[1] });
+        i++;
+      }
+    }
+  }
+  return pairs;
 }
 
 /**

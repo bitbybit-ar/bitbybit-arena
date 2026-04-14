@@ -4,6 +4,8 @@ import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { NotFoundError, ForbiddenError, BadRequestError, ConflictError } from "@/lib/api/errors";
 import { challenges, participants, badges } from "@/lib/db/schema";
 
+const HEX_64 = /^[0-9a-f]{64}$/i;
+
 // POST /api/challenges/[id]/award — creator awards badges to participants
 // Body: { user_ids: string[] } — list of participant user IDs to award
 export const POST = apiHandler(async (req: NextRequest, { session, db, params }) => {
@@ -86,4 +88,59 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     );
 
   return new CreatedResponse(awarded);
+});
+
+// PATCH /api/challenges/[id]/award — creator records the kind:8 event id
+// published for a previously awarded recipient. Called by the client after
+// it signs + publishes the badge award event, so badges.nostr_event_id
+// stops being dead storage.
+export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }) => {
+  const [challenge] = await db
+    .select()
+    .from(challenges)
+    .where(eq(challenges.id, params.id))
+    .limit(1);
+
+  if (!challenge) throw new NotFoundError("Challenge");
+  if (challenge.creator_id !== session!.user_id) {
+    throw new ForbiddenError("Only the challenge creator can record badge event ids");
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const { user_id, nostr_event_id } = body as {
+    user_id?: unknown;
+    nostr_event_id?: unknown;
+  };
+
+  if (typeof user_id !== "string" || user_id.length === 0) {
+    throw new BadRequestError("user_id is required");
+  }
+  if (typeof nostr_event_id !== "string" || !HEX_64.test(nostr_event_id)) {
+    throw new BadRequestError(
+      "nostr_event_id must be a 64-character hex event id"
+    );
+  }
+
+  const [badge] = await db
+    .select()
+    .from(badges)
+    .where(
+      and(
+        eq(badges.challenge_id, params.id),
+        eq(badges.user_id, user_id)
+      )
+    )
+    .limit(1);
+
+  if (!badge) {
+    throw new NotFoundError("Badge");
+  }
+
+  const [updated] = await db
+    .update(badges)
+    .set({ nostr_event_id: nostr_event_id.toLowerCase() })
+    .where(eq(badges.id, badge.id))
+    .returning();
+
+  return updated;
 });
