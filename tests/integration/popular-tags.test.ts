@@ -33,7 +33,7 @@ describe("Integration: GET /api/tags/popular", () => {
 
   beforeEach(async () => {
     await cleanDb();
-    creator = await seedUser({ username: "creator", display_name: "Creator" });
+    creator = await seedUser({ display_name: "Creator" });
     setSession(null);
   });
 

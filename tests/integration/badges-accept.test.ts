@@ -39,9 +39,9 @@ describe("Integration: PATCH /api/badges/[id]", () => {
 
   beforeEach(async () => {
     await cleanDb();
-    creator = await seedUser({ username: "creator" });
-    recipient = await seedUser({ username: "recipient" });
-    someoneElse = await seedUser({ username: "nosey" });
+    creator = await seedUser();
+    recipient = await seedUser();
+    someoneElse = await seedUser();
     const challenge = await seedChallenge(creator.id, {
       slug: "accept-test",
       title: "Accept test",

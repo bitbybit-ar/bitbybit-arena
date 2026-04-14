@@ -52,9 +52,8 @@ describe("Integration: Nostr action verification", () => {
   beforeEach(async () => {
     await cleanDb();
     verifyLikeMock.mockReset();
-    creator = await seedUser({ username: "creator", display_name: "Creator" });
+    creator = await seedUser({ display_name: "Creator" });
     participant = await seedUser({
-      username: "liker",
       display_name: "Liker",
       nostr_pubkey: "liker_pubkey",
     });

@@ -52,9 +52,8 @@ describe("Integration: Nostr hashtag verification", () => {
   beforeEach(async () => {
     await cleanDb();
     verifyHashtagMock.mockReset();
-    creator = await seedUser({ username: "creator", display_name: "Creator" });
+    creator = await seedUser({ display_name: "Creator" });
     participant = await seedUser({
-      username: "poster",
       display_name: "Poster",
       nostr_pubkey: "poster_pubkey",
     });

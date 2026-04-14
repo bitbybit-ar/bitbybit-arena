@@ -63,19 +63,16 @@ describe("Integration: Zap rewards", () => {
   beforeEach(async () => {
     await cleanDb();
     metadataMock.mockReset();
-    creator = await seedUser({ username: "creator", display_name: "Creator" });
+    creator = await seedUser({ display_name: "Creator" });
     winnerA = await seedUser({
-      username: "alice",
       display_name: "Alice",
       lightning_address: "alice@getalby.com",
     });
     winnerB = await seedUser({
-      username: "bob",
       display_name: "Bob",
       lightning_address: "bob@strike.me",
     });
     winnerC = await seedUser({
-      username: "carol",
       display_name: "Carol",
       lightning_address: "carol@walletofsatoshi.com",
     });
@@ -173,7 +170,6 @@ describe("Integration: Zap rewards", () => {
         status: "open",
       });
       const nolnUser = await seedUser({
-        username: "noln",
         display_name: "NoLN",
         lightning_address: null,
       });
@@ -201,7 +197,6 @@ describe("Integration: Zap rewards", () => {
         status: "open",
       });
       const nolnUser = await seedUser({
-        username: "noln2",
         display_name: "NoLN2",
         lightning_address: null,
       });
