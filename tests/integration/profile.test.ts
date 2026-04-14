@@ -152,7 +152,7 @@ describe("Integration: Profile API", () => {
       );
       const { status, body } = await parseResponse(res);
       expect(status).toBe(400);
-      expect(body.error).toContain("Avatar URL");
+      expect(body.error).toContain("avatar_url");
     });
   });
 

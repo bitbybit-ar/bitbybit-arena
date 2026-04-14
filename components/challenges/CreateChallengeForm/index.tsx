@@ -9,6 +9,7 @@ import { FormDivider } from "@/components/common/FormDivider";
 import { OptionCard, OptionCardGroup } from "@/components/common/OptionCard";
 import { TagInput } from "@/components/common/TagInput";
 import { ImageUpload } from "@/components/common/ImageUpload";
+import type { BlossomDescriptor } from "@/lib/nostr/blossom";
 import { validateHttpUrl } from "@/lib/api/validate-http-url";
 import { buildChallengeEvent, buildZapGoalEvent } from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
@@ -109,7 +110,7 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
   const [publishZapGoal, setPublishZapGoal] = useState(false);
 
   const [badgeName, setBadgeName] = useState("");
-  const [badgeImageUrl, setBadgeImageUrl] = useState<string>("");
+  const [badgeImage, setBadgeImage] = useState<BlossomDescriptor | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -179,7 +180,7 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
     // so dev-tools edits or future paste-URL affordances can't slip a
     // non-http(s) value past the client into the API.
     try {
-      validateHttpUrl(badgeImageUrl, "badge_image_url");
+      validateHttpUrl(badgeImage?.url, "badge_image_url");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("createFailed"));
       return;
@@ -258,7 +259,7 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
                 }))
               : undefined,
           badge_name: badgeName || undefined,
-          badge_image_url: badgeImageUrl || undefined,
+          badge_image_url: badgeImage?.url || undefined,
           starts_at: startsAt || undefined,
           ends_at: endsAt || undefined,
         }),
@@ -281,7 +282,7 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
           unit: unit || undefined,
           verification,
           badgeName: badgeName || undefined,
-          badgeImageUrl: badgeImageUrl || undefined,
+          badgeImageUrl: badgeImage?.url || undefined,
           startsAt: startsAt || undefined,
           endsAt: endsAt || undefined,
         });
@@ -733,8 +734,8 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
         </FieldLabel>
         <ImageUpload
           id="cc-badge-image"
-          value={badgeImageUrl || null}
-          onChange={(next) => setBadgeImageUrl(next ?? "")}
+          value={badgeImage}
+          onChange={setBadgeImage}
           alt={badgeName || t("badgeImageLabel")}
           maxSizeMB={2}
         />

@@ -1,3 +1,4 @@
+import type { BlossomDescriptor } from "./blossom";
 import type { NostrMetadata, UnsignedNostrEvent } from "./types";
 
 /**
@@ -80,15 +81,22 @@ export function buildJoinEvent(creatorPubkey: string, challengeSlug: string): Un
 /**
  * Build a Completion Submission event (kind 7101).
  *
- * When `imageUrl` is provided, it's appended to the content on its own line
- * (Nostr clients render a bare image URL as an inline preview) and mirrored
- * as an `imeta` tag (NIP-92) so strict clients see the attachment too.
+ * When `imageDescriptor` is provided, the URL is appended to the content on
+ * its own line (Nostr clients render a bare image URL as an inline preview)
+ * and mirrored as an `imeta` tag (NIP-92) so strict clients see the
+ * attachment too. Any known metadata on the descriptor — mime type, sha256,
+ * byte size — is folded into the same imeta tag as extra space-separated
+ * key/value pairs. Unknown/missing fields are simply omitted. `dim` (WxH)
+ * would require a client-side image decode and is deliberately not emitted
+ * here.
  */
 export function buildCompletionEvent(params: {
   creatorPubkey: string;
   challengeSlug: string;
   content: string;
-  imageUrl?: string;
+  imageDescriptor?: { url: string } & Partial<
+    Pick<BlossomDescriptor, "sha256" | "size" | "type">
+  >;
   step?: number;
   progress?: number;
   goal?: number;
@@ -102,12 +110,23 @@ export function buildCompletionEvent(params: {
   if (params.progress !== undefined && params.goal) {
     tags.push(["progress", String(params.progress), String(params.goal)]);
   }
-  if (params.imageUrl) {
-    tags.push(["imeta", `url ${params.imageUrl}`]);
+  const imageUrl = params.imageDescriptor?.url;
+  if (imageUrl) {
+    const imeta = ["imeta", `url ${imageUrl}`];
+    if (params.imageDescriptor?.type) {
+      imeta.push(`m ${params.imageDescriptor.type}`);
+    }
+    if (params.imageDescriptor?.sha256) {
+      imeta.push(`x ${params.imageDescriptor.sha256}`);
+    }
+    if (params.imageDescriptor?.size !== undefined) {
+      imeta.push(`size ${params.imageDescriptor.size}`);
+    }
+    tags.push(imeta);
   }
 
-  const content = params.imageUrl
-    ? `${params.content}\n\n${params.imageUrl}`
+  const content = imageUrl
+    ? `${params.content}\n\n${imageUrl}`
     : params.content;
 
   return {

@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { apiHandler } from "@/lib/api/handler";
 import { BadRequestError } from "@/lib/api/errors";
+import { validateHttpUrl } from "@/lib/api/validate-http-url";
 import { users } from "@/lib/db/schema";
 
 // GET /api/profile — get current user profile
@@ -34,18 +35,7 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db }) => {
     updates.username = body.username.trim();
   }
   if (body.avatar_url !== undefined) {
-    if (body.avatar_url !== null) {
-      if (typeof body.avatar_url !== "string") {
-        throw new BadRequestError("Avatar URL must be a string");
-      }
-      const trimmed = body.avatar_url.trim();
-      if (trimmed && !/^https?:\/\//i.test(trimmed)) {
-        throw new BadRequestError("Avatar URL must start with http:// or https://");
-      }
-      updates.avatar_url = trimmed || null;
-    } else {
-      updates.avatar_url = null;
-    }
+    updates.avatar_url = validateHttpUrl(body.avatar_url, "avatar_url");
   }
   if (body.about !== undefined) updates.about = body.about;
   if (body.lightning_address !== undefined) updates.lightning_address = body.lightning_address;
