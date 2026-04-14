@@ -15,7 +15,10 @@ import {
   buildCompletionEvent,
   buildBadgeAwardEvent,
   buildBadgeDefinitionEvent,
+  buildChallengeResultEvent,
   buildZapRequestEvent,
+  placeLabel,
+  type ChallengeResultWinner,
 } from "@/lib/nostr/events";
 import type { BlossomDescriptor } from "@/lib/nostr/blossom";
 import { publishSignedEvent } from "@/lib/nostr/publish";
@@ -74,6 +77,7 @@ interface ChallengeDetail {
   prize_distribution: PrizeDistribution | null;
   zap_goal_event_id: string | null;
   rewards_paid_at: string | null;
+  result_nostr_event_id: string | null;
   creator: { id: string; display_name: string; username: string; nostr_pubkey: string; lightning_address?: string };
   checkpoints: CheckpointItem[];
   my_checkpoint_completions: CheckpointCompletionItem[];
@@ -269,6 +273,56 @@ export default function ChallengeDetailPage() {
     }
   };
 
+  // Build + sign + publish the kind:30101 Challenge Result event for the
+  // given winner list, then PUT the event id back to the challenge row.
+  // Used from the post-payout path AND the standalone "Republish results"
+  // button that shows up if the initial publish failed (relay flake, tab
+  // closed before publish completed, etc). Throws on any failure so
+  // callers can distinguish best-effort vs user-initiated semantics.
+  const publishResultEvent = async (winners: RewardWinner[]) => {
+    if (!challenge) throw new Error("challenge_not_loaded");
+
+    const resultWinners: ChallengeResultWinner[] = winners.map((w, idx) => ({
+      pubkey: w.nostr_pubkey,
+      place: placeLabel(idx),
+      amountSats: w.amount_sats,
+    }));
+    const winnerUserIds = new Set(winners.map((w) => w.user_id));
+    const completerPubkeys = participants
+      .filter(
+        (p) =>
+          p.status === "completed" &&
+          !winnerUserIds.has(p.user_id) &&
+          p.user.nostr_pubkey
+      )
+      .map((p) => p.user.nostr_pubkey as string);
+
+    const totalSats = winners.reduce((sum, w) => sum + w.amount_sats, 0);
+    const completionCount = participants.filter(
+      (p) => p.status === "completed"
+    ).length;
+
+    const resultEvent = buildChallengeResultEvent({
+      slug: challenge.slug,
+      creatorPubkey: challenge.creator.nostr_pubkey,
+      content: t("rewardResultContent", { title: challenge.title }),
+      winners: resultWinners,
+      completerPubkeys,
+      stats: {
+        participants: challenge.participant_count,
+        completions: completionCount,
+        totalSats,
+      },
+    });
+    const signedResult = await signWithPrompt(resultEvent);
+    await publishSignedEvent(signedResult);
+    await fetch(`/api/challenges/${challengeId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ result_nostr_event_id: signedResult.id }),
+    });
+  };
+
   const handleClaimReward = async () => {
     if (!challenge) return;
     setRewardError(null);
@@ -326,12 +380,60 @@ export default function ChallengeDetailPage() {
       }
 
       await fetch(`/api/challenges/${challengeId}/reward`, { method: "PATCH" });
+
+      // Publish the Challenge Result event. Best-effort: a relay failure
+      // shouldn't prevent us from showing the success state since the
+      // payments already landed. If this fails we surface a
+      // "Republish results" button on the next render so the creator can
+      // retry without re-running the whole payout flow.
+      try {
+        await publishResultEvent(winners);
+      } catch {
+        /* non-blocking — recovery UI will handle it */
+      }
+
       setRewardStatus(t("rewardSent"));
       await fetchAll();
     } catch (err) {
       setRewardError(
         err instanceof Error ? err.message : t("rewardError")
       );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Recovery path: rewards already paid but the kind:30101 publish never
+  // landed (relay flake, tab closed between PATCH and publish, signer
+  // rejected mid-flow, …). Re-derives the winner list from the idempotent
+  // POST /reward endpoint and runs the publish step again.
+  const handleRepublishResult = async () => {
+    if (!challenge) return;
+    setRewardError(null);
+    setRewardStatus(null);
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return;
+      }
+    }
+    setActionLoading("republishResult");
+    try {
+      const res = await fetch(`/api/challenges/${challengeId}/reward`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setRewardError(json.error || t("republishResultFailed"));
+        return;
+      }
+      const winners: RewardWinner[] = json.data.winners;
+      await publishResultEvent(winners);
+      setRewardStatus(t("republishResultSuccess"));
+      await fetchAll();
+    } catch {
+      setRewardError(t("republishResultFailed"));
     } finally {
       setActionLoading(null);
     }
@@ -877,6 +979,29 @@ export default function ChallengeDetailPage() {
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>{t("rewardSectionTitle")}</h2>
             <p className={styles.emptyText}>{t("rewardAlreadyPaid")}</p>
+            {!challenge.result_nostr_event_id && (
+              <>
+                <p className={styles.emptyText}>
+                  {t("republishResultHint")}
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRepublishResult}
+                  disabled={actionLoading === "republishResult"}
+                >
+                  {actionLoading === "republishResult"
+                    ? t("republishingResult")
+                    : t("republishResult")}
+                </Button>
+                {rewardStatus && (
+                  <p className={styles.emptyText}>{rewardStatus}</p>
+                )}
+                {rewardError && (
+                  <p className={styles.error}>{rewardError}</p>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

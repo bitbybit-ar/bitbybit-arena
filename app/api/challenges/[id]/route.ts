@@ -198,6 +198,20 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db, params }) 
       updates.badge_nostr_event_id = body.badge_nostr_event_id.toLowerCase();
     }
   }
+  if (body.result_nostr_event_id !== undefined) {
+    if (body.result_nostr_event_id === null) {
+      updates.result_nostr_event_id = null;
+    } else if (
+      typeof body.result_nostr_event_id !== "string" ||
+      !HEX_64.test(body.result_nostr_event_id)
+    ) {
+      throw new BadRequestError(
+        "result_nostr_event_id must be a 64-character hex event id"
+      );
+    } else {
+      updates.result_nostr_event_id = body.result_nostr_event_id.toLowerCase();
+    }
+  }
   if (body.starts_at !== undefined) {
     if (body.starts_at !== null) {
       const d = new Date(body.starts_at);

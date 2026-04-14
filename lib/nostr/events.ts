@@ -302,3 +302,101 @@ export function buildZapRequestEvent(params: {
     content: params.comment || "",
   };
 }
+
+/**
+ * English ordinal label for a 0-indexed winner position. Used as the
+ * `place` field on `winner` tags in `kind:30101` Challenge Result events.
+ *
+ * Intentionally not translated — the label is part of a Nostr event
+ * consumed by third-party clients (njump, Coracle, Amethyst), not an
+ * Arena UI string. The 11/12/13 special case lives here so callers can't
+ * accidentally generate "11st", "12nd", "13rd".
+ */
+export function placeLabel(index: number): string {
+  const n = index + 1;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+
+/**
+ * Build a Challenge Result event (kind 30101).
+ *
+ * Parameterized replaceable — the `d` tag is `<challenge-slug>:results`, so
+ * there is one result event per challenge per creator. Published by the
+ * creator once the reward payout flow completes, summarising winners and
+ * aggregate stats.
+ *
+ * Custom BitByBit kind. The `a` tag references the kind:30100 challenge
+ * definition so clients can resolve result → challenge without a second
+ * database hop.
+ *
+ * Shape:
+ * - `["d", "<slug>:results"]`
+ * - `["a", "30100:<creatorPubkey>:<slug>"]`
+ * - `["winner", "<pubkey>", "<place>", "<amount>"]` — one per paid winner
+ * - `["completer", "<pubkey>"]` — one per user who completed but didn't win
+ * - `["stats", "participants:<N>", "completions:<M>", "total_sats:<X>"]`
+ */
+export interface ChallengeResultWinner {
+  pubkey: string;
+  /** Human-readable place: "1st", "2nd", "3rd", or `${n}th` for split mode. */
+  place: string;
+  amountSats: number;
+}
+
+export function buildChallengeResultEvent(params: {
+  slug: string;
+  creatorPubkey: string;
+  content?: string;
+  winners: ChallengeResultWinner[];
+  completerPubkeys: string[];
+  stats: {
+    participants: number;
+    completions: number;
+    totalSats: number;
+  };
+}): UnsignedNostrEvent {
+  const tags: string[][] = [
+    ["d", `${params.slug}:results`],
+    ["a", `30100:${params.creatorPubkey}:${params.slug}`],
+  ];
+
+  for (const winner of params.winners) {
+    tags.push([
+      "winner",
+      winner.pubkey,
+      winner.place,
+      String(winner.amountSats),
+    ]);
+  }
+
+  // Completers are paying participants who completed but didn't make the
+  // winner list (e.g. a tiered challenge's 4th-place finisher). Skip any
+  // completer that also appears in the winner list to avoid double-counting.
+  const winnerSet = new Set(params.winners.map((w) => w.pubkey));
+  for (const pubkey of params.completerPubkeys) {
+    if (!winnerSet.has(pubkey)) {
+      tags.push(["completer", pubkey]);
+    }
+  }
+
+  tags.push([
+    "stats",
+    `participants:${params.stats.participants}`,
+    `completions:${params.stats.completions}`,
+    `total_sats:${params.stats.totalSats}`,
+  ]);
+
+  return {
+    kind: 30101,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: params.content ?? "",
+  };
+}
