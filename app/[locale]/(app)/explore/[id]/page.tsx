@@ -28,6 +28,10 @@ import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
 import type { PrizeDistribution } from "@/lib/types";
 import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
+import {
+  ShareOnNostrModal,
+  type ShareContext,
+} from "@/components/share/ShareOnNostrModal";
 import styles from "./challenge-detail.module.scss";
 
 interface CheckpointItem {
@@ -135,6 +139,7 @@ export default function ChallengeDetailPage() {
   const [checkpointErrors, setCheckpointErrors] = useState<Record<string, string>>({});
   const [rewardError, setRewardError] = useState<string | null>(null);
   const [rewardStatus, setRewardStatus] = useState<string | null>(null);
+  const [shareContext, setShareContext] = useState<ShareContext | null>(null);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -198,6 +203,16 @@ export default function ChallengeDetailPage() {
     }
     await fetchAll();
     setActionLoading(null);
+    // No needsSigner gate: if the user cancelled re-sign-in we've
+    // already returned above, and `needsSigner` in this closure is
+    // stale — for nsec/bunker users who just re-attached it still
+    // reads `true` from the render where the handler was created.
+    if (challenge) {
+      setShareContext({
+        kind: "challenge-joined",
+        challenge: { id: challenge.id, title: challenge.title },
+      });
+    }
   };
 
   const handleWithdraw = async () => {
@@ -249,6 +264,12 @@ export default function ChallengeDetailPage() {
     setProofImageDescriptor(null);
     await fetchAll();
     setActionLoading(null);
+    if (challenge) {
+      setShareContext({
+        kind: "challenge-completed",
+        challenge: { id: challenge.id, title: challenge.title },
+      });
+    }
   };
 
   const handleVerifyLike = async () => {
@@ -1005,6 +1026,13 @@ export default function ChallengeDetailPage() {
           </div>
         )}
       </div>
+
+      {shareContext && (
+        <ShareOnNostrModal
+          context={shareContext}
+          onClose={() => setShareContext(null)}
+        />
+      )}
     </div>
   );
 }
