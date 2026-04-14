@@ -171,7 +171,17 @@ export default function MyChallengesPage() {
       const signed = await signWithPrompt(event);
       await publishSignedEvent(signed);
 
-      await fetch(`/api/badges/${badge.id}`, { method: "PATCH" });
+      const patchRes = await fetch(`/api/badges/${badge.id}`, {
+        method: "PATCH",
+      });
+      const patchJson = await patchRes.json().catch(() => null);
+      if (!patchRes.ok || !patchJson?.success) {
+        // The relay publish succeeded but we couldn't persist the
+        // accepted_at flag on our own DB row. Surface the failure so
+        // the user knows the UI state and the server state disagree.
+        showToast(t("acceptFailed"), "error");
+        return;
+      }
 
       showToast(t("acceptSuccess"), "success");
       // Mutate the single badge in local state instead of refetching —

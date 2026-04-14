@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
+import { BadRequestError } from "@/lib/api/errors";
 import { badges, challenges, users } from "@/lib/db/schema";
 
 // GET /api/my-badges — list the current user's earned badges joined with
@@ -14,7 +15,14 @@ export const GET = apiHandler(async (req: NextRequest, { session, db }) => {
   const userId = session!.user_id;
   const url = req.nextUrl;
   const cursor = url.searchParams.get("cursor");
-  const limit = Math.min(Number(url.searchParams.get("limit")) || 20, 50);
+  const rawLimit = Number(url.searchParams.get("limit")) || 20;
+  const limit = Math.max(1, Math.min(rawLimit, 50));
+
+  if (cursor && Number.isNaN(new Date(cursor).getTime())) {
+    throw new BadRequestError(
+      "cursor must be a valid ISO-8601 timestamp"
+    );
+  }
 
   const conditions = [eq(badges.user_id, userId)];
   if (cursor) {
@@ -53,11 +61,7 @@ export const GET = apiHandler(async (req: NextRequest, { session, db }) => {
 
   const lastBadge = items[items.length - 1]?.awarded_at;
   const nextCursor =
-    hasMore && lastBadge
-      ? lastBadge instanceof Date
-        ? lastBadge.toISOString()
-        : new Date(lastBadge as string).toISOString()
-      : null;
+    hasMore && lastBadge ? lastBadge.toISOString() : null;
 
   return { items, nextCursor };
 });

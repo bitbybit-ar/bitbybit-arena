@@ -192,4 +192,14 @@ describe("Integration: GET /api/my-badges", () => {
     // but the endpoint should still 200 and apply the cap internally.
     expect(res.status).toBe(200);
   });
+
+  it("rejects a cursor that isn't a valid ISO timestamp", async () => {
+    setSession(makeSession(recipient.id));
+    const res = await route.GET(
+      buildRequest("GET", "/api/my-badges?cursor=not-a-date")
+    );
+    const { status, body } = await parseResponse(res);
+    expect(status).toBe(400);
+    expect(body.error).toContain("cursor");
+  });
 });
