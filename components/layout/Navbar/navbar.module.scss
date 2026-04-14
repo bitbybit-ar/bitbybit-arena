@@ -1,6 +1,7 @@
 @use "@/styles/colors" as *;
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
 @use "@/styles/media-mixins" as *;
 
 .navbar {
@@ -159,15 +160,35 @@
 
 .avatarMenu {
   position: absolute;
-  top: calc(100% + $spacing-8);
+  top: calc(100% + #{$spacing-8});
   right: 0;
-  min-width: 160px;
-  background: $color-surface;
+  min-width: 180px;
+  background-color: $color-surface;
+  background-image: linear-gradient(
+    180deg,
+    $ceramic-highlight-soft 0%,
+    transparent 60%
+  );
   border: 1px solid $color-border;
   border-radius: $border-radius-md;
-  box-shadow: 0 4px 16px $card-shadow;
-  padding: $spacing-4 0;
+  box-shadow:
+    0 12px 32px $card-shadow-hover,
+    inset 0 1px 0 $ceramic-highlight,
+    inset 0 -2px 4px $ceramic-inner-shadow;
+  padding: $spacing-4;
   z-index: 1001;
+  animation: avatarMenuFadeIn 0.15s ease-out;
+}
+
+@keyframes avatarMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .menuItem {
@@ -175,9 +196,10 @@
   align-items: center;
   gap: $spacing-8;
   width: 100%;
-  padding: $spacing-8 $spacing-16;
+  padding: $spacing-8 $spacing-12;
   background: transparent;
   border: none;
+  border-radius: $border-radius-sm;
   color: $color-text-secondary;
   font-family: $font-body;
   font-size: $font-size-sm;
@@ -187,7 +209,7 @@
   transition: background 0.15s ease, color 0.15s ease;
 
   &:hover {
-    background: alpha($color-primary, 8%);
+    background: alpha($color-primary, 12%);
     color: $color-text-primary;
   }
 }

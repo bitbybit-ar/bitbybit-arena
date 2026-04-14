@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Dropdown, type DropdownOption } from "@/components/ui/dropdown";
 import { EyeIcon, EyeOffIcon } from "@/components/icons";
 import styles from "./form.module.scss";
 
@@ -97,13 +98,19 @@ export function FormInput({
 
 // ── FormSelect ─────────────────────────────────────────────
 
-interface FormSelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "onChange"> {
+interface FormSelectProps {
   label?: string;
   required?: boolean;
   error?: string;
   fieldClassName?: string;
-  onChange?: (value: string) => void;
-  children: React.ReactNode;
+  className?: string;
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: DropdownOption[];
+  placeholder?: string;
+  disabled?: boolean;
+  "aria-label"?: string;
 }
 
 export function FormSelect({
@@ -114,21 +121,24 @@ export function FormSelect({
   id,
   onChange,
   className,
-  children,
-  ...selectProps
+  value,
+  options,
+  placeholder,
+  disabled,
+  ...rest
 }: FormSelectProps) {
   return (
     <FormField label={label} required={required} error={error} htmlFor={id} className={fieldClassName}>
-      <select
+      <Dropdown
         id={id}
-        className={cn(styles.select, error && styles.inputError, className)}
-        aria-invalid={!!error}
-        aria-describedby={error && id ? `${id}-error` : undefined}
-        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-        {...selectProps}
-      >
-        {children}
-      </select>
+        options={options}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={className}
+        aria-label={rest["aria-label"] ?? label}
+      />
     </FormField>
   );
 }

@@ -286,20 +286,22 @@ export default function SettingsPage() {
           label={t("theme")}
           value={themePref}
           onChange={handleThemeChange}
-        >
-          <option value="system">{t("themeSystem")}</option>
-          <option value="light">{t("themeLight")}</option>
-          <option value="dark">{t("themeDark")}</option>
-        </FormSelect>
+          options={[
+            { value: "system", label: t("themeSystem") },
+            { value: "light", label: t("themeLight") },
+            { value: "dark", label: t("themeDark") },
+          ]}
+        />
 
         <FormSelect
           label={t("language")}
           value={currentLocale}
           onChange={handleLanguageChange}
-        >
-          <option value="es">{t("languageEs")}</option>
-          <option value="en">{t("languageEn")}</option>
-        </FormSelect>
+          options={[
+            { value: "es", label: t("languageEs") },
+            { value: "en", label: t("languageEn") },
+          ]}
+        />
       </section>
 
       <section className={`${styles.card} ${styles.dangerCard}`}>
