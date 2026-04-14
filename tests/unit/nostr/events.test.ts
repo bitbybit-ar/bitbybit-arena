@@ -6,6 +6,7 @@ import {
   buildProfileBadgesEvent,
   parseProfileBadgesPairs,
   buildChallengeResultEvent,
+  buildNoteEvent,
   placeLabel,
 } from "@/lib/nostr/events";
 
@@ -358,5 +359,38 @@ describe("placeLabel", () => {
     [120, "121st"],
   ])("triple-digit: position %i → %s", (index, expected) => {
     expect(placeLabel(index)).toBe(expected);
+  });
+});
+
+describe("buildNoteEvent (kind 1)", () => {
+  it("returns kind 1 with an empty tags array", () => {
+    const event = buildNoteEvent("hello nostr");
+    expect(event.kind).toBe(1);
+    expect(event.tags).toEqual([]);
+  });
+
+  it("passes the content through unchanged", () => {
+    const event = buildNoteEvent("hello nostr");
+    expect(event.content).toBe("hello nostr");
+  });
+
+  it("preserves an empty-string content", () => {
+    const event = buildNoteEvent("");
+    expect(event.content).toBe("");
+  });
+
+  it("preserves unicode and newlines verbatim", () => {
+    const content = "🏆 desafío completado\n\nhttps://arena.bitbybit.com.ar/es/explore/abc";
+    const event = buildNoteEvent(content);
+    expect(event.content).toBe(content);
+  });
+
+  it("sets created_at to an integer near now()", () => {
+    const before = Math.floor(Date.now() / 1000);
+    const event = buildNoteEvent("any content");
+    const after = Math.floor(Date.now() / 1000);
+    expect(Number.isInteger(event.created_at)).toBe(true);
+    expect(event.created_at).toBeGreaterThanOrEqual(before);
+    expect(event.created_at).toBeLessThanOrEqual(after);
   });
 });
