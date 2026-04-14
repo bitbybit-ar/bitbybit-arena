@@ -87,7 +87,11 @@ export function ShareOnNostrModal({
       publishSignedEvent(signed).catch(() => {});
       setState("published");
       onPublished?.();
-      onClose();
+      // Hold the "Published!" state long enough to register visually
+      // before the parent unmounts the modal. Without this, setState +
+      // onClose run on the same tick and users only ever see
+      // "Publishing…".
+      setTimeout(() => onClose(), 600);
     } catch {
       setState("error");
       setErrorMessage(t("error"));
