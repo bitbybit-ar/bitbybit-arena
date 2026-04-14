@@ -293,7 +293,6 @@ export default function MyChallengesPage() {
           </div>
         )}
       </div>
-
       {shareContext && (
         <ShareOnNostrModal
           context={shareContext}
