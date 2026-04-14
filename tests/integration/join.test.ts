@@ -32,14 +32,14 @@ describe("Integration: Join / Withdraw", () => {
 
   beforeEach(async () => {
     await cleanDb();
-    creator = await seedUser({ username: "creator", display_name: "Creator" });
-    participant = await seedUser({ username: "joiner", display_name: "Joiner" });
+    creator = await seedUser({ display_name: "Creator" });
+    participant = await seedUser({ display_name: "Joiner" });
     challenge = await seedChallenge(creator.id, { title: "Join Test", status: "open" });
   });
 
   describe("POST /api/challenges/[id]/join", () => {
     it("joins a challenge successfully", async () => {
-      setSession(makeSession(participant.id, { username: "joiner", nostr_pubkey: participant.nostr_pubkey }));
+      setSession(makeSession(participant.id, { nostr_pubkey: participant.nostr_pubkey }));
       const ctx = { params: Promise.resolve({ id: challenge.id }) };
 
       const res = await POST(buildRequest("POST", `/api/challenges/${challenge.id}/join`), ctx);

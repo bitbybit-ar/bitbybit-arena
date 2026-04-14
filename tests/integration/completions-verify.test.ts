@@ -35,8 +35,8 @@ describe("Integration: Completions & Verify", () => {
 
   beforeEach(async () => {
     await cleanDb();
-    creator = await seedUser({ username: "creator", display_name: "Creator" });
-    participant = await seedUser({ username: "doer", display_name: "Doer" });
+    creator = await seedUser({ display_name: "Creator" });
+    participant = await seedUser({ display_name: "Doer" });
     challenge = await seedChallenge(creator.id, {
       title: "Complete Test",
       status: "open",
@@ -48,7 +48,7 @@ describe("Integration: Completions & Verify", () => {
 
   describe("POST /api/challenges/[id]/completions — submit proof", () => {
     it("submits proof as active participant", async () => {
-      setSession(makeSession(participant.id, { username: "doer" }));
+      setSession(makeSession(participant.id));
 
       const res = await completionsRoute.POST(
         buildRequest("POST", `/api/challenges/${challenge.id}/completions`, {
@@ -65,7 +65,7 @@ describe("Integration: Completions & Verify", () => {
     });
 
     it("rejects proof from non-participant", async () => {
-      const outsider = await seedUser({ username: "outsider" });
+      const outsider = await seedUser();
       setSession(makeSession(outsider.id));
 
       const res = await completionsRoute.POST(
@@ -92,7 +92,7 @@ describe("Integration: Completions & Verify", () => {
     });
 
     it("accepts an image-only proof and persists image_url", async () => {
-      setSession(makeSession(participant.id, { username: "doer" }));
+      setSession(makeSession(participant.id));
       const imageUrl = "https://blossom.example/abc123.png";
       const res = await completionsRoute.POST(
         buildRequest("POST", `/api/challenges/${challenge.id}/completions`, {
@@ -107,7 +107,7 @@ describe("Integration: Completions & Verify", () => {
     });
 
     it("rejects image_url that is not http(s)", async () => {
-      setSession(makeSession(participant.id, { username: "doer" }));
+      setSession(makeSession(participant.id));
       const res = await completionsRoute.POST(
         buildRequest("POST", `/api/challenges/${challenge.id}/completions`, {
           content: "Here is my proof of completion",
@@ -133,14 +133,14 @@ describe("Integration: Completions & Verify", () => {
       expect(status).toBe(200);
       expect(body.data).toHaveLength(1);
       expect(body.data[0].content).toBe("My proof");
-      expect(body.data[0].user.username).toBe("doer");
+      expect(body.data[0].user.username).toBe(participant.username);
     });
   });
 
   describe("POST /api/completions/[id]/verify — approve/reject", () => {
     it("approves a completion and updates participant progress", async () => {
       const completion = await seedCompletion(challenge.id, participant.id, { status: "pending" });
-      setSession(makeSession(creator.id, { username: "creator", nostr_pubkey: creator.nostr_pubkey }));
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
 
       const res = await verifyRoute.POST(
         buildRequest("POST", `/api/completions/${completion.id}/verify`, { status: "approved" }),

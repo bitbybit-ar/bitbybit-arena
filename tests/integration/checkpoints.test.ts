@@ -83,9 +83,8 @@ describe("Integration: Checkpoints", () => {
 
   beforeEach(async () => {
     await cleanDb();
-    creator = await seedUser({ username: "creator", display_name: "Creator" });
+    creator = await seedUser({ display_name: "Creator" });
     participant = await seedUser({
-      username: "doer",
       display_name: "Doer",
       nostr_pubkey: "doer_pubkey",
     });

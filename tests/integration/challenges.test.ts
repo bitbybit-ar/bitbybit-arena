@@ -31,8 +31,8 @@ describe("Integration: Challenges CRUD", () => {
 
   beforeEach(async () => {
     await cleanDb();
-    creator = await seedUser({ username: "creator", display_name: "Creator" });
-    setSession(makeSession(creator.id, { username: "creator", nostr_pubkey: creator.nostr_pubkey }));
+    creator = await seedUser({ display_name: "Creator" });
+    setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
   });
 
   describe("POST /api/challenges", () => {
@@ -64,7 +64,7 @@ describe("Integration: Challenges CRUD", () => {
 
       expect(getStatus).toBe(200);
       expect(getBody.data.title).toBe("Read 5 Books");
-      expect(getBody.data.creator.username).toBe("creator");
+      expect(getBody.data.creator.username).toBe(creator.username);
       expect(getBody.data.participant_count).toBe(0);
     });
   });
@@ -72,7 +72,7 @@ describe("Integration: Challenges CRUD", () => {
   describe("GET /api/challenges", () => {
     it("lists challenges with creator info and participant count", async () => {
       const challenge = await seedChallenge(creator.id, { title: "Test Challenge" });
-      const participant = await seedUser({ username: "participant1" });
+      const participant = await seedUser();
       await seedParticipant(challenge.id, participant.id);
 
       setSession(null);
@@ -83,7 +83,7 @@ describe("Integration: Challenges CRUD", () => {
       expect(body.data.items).toHaveLength(1);
       expect(body.data.items[0].title).toBe("Test Challenge");
       expect(body.data.items[0].participant_count).toBe(1);
-      expect(body.data.items[0].creator.username).toBe("creator");
+      expect(body.data.items[0].creator.username).toBe(creator.username);
     });
 
     it("filters by status", async () => {
@@ -119,20 +119,20 @@ describe("Integration: Challenges CRUD", () => {
 
       // Many: 4 active
       for (let i = 0; i < 4; i++) {
-        const u = await seedUser({ username: `many_${i}` });
+        const u = await seedUser();
         await seedParticipant(many.id, u.id, { status: "active" });
       }
       // Mid: 2 active + 5 withdrawn (withdrawn must not count)
       for (let i = 0; i < 2; i++) {
-        const u = await seedUser({ username: `mid_a${i}` });
+        const u = await seedUser();
         await seedParticipant(mid.id, u.id, { status: "active" });
       }
       for (let i = 0; i < 5; i++) {
-        const u = await seedUser({ username: `mid_w${i}` });
+        const u = await seedUser();
         await seedParticipant(mid.id, u.id, { status: "withdrawn" });
       }
       // Few: 1 active
-      const u = await seedUser({ username: "few_only" });
+      const u = await seedUser();
       await seedParticipant(few.id, u.id, { status: "active" });
 
       setSession(null);
@@ -154,10 +154,10 @@ describe("Integration: Challenges CRUD", () => {
 
       // High-momentum: 1 recent join + 3 recent completions → score 7
       const hot = await seedChallenge(creator.id, { title: "Hot", slug: "hot" });
-      const u1 = await seedUser({ username: "u1_trending" });
+      const u1 = await seedUser();
       await seedParticipant(hot.id, u1.id, { joined_at: daysAgo(2) });
       for (let i = 0; i < 3; i++) {
-        const u = await seedUser({ username: `hot_c${i}` });
+        const u = await seedUser();
         await seedParticipant(hot.id, u.id, { joined_at: daysAgo(3) });
         await seedCompletion(hot.id, u.id, { submitted_at: daysAgo(1) });
       }
@@ -165,14 +165,14 @@ describe("Integration: Challenges CRUD", () => {
       // Medium: 5 recent joins, 0 completions → score 5
       const warm = await seedChallenge(creator.id, { title: "Warm", slug: "warm" });
       for (let i = 0; i < 5; i++) {
-        const u = await seedUser({ username: `warm_j${i}` });
+        const u = await seedUser();
         await seedParticipant(warm.id, u.id, { joined_at: daysAgo(2) });
       }
 
       // Cold: all activity is outside the 7-day window → score 0
       const cold = await seedChallenge(creator.id, { title: "Cold", slug: "cold" });
       for (let i = 0; i < 10; i++) {
-        const u = await seedUser({ username: `cold_j${i}` });
+        const u = await seedUser();
         await seedParticipant(cold.id, u.id, { joined_at: daysAgo(30) });
         await seedCompletion(cold.id, u.id, { submitted_at: daysAgo(30) });
       }
@@ -207,7 +207,7 @@ describe("Integration: Challenges CRUD", () => {
     });
 
     it("rejects update from non-creator", async () => {
-      const other = await seedUser({ username: "other" });
+      const other = await seedUser();
       const challenge = await seedChallenge(creator.id);
       setSession(makeSession(other.id));
 
@@ -242,7 +242,7 @@ describe("Integration: Challenges CRUD", () => {
 
     it("rejects deletion when active participants exist", async () => {
       const challenge = await seedChallenge(creator.id);
-      const participant = await seedUser({ username: "active_user" });
+      const participant = await seedUser();
       await seedParticipant(challenge.id, participant.id, { status: "active" });
 
       const res = await challengeDetailRoute.DELETE(

@@ -35,9 +35,9 @@ describe("Integration: Award badges", () => {
 
   beforeEach(async () => {
     await cleanDb();
-    creator = await seedUser({ username: "creator" });
-    participant1 = await seedUser({ username: "p1" });
-    participant2 = await seedUser({ username: "p2" });
+    creator = await seedUser();
+    participant1 = await seedUser();
+    participant2 = await seedUser();
     challenge = await seedChallenge(creator.id, {
       title: "Award Test",
       badge_name: "Champion",
@@ -96,7 +96,7 @@ describe("Integration: Award badges", () => {
   });
 
   it("rejects awarding to non-participants", async () => {
-    const outsider = await seedUser({ username: "outsider" });
+    const outsider = await seedUser();
     setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
 
     const res = await POST(

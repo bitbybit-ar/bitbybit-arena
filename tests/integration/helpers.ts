@@ -13,11 +13,17 @@ export function setSession(session: Record<string, unknown> | null) {
 // ----- Seed factories (write to real DB) -----
 
 export async function seedUser(overrides: Partial<typeof users.$inferInsert> = {}) {
+  // Default usernames must be unique even when multiple calls happen in
+  // the same millisecond — `Date.now()` collided when sequential tests
+  // seeded "creator" back-to-back and a previous TRUNCATE hadn't fully
+  // taken effect on the shared Neon test DB. A UUID slice is guaranteed
+  // collision-free and lets tests avoid hardcoding usernames entirely.
+  const unique = crypto.randomUUID().slice(0, 12);
   const [user] = await testDb
     .insert(users)
     .values({
-      nostr_pubkey: overrides.nostr_pubkey ?? `pk_${crypto.randomUUID().slice(0, 16)}`,
-      username: overrides.username ?? `user_${Date.now()}`,
+      nostr_pubkey: overrides.nostr_pubkey ?? `pk_${unique}`,
+      username: overrides.username ?? `user_${unique}`,
       display_name: overrides.display_name ?? "Test User",
       ...overrides,
     })

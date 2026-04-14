@@ -38,11 +38,9 @@ describe("Integration: GET /api/my-badges", () => {
   beforeEach(async () => {
     await cleanDb();
     creator = await seedUser({
-      username: "creator",
       display_name: "Creator",
     });
     recipient = await seedUser({
-      username: "recipient",
       display_name: "Recipient",
     });
   });
@@ -108,7 +106,7 @@ describe("Integration: GET /api/my-badges", () => {
   });
 
   it("only returns badges awarded to the current user", async () => {
-    const otherRecipient = await seedUser({ username: "other" });
+    const otherRecipient = await seedUser();
     const challenge = await seedChallenge(creator.id, {
       slug: "c-iso",
       title: "Isolation test",

@@ -76,7 +76,6 @@ describe("Integration: Profile API", () => {
     cookieStore.set.mockClear();
     cookieStore.delete.mockClear();
     user = await seedUser({
-      username: "alice",
       display_name: "Alice",
       about: "hello",
       lightning_address: "alice@getalby.com",
