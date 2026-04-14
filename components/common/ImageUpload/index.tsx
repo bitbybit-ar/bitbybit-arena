@@ -3,12 +3,16 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSignerContext } from "@/lib/signer-context";
-import { uploadToBlossom, BlossomUploadError } from "@/lib/nostr/blossom";
+import {
+  uploadToBlossom,
+  BlossomUploadError,
+  type BlossomDescriptor,
+} from "@/lib/nostr/blossom";
 import styles from "./image-upload.module.scss";
 
 interface ImageUploadProps {
-  value: string | null;
-  onChange: (next: string | null) => void;
+  value: BlossomDescriptor | null;
+  onChange: (next: BlossomDescriptor | null) => void;
   /** Max file size in megabytes. Default 5. */
   maxSizeMB?: number;
   /** Accepted MIME types (comma-separated). Default image/*. */
@@ -65,7 +69,7 @@ export function ImageUpload({
     setUploading(true);
     try {
       const descriptor = await uploadToBlossom(file, signWithPrompt);
-      onChange(descriptor.url);
+      onChange(descriptor);
     } catch (err) {
       if (err instanceof BlossomUploadError) {
         setError(err.message);
@@ -93,7 +97,7 @@ export function ImageUpload({
       {value ? (
         <div className={styles.preview}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt={alt} className={styles.previewImage} />
+          <img src={value.url} alt={alt} className={styles.previewImage} />
           <div className={styles.previewActions}>
             <button
               type="button"

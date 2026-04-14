@@ -11,6 +11,7 @@ import { BlockLoader } from "@/components/ui/block-loader";
 import { Block } from "@/components/common/Block";
 import { ImageUpload } from "@/components/common/ImageUpload";
 import { buildJoinEvent, buildCompletionEvent, buildBadgeAwardEvent, buildZapRequestEvent } from "@/lib/nostr/events";
+import type { BlossomDescriptor } from "@/lib/nostr/blossom";
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
 import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
@@ -113,7 +114,8 @@ export default function ChallengeDetailPage() {
   const [isCreator, setIsCreator] = useState(false);
   const [isParticipant, setIsParticipant] = useState(false);
   const [proofContent, setProofContent] = useState("");
-  const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
+  const [proofImageDescriptor, setProofImageDescriptor] =
+    useState<BlossomDescriptor | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedWinners, setSelectedWinners] = useState<Set<string>>(new Set());
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -201,7 +203,7 @@ export default function ChallengeDetailPage() {
   };
 
   const handleSubmitProof = async () => {
-    if (!proofContent.trim() && !proofImageUrl) return;
+    if (!proofContent.trim() && !proofImageDescriptor) return;
     if (needsSigner) {
       try {
         await requestReSignIn();
@@ -215,7 +217,7 @@ export default function ChallengeDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         content: proofContent || null,
-        image_url: proofImageUrl,
+        image_url: proofImageDescriptor?.url ?? null,
       }),
     });
     if (challenge) {
@@ -225,14 +227,14 @@ export default function ChallengeDetailPage() {
             creatorPubkey: challenge.creator.nostr_pubkey,
             challengeSlug: challenge.slug,
             content: proofContent,
-            imageUrl: proofImageUrl ?? undefined,
+            imageDescriptor: proofImageDescriptor ?? undefined,
           })
         );
         await publishSignedEvent(signed);
       } catch { /* non-blocking */ }
     }
     setProofContent("");
-    setProofImageUrl(null);
+    setProofImageDescriptor(null);
     await fetchAll();
     setActionLoading(null);
   };
@@ -681,8 +683,8 @@ export default function ChallengeDetailPage() {
               rows={3}
             />
             <ImageUpload
-              value={proofImageUrl}
-              onChange={setProofImageUrl}
+              value={proofImageDescriptor}
+              onChange={setProofImageDescriptor}
               alt={t("proofImageAlt")}
               maxSizeMB={5}
             />
@@ -690,7 +692,7 @@ export default function ChallengeDetailPage() {
               size="sm"
               onClick={handleSubmitProof}
               disabled={
-                (!proofContent.trim() && !proofImageUrl) ||
+                (!proofContent.trim() && !proofImageDescriptor) ||
                 actionLoading === "proof"
               }
             >
