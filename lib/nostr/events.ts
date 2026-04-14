@@ -158,12 +158,24 @@ export function buildCompletionEvent(params: {
  * (we use the challenge slug, which is already unique per creator). A
  * creator publishes one definition per challenge; the corresponding
  * Badge Award events (kind 8) `a`-tag this event.
+ *
+ * The `image` parameter accepts either a plain URL string (legacy) or a
+ * `BlossomDescriptor`-shaped object. When the latter is passed, the event
+ * carries both the spec-compliant NIP-58 `image` tag (URL only) **and** a
+ * sibling NIP-92 `imeta` tag with whatever metadata the Blossom descriptor
+ * provides — mime type, sha256, byte size. The sha256 is the interesting
+ * one: it lets a recipient pull the badge image from any Blossom mirror
+ * that holds the blob, not just the server in the URL.
  */
+export type BadgeImageInput =
+  | string
+  | ({ url: string } & Partial<Pick<BlossomDescriptor, "sha256" | "size" | "type">>);
+
 export function buildBadgeDefinitionEvent(params: {
   slug: string;
   name: string;
   description?: string;
-  image?: string;
+  image?: BadgeImageInput;
   thumb?: string;
 }): UnsignedNostrEvent {
   const tags: string[][] = [
@@ -171,7 +183,24 @@ export function buildBadgeDefinitionEvent(params: {
     ["name", params.name],
   ];
   if (params.description) tags.push(["description", params.description]);
-  if (params.image) tags.push(["image", params.image]);
+
+  if (params.image) {
+    if (typeof params.image === "string") {
+      tags.push(["image", params.image]);
+    } else {
+      tags.push(["image", params.image.url]);
+      const imeta = ["imeta", `url ${params.image.url}`];
+      if (params.image.type) imeta.push(`m ${params.image.type}`);
+      if (params.image.sha256) imeta.push(`x ${params.image.sha256}`);
+      if (params.image.size !== undefined) {
+        imeta.push(`size ${params.image.size}`);
+      }
+      // Only emit the imeta tag if it carries at least one metadata field
+      // beyond the URL — otherwise it's redundant with the `image` tag.
+      if (imeta.length > 2) tags.push(imeta);
+    }
+  }
+
   if (params.thumb) tags.push(["thumb", params.thumb]);
   return {
     kind: 30009,

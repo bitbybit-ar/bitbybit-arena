@@ -311,7 +311,11 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
             slug: json.data.slug,
             name: badgeName,
             description: description || undefined,
-            image: badgeImage?.url || undefined,
+            // Pass the full descriptor so the kind:30009 event carries
+            // sha256/size/mime in a sibling NIP-92 imeta tag. Recipients
+            // can use the sha256 to fetch the badge image from any
+            // Blossom mirror that holds the blob.
+            image: badgeImage ?? undefined,
           });
           const signedDef = await signWithPrompt(badgeDefinition);
           await publishSignedEvent(signedDef);

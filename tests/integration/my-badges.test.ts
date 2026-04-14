@@ -51,12 +51,13 @@ describe("Integration: GET /api/my-badges", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns an empty array when the user has no badges", async () => {
+  it("returns an empty page when the user has no badges", async () => {
     setSession(makeSession(recipient.id));
     const res = await route.GET(buildRequest("GET", "/api/my-badges"));
     const { status, body } = await parseResponse(res);
     expect(status).toBe(200);
-    expect(body.data).toEqual([]);
+    expect(body.data.items).toEqual([]);
+    expect(body.data.nextCursor).toBeNull();
   });
 
   it("returns badges joined with challenge + issuer, newest first", async () => {
@@ -94,11 +95,12 @@ describe("Integration: GET /api/my-badges", () => {
     const { status, body } = await parseResponse(res);
 
     expect(status).toBe(200);
-    expect(body.data).toHaveLength(2);
-    expect(body.data[0].badge_name).toBe("Beta Badge");
-    expect(body.data[1].badge_name).toBe("Alpha Badge");
+    expect(body.data.items).toHaveLength(2);
+    expect(body.data.nextCursor).toBeNull();
+    expect(body.data.items[0].badge_name).toBe("Beta Badge");
+    expect(body.data.items[1].badge_name).toBe("Alpha Badge");
 
-    const alpha = body.data[1];
+    const alpha = body.data.items[1];
     expect(alpha.challenge.title).toBe("Challenge A");
     expect(alpha.challenge.slug).toBe("challenge-a");
     expect(alpha.issuer.display_name).toBe("Creator");
@@ -121,6 +123,83 @@ describe("Integration: GET /api/my-badges", () => {
     setSession(makeSession(recipient.id));
     const res = await route.GET(buildRequest("GET", "/api/my-badges"));
     const { body } = await parseResponse(res);
-    expect(body.data).toEqual([]);
+    expect(body.data.items).toEqual([]);
+  });
+
+  it("paginates via cursor when the user has more badges than the limit", async () => {
+    // Seed 5 badges with distinct awarded_at timestamps so the ordering
+    // is deterministic. Request limit=2 and walk three pages.
+    for (let i = 0; i < 5; i++) {
+      const challenge = await seedChallenge(creator.id, {
+        slug: `c-page-${i}`,
+        title: `Page Challenge ${i}`,
+        badge_name: `Badge ${i}`,
+      });
+      await testDb.insert(badges).values({
+        challenge_id: challenge.id,
+        user_id: recipient.id,
+        badge_name: `Badge ${i}`,
+        // Older index = older awarded_at (so index 4 is newest).
+        awarded_at: new Date(Date.now() - (4 - i) * 60_000),
+      });
+    }
+
+    setSession(makeSession(recipient.id));
+
+    const firstRes = await route.GET(
+      buildRequest("GET", "/api/my-badges?limit=2")
+    );
+    const { body: page1 } = await parseResponse(firstRes);
+    expect(page1.data.items).toHaveLength(2);
+    expect(page1.data.items.map((b: { badge_name: string }) => b.badge_name)).toEqual([
+      "Badge 4",
+      "Badge 3",
+    ]);
+    expect(page1.data.nextCursor).not.toBeNull();
+
+    const secondRes = await route.GET(
+      buildRequest(
+        "GET",
+        `/api/my-badges?limit=2&cursor=${encodeURIComponent(page1.data.nextCursor)}`
+      )
+    );
+    const { body: page2 } = await parseResponse(secondRes);
+    expect(page2.data.items.map((b: { badge_name: string }) => b.badge_name)).toEqual([
+      "Badge 2",
+      "Badge 1",
+    ]);
+    expect(page2.data.nextCursor).not.toBeNull();
+
+    const thirdRes = await route.GET(
+      buildRequest(
+        "GET",
+        `/api/my-badges?limit=2&cursor=${encodeURIComponent(page2.data.nextCursor)}`
+      )
+    );
+    const { body: page3 } = await parseResponse(thirdRes);
+    expect(page3.data.items.map((b: { badge_name: string }) => b.badge_name)).toEqual([
+      "Badge 0",
+    ]);
+    expect(page3.data.nextCursor).toBeNull();
+  });
+
+  it("caps limit at 50 even when a larger value is requested", async () => {
+    setSession(makeSession(recipient.id));
+    const res = await route.GET(
+      buildRequest("GET", "/api/my-badges?limit=500")
+    );
+    // We can't assert the exact limit since the user has 0 badges here —
+    // but the endpoint should still 200 and apply the cap internally.
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects a cursor that isn't a valid ISO timestamp", async () => {
+    setSession(makeSession(recipient.id));
+    const res = await route.GET(
+      buildRequest("GET", "/api/my-badges?cursor=not-a-date")
+    );
+    const { status, body } = await parseResponse(res);
+    expect(status).toBe(400);
+    expect(body.error).toContain("cursor");
   });
 });
