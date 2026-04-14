@@ -3,6 +3,7 @@ import { eq, and, ilike, or, sql, desc, asc } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { BadRequestError } from "@/lib/api/errors";
 import { normalizeTags } from "@/lib/api/normalize-tags";
+import { validateHttpUrl } from "@/lib/api/validate-http-url";
 import { challenges, challenge_checkpoints, users } from "@/lib/db/schema";
 import { slugify } from "@/lib/utils";
 import type {
@@ -244,13 +245,10 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
   const { title, description, type, tags, goal, unit, verification_methods, nostr_action_target_event_id, nostr_hashtag, checkpoint_mode, checkpoints: checkpointsInput, prize_amount_sats, prize_distribution, zap_goal_event_id, badge_name, badge_image_url, starts_at, ends_at } = body;
 
   const resolvedTags = normalizeTags(tags);
-  let resolvedBadgeImageUrl: string | null = null;
-  if (badge_image_url !== undefined && badge_image_url !== null && badge_image_url !== "") {
-    if (typeof badge_image_url !== "string" || badge_image_url.length > 2048) {
-      throw new BadRequestError("badge_image_url must be a string of at most 2048 characters");
-    }
-    resolvedBadgeImageUrl = badge_image_url.trim();
-  }
+  const resolvedBadgeImageUrl = validateHttpUrl(
+    badge_image_url,
+    "badge_image_url"
+  );
 
   if (!title || typeof title !== "string" || title.trim().length < 3) {
     throw new BadRequestError("Title must be at least 3 characters");

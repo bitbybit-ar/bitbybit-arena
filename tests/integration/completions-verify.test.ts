@@ -90,6 +90,33 @@ describe("Integration: Completions & Verify", () => {
 
       expect(res.status).toBe(400);
     });
+
+    it("accepts an image-only proof and persists image_url", async () => {
+      setSession(makeSession(participant.id, { username: "doer" }));
+      const imageUrl = "https://blossom.example/abc123.png";
+      const res = await completionsRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/completions`, {
+          image_url: imageUrl,
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { status, body } = await parseResponse(res);
+      expect(status).toBe(201);
+      expect(body.data.content).toBeNull();
+      expect(body.data.image_url).toBe(imageUrl);
+    });
+
+    it("rejects image_url that is not http(s)", async () => {
+      setSession(makeSession(participant.id, { username: "doer" }));
+      const res = await completionsRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/completions`, {
+          content: "Here is my proof of completion",
+          image_url: "javascript:alert(1)",
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(400);
+    });
   });
 
   describe("GET /api/challenges/[id]/completions — list", () => {

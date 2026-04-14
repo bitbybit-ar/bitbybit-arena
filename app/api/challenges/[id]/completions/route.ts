@@ -6,6 +6,7 @@ import { challenges, participants, completions, users } from "@/lib/db/schema";
 import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
 import { verifyHashtagPost } from "@/lib/nostr/verify-hashtag-post";
 import { pickVerificationMethod } from "@/lib/api/verification-methods";
+import { validateHttpUrl } from "@/lib/api/validate-http-url";
 import type { VerificationMethod } from "@/lib/types";
 
 function isUniqueViolation(err: unknown): boolean {
@@ -80,11 +81,14 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
   if (!participation) throw new ForbiddenError("You must join this challenge first");
 
   const body = await req.json().catch(() => ({}));
-  const { content, step, method } = body as {
+  const { content, image_url, step, method } = body as {
     content?: unknown;
+    image_url?: unknown;
     step?: unknown;
     method?: unknown;
   };
+
+  const resolvedImageUrl = validateHttpUrl(image_url, "image_url");
 
   const allowedMethods = challenge.verification_methods as VerificationMethod[];
   const selectedMethod = pickVerificationMethod(method, allowedMethods);
@@ -122,10 +126,17 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     proofEventId = result.proofEventId;
     autoApprove = true;
   } else {
-    if (!content || typeof content !== "string" || content.trim().length < 5) {
-      throw new BadRequestError("Proof content must be at least 5 characters");
+    // Manual proofs accept text, an image, or both. When an image is
+    // attached we relax the min-length on text since a photo is itself
+    // evidence.
+    const textOk =
+      typeof content === "string" && content.trim().length >= 5;
+    if (!textOk && !resolvedImageUrl) {
+      throw new BadRequestError(
+        "Provide at least a 5-character description or an image proof"
+      );
     }
-    resolvedContent = content.trim();
+    resolvedContent = textOk ? (content as string).trim() : null;
     autoApprove = selectedMethod === "automatic";
   }
 
@@ -137,6 +148,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
         challenge_id: params.id,
         user_id: session!.user_id,
         content: resolvedContent,
+        image_url: resolvedImageUrl,
         proof_event_id: proofEventId,
         step: typeof step === "number" ? step : null,
         status: autoApprove ? "approved" : "pending",

@@ -135,6 +135,7 @@ export const completions = pgTable(
     nostr_event_id: varchar("nostr_event_id", { length: 64 }),
     step: integer("step"), // which step in a streak/multi-step challenge
     content: text("content"), // text description; null when verification_type='nostr_action'
+    image_url: text("image_url"), // optional Blossom-hosted photo proof
     proof_event_id: varchar("proof_event_id", { length: 64 }), // nostr event id that proves the completion (e.g. kind:7 like)
     reward_zap_receipt_id: varchar("reward_zap_receipt_id", { length: 64 }), // NIP-57 kind 9735 zap receipt id after the creator pays the reward
     status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected

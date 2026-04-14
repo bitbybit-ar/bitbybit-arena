@@ -3,6 +3,7 @@ import { eq, sql, and, asc } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
 import { NotFoundError, ForbiddenError, BadRequestError } from "@/lib/api/errors";
 import { normalizeTags } from "@/lib/api/normalize-tags";
+import { validateHttpUrl } from "@/lib/api/validate-http-url";
 import {
   challenges,
   users,
@@ -25,7 +26,6 @@ const VALID_STATUSES = ["open", "in_progress", "completed", "cancelled"];
 const HEX_64 = /^[0-9a-f]{64}$/i;
 const MAX_UNIT_LEN = 30;
 const MAX_BADGE_NAME_LEN = 100;
-const MAX_BADGE_IMAGE_URL_LEN = 2048;
 
 // GET /api/challenges/[id] — get single challenge with creator and participant count
 export const GET = apiHandler(
@@ -179,10 +179,10 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db, params }) 
     updates.badge_name = body.badge_name;
   }
   if (body.badge_image_url !== undefined) {
-    if (body.badge_image_url !== null && (typeof body.badge_image_url !== "string" || body.badge_image_url.length > MAX_BADGE_IMAGE_URL_LEN)) {
-      throw new BadRequestError(`badge_image_url must be a string of at most ${MAX_BADGE_IMAGE_URL_LEN} characters`);
-    }
-    updates.badge_image_url = body.badge_image_url || null;
+    updates.badge_image_url = validateHttpUrl(
+      body.badge_image_url,
+      "badge_image_url"
+    );
   }
   if (body.starts_at !== undefined) {
     if (body.starts_at !== null) {

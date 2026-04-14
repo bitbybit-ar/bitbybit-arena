@@ -79,11 +79,16 @@ export function buildJoinEvent(creatorPubkey: string, challengeSlug: string): Un
 
 /**
  * Build a Completion Submission event (kind 7101).
+ *
+ * When `imageUrl` is provided, it's appended to the content on its own line
+ * (Nostr clients render a bare image URL as an inline preview) and mirrored
+ * as an `imeta` tag (NIP-92) so strict clients see the attachment too.
  */
 export function buildCompletionEvent(params: {
   creatorPubkey: string;
   challengeSlug: string;
   content: string;
+  imageUrl?: string;
   step?: number;
   progress?: number;
   goal?: number;
@@ -97,12 +102,19 @@ export function buildCompletionEvent(params: {
   if (params.progress !== undefined && params.goal) {
     tags.push(["progress", String(params.progress), String(params.goal)]);
   }
+  if (params.imageUrl) {
+    tags.push(["imeta", `url ${params.imageUrl}`]);
+  }
+
+  const content = params.imageUrl
+    ? `${params.content}\n\n${params.imageUrl}`
+    : params.content;
 
   return {
     kind: 7101,
     created_at: Math.floor(Date.now() / 1000),
     tags,
-    content: params.content,
+    content,
   };
 }
 

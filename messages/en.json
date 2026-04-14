@@ -41,6 +41,16 @@
     "active": "Active",
     "withdrawn": "Withdrawn"
   },
+  "imageUpload": {
+    "chooseFile": "Choose an image",
+    "hint": "PNG, JPG, WEBP or GIF up to {max}MB",
+    "uploading": "Uploading...",
+    "replace": "Replace",
+    "remove": "Remove",
+    "invalidType": "Unsupported image type. Use PNG, JPG, WEBP or GIF.",
+    "tooLarge": "That image is too large (max {max}MB).",
+    "uploadFailed": "Could not upload the image. Try again."
+  },
   "landing": {
     "hero": {
       "headline1": "Enter the Arena.",
@@ -267,8 +277,8 @@
         "example": "E.g., 30-Day Zen Master"
       },
       "badgeImage": {
-        "text": "Public URL of an image for the badge. Use a hosting service (Imgur, Nostr.build, etc).",
-        "example": "E.g., https://nostr.build/i/badge.png"
+        "text": "Upload an image for the badge. We store it on a Blossom server (content-addressed by SHA-256) so any Nostr client can display it.",
+        "example": "PNG, JPG, WEBP or GIF up to 2MB"
       }
     },
     "nameLabel": "Title",
@@ -356,10 +366,7 @@
     "zapGoalPublishFailed": "The challenge was created but we couldn't publish the Zap Goal to the relays. Try again later.",
     "badgeNameLabel": "Badge name",
     "badgeNamePlaceholder": "E.g., 30-Day Zen Master",
-    "badgeImageUrlLabel": "Badge image (URL)",
-    "badgeImageUrlPlaceholder": "https://...",
-    "badgeImageUrlPreviewFallback": "Badge preview",
-    "badgeImageUrlLoadError": "Couldn't load that image. Check the URL.",
+    "badgeImageLabel": "Badge image",
     "createFailed": "Could not create the challenge. Try again.",
     "startsAtLabel": "Start date",
     "endsAtLabel": "End date",
@@ -378,6 +385,7 @@
     "progress": "Progress",
     "submitProof": "Submit Proof",
     "proofPlaceholder": "Describe what you did...",
+    "proofImageAlt": "Completion photo",
     "submitting": "Submitting...",
     "proofSubmitted": "Proof submitted!",
     "verifyLikeTitle": "Verify your like",
