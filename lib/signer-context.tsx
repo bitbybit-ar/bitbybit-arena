@@ -99,8 +99,24 @@ export function SignerProvider({
   const { user: session, loading: sessionLoading, refresh, clear } =
     useSession();
   const [signer, setSignerState] = useState<SignerHandle | null>(null);
+  // Mirror of `signer` state. signWithPrompt reads from this ref so a
+  // handler that captured a stale `signer=null` at render time can still
+  // pick up a newly-attached signer mid-await, without waiting for a
+  // re-render. Needed because React closures for consumer callbacks
+  // freeze whichever context value existed when the click fired, and
+  // the old `useCallback([signer, ...])` re-creation was hiding behind
+  // a stale destructure in the consumer.
+  const signerRef = useRef<SignerHandle | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const pendingPromptRef = useRef<PendingPrompt | null>(null);
+
+  const setSigner = useCallback((next: SignerHandle) => {
+    signerRef.current = next;
+    setSignerState((prev) => {
+      if (prev && prev !== next) prev.close?.();
+      return next;
+    });
+  }, []);
 
   // Auto-restore extension signer when session is valid and window.nostr is
   // present. The extension is the only signer that survives reloads, because
@@ -115,7 +131,7 @@ export function SignerProvider({
         const pk = await window.nostr.getPublicKey();
         if (cancelled) return;
         if (pk === session.nostr_pubkey) {
-          setSignerState(makeExtensionSigner(pk));
+          setSigner(makeExtensionSigner(pk));
         }
       } catch {
         /* extension declined or unavailable — leave signer null */
@@ -129,16 +145,10 @@ export function SignerProvider({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [session, signer]);
-
-  const setSigner = useCallback((next: SignerHandle) => {
-    setSignerState((prev) => {
-      if (prev && prev !== next) prev.close?.();
-      return next;
-    });
-  }, []);
+  }, [session, signer, setSigner]);
 
   const clearSigner = useCallback(async () => {
+    signerRef.current = null;
     setSignerState((prev) => {
       prev?.close?.();
       return null;
@@ -211,13 +221,17 @@ export function SignerProvider({
 
   const signWithPrompt = useCallback(
     async (event: UnsignedNostrEvent): Promise<NostrEvent> => {
-      let active = signer;
+      // Read from the ref (not a closed-over state value) so a handler
+      // that called `requestReSignIn()` a few lines earlier and THEN
+      // falls through to `signWithPrompt` can see the freshly attached
+      // signer instead of firing a second modal.
+      let active = signerRef.current;
       if (!active) {
         active = await requestReSignIn();
       }
       return active.sign(event);
     },
-    [signer, requestReSignIn]
+    [requestReSignIn]
   );
 
   const needsReSignIn = !!session && !signer && !sessionLoading;
