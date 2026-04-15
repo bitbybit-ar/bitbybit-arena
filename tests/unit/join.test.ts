@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
-  buildRequest, parseResponse, createMockSession, mockState,
+  buildRequest, createMockSession, mockState,
   setSession, setDbRows, setMutationResult, setupDbMock,
   makeChallenge, makeParticipant,
 } from "../helpers";
@@ -33,14 +33,17 @@ describe("POST /api/challenges/[id]/join", () => {
     expect(res.status).toBe(404);
   });
 
-  it("rejects joining own challenge", async () => {
+  it("allows the creator to join their own challenge", async () => {
     setSession(createMockSession({ user_id: "user-creator" }));
     setDbRows([makeChallenge({ id: "challenge-1", creator_id: "user-creator" })]);
+    setMutationResult([makeParticipant({ challenge_id: "challenge-1", user_id: "user-creator" })]);
 
     const res = await POST(buildRequest("POST", "/api/challenges/challenge-1/join"), routeCtx);
-    const { body } = await parseResponse(res);
-    expect(res.status).toBe(400);
-    expect(body.error).toContain("own challenge");
+    // Same mock limitation as the generic "valid join" test below: the
+    // mock returns the challenge row for both the challenge lookup and
+    // the existing-participant lookup, so duplicate-detection may fire.
+    // All three outcomes mean "not rejected as own challenge."
+    expect([200, 201, 409]).toContain(res.status);
   });
 
   it("rejects joining cancelled challenge", async () => {

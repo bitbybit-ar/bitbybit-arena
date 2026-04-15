@@ -16,9 +16,6 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
   if (challenge.status !== "open" && challenge.status !== "in_progress") {
     throw new BadRequestError("This challenge is not accepting participants");
   }
-  if (challenge.creator_id === session!.user_id) {
-    throw new BadRequestError("You cannot join your own challenge");
-  }
 
   // Check if already joined (including withdrawn — allow rejoin)
   const [existing] = await db

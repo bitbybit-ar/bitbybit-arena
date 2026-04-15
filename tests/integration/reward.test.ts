@@ -248,6 +248,76 @@ describe("Integration: Zap rewards", () => {
       expect(res.status).toBe(400);
     });
 
+    it("creator who participates wins first_to_complete as retained (no payout)", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 5000,
+        prize_distribution: "first_to_complete",
+        status: "open",
+      });
+      // Creator-as-participant: finished first. Winner A is second.
+      const pCreator = await seedParticipant(challenge.id, creator.id, {
+        status: "active",
+      });
+      const pA = await seedParticipant(challenge.id, winnerA.id, {
+        status: "active",
+      });
+      await markParticipantCompleted(pCreator.id, 30);
+      await markParticipantCompleted(pA.id, 10);
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { status, body } = await parseResponse(res);
+      expect(status).toBe(200);
+      expect(body.data.winners).toHaveLength(1);
+      expect(body.data.winners[0].user_id).toBe(creator.id);
+      expect(body.data.winners[0].retained).toBe(true);
+      // Retained entries come back with a null lightning_address since
+      // no payout will be issued — the endpoint must not throw 400 for a
+      // "missing" LN address on the creator.
+      expect(body.data.winners[0].lightning_address).toBeNull();
+      // Metadata lookup must be skipped entirely for the creator.
+      expect(metadataMock).not.toHaveBeenCalled();
+    });
+
+    it("tiered: creator in top 3 is retained, other winners are payable", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 10000,
+        prize_distribution: "tiered",
+        status: "open",
+      });
+      const pCreator = await seedParticipant(challenge.id, creator.id, {
+        status: "active",
+      });
+      const pA = await seedParticipant(challenge.id, winnerA.id, { status: "active" });
+      const pB = await seedParticipant(challenge.id, winnerB.id, { status: "active" });
+      // Creator wins 2nd place (30%), winnerA wins 1st (50%), winnerB wins 3rd (20%).
+      await markParticipantCompleted(pA.id, 30);
+      await markParticipantCompleted(pCreator.id, 20);
+      await markParticipantCompleted(pB.id, 10);
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { body } = await parseResponse(res);
+      expect(body.data.winners).toHaveLength(3);
+
+      const creatorEntry = body.data.winners.find(
+        (w: { user_id: string }) => w.user_id === creator.id
+      );
+      expect(creatorEntry.retained).toBe(true);
+      expect(creatorEntry.amount_sats).toBe(3000);
+
+      const payableTotal = body.data.winners
+        .filter((w: { retained: boolean }) => !w.retained)
+        .reduce((sum: number, w: { amount_sats: number }) => sum + w.amount_sats, 0);
+      expect(payableTotal).toBe(7000);
+    });
+
     it("400 when prize_distribution is 'none'", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1000,

@@ -91,9 +91,15 @@ interface RewardWinner {
   user_id: string;
   nostr_pubkey: string;
   display_name: string;
-  lightning_address: string;
+  // null when retained=true — no payout is owed to the winner.
+  lightning_address: string | null;
   amount_sats: number;
+  retained: boolean;
 }
+
+// A winner we're actually going to pay. Narrowed inside handleClaimReward
+// so the zap loop doesn't have to re-check `lightning_address` for null.
+type PayableWinner = RewardWinner & { lightning_address: string; retained: false };
 
 interface CompletionItem {
   id: string;
@@ -184,6 +190,9 @@ export default function ChallengeDetailPage() {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const handleJoin = async () => {
+    // Creators joining their own challenge get a one-time warning so they
+    // know prize shares they win won't be paid out to themselves.
+    if (isCreator && !window.confirm(t("creatorJoinWarning"))) return;
     if (needsSigner) {
       try {
         await requestReSignIn();
@@ -216,6 +225,7 @@ export default function ChallengeDetailPage() {
   };
 
   const handleWithdraw = async () => {
+    if (!window.confirm(t("leaveChallengeConfirm"))) return;
     if (needsSigner) {
       try {
         await requestReSignIn();
@@ -366,13 +376,37 @@ export default function ChallengeDetailPage() {
         return;
       }
       const winners: RewardWinner[] = json.data.winners;
+      // Creator entries come back with retained=true. They're included in
+      // the winners list for the kind:30101 result event, but the creator
+      // doesn't pay themselves — so we skip them in the zap queue and
+      // surface how many sats they kept.
+      const retainedTotal = winners
+        .filter((w) => w.retained)
+        .reduce((sum, w) => sum + w.amount_sats, 0);
+      // The server guarantees every non-retained winner has a resolved
+      // lightning address (it 400s otherwise), so this predicate never
+      // drops a row in practice — it just narrows the type for the loop.
+      const payable = winners.filter(
+        (w): w is PayableWinner => !w.retained && w.lightning_address !== null
+      );
+      if (payable.length === 0) {
+        setRewardStatus(t("rewardAllRetained"));
+        await fetch(`/api/challenges/${challengeId}/reward`, { method: "PATCH" });
+        try {
+          await publishResultEvent(winners);
+        } catch {
+          /* non-blocking */
+        }
+        await fetchAll();
+        return;
+      }
       if (typeof window === "undefined" || !window.webln) {
         setRewardError(t("rewardNoWebln"));
         return;
       }
       await window.webln.enable();
 
-      for (const winner of winners) {
+      for (const winner of payable) {
         setRewardStatus(
           t("rewardPaying", {
             name: winner.display_name,
@@ -413,7 +447,11 @@ export default function ChallengeDetailPage() {
         /* non-blocking — recovery UI will handle it */
       }
 
-      setRewardStatus(t("rewardSent"));
+      setRewardStatus(
+        retainedTotal > 0
+          ? `${t("rewardSent")} ${t("rewardRetainedByCreator", { amount: retainedTotal })}`
+          : t("rewardSent")
+      );
       await fetchAll();
     } catch (err) {
       setRewardError(
@@ -665,17 +703,23 @@ export default function ChallengeDetailPage() {
 
           <SignerRequiredNotice />
 
-          {/* Actions */}
-          {!isCreator && !isParticipant && challenge.status === "open" && (
-            <Button onClick={handleJoin} disabled={actionLoading === "join"}>
-              {actionLoading === "join" ? t("joining") : t("joinChallenge")}
-            </Button>
-          )}
-          {isParticipant && (
-            <Button variant="outline" onClick={handleWithdraw} disabled={actionLoading === "withdraw"}>
-              {actionLoading === "withdraw" ? t("withdrawing") : t("withdrawFromChallenge")}
-            </Button>
-          )}
+          {/* Join toggle — same behavior for creator and participant. The
+              creator just sees an extra confirmation before joining, and
+              if they win a prize share it comes back marked `retained`. */}
+          {(challenge.status === "open" || challenge.status === "in_progress") &&
+            (isParticipant ? (
+              <Button
+                variant="outline"
+                onClick={handleWithdraw}
+                disabled={actionLoading === "withdraw"}
+              >
+                {actionLoading === "withdraw" ? t("leaving") : t("joinedToggle")}
+              </Button>
+            ) : (
+              <Button onClick={handleJoin} disabled={actionLoading === "join"}>
+                {actionLoading === "join" ? t("joining") : t("joinChallenge")}
+              </Button>
+            ))}
           {isCreator && (
             <p className={styles.creatorBadge}>{t("yourChallenge")}</p>
           )}

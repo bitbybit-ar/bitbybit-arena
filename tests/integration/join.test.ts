@@ -51,7 +51,7 @@ describe("Integration: Join / Withdraw", () => {
       expect(body.data.status).toBe("active");
     });
 
-    it("rejects joining own challenge", async () => {
+    it("allows the creator to join their own challenge as a participant", async () => {
       setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
 
       const res = await POST(
@@ -60,8 +60,10 @@ describe("Integration: Join / Withdraw", () => {
       );
       const { status, body } = await parseResponse(res);
 
-      expect(status).toBe(400);
-      expect(body.error).toContain("own challenge");
+      expect(status).toBe(201);
+      expect(body.data.challenge_id).toBe(challenge.id);
+      expect(body.data.user_id).toBe(creator.id);
+      expect(body.data.status).toBe("active");
     });
 
     it("rejects duplicate join", async () => {
