@@ -113,10 +113,12 @@
 }
 
 .creatorBadge {
-  display: inline-block;
+  display: block;
+  width: fit-content;
+  margin-left: auto;
   padding: $spacing-8 $spacing-16;
-  background: alpha($color-primary, 10%);
-  color: $color-primary;
+  background: alpha($color-accent, 10%);
+  color: $color-accent;
   border-radius: $border-radius-full;
   font-size: $font-size-sm;
   font-weight: $font-weight-semibold;
