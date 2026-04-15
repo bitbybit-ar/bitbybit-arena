@@ -117,6 +117,48 @@ describe("Integration: Completions & Verify", () => {
       );
       expect(res.status).toBe(400);
     });
+
+    it("self-approves creator_approval proofs when submitter is the creator", async () => {
+      // Creator joins their own challenge and submits a proof. No one
+      // else can judge them, so the proof lands approved and progress
+      // bumps in the same request.
+      await seedParticipant(challenge.id, creator.id, { status: "active" });
+      setSession(makeSession(creator.id));
+
+      const res = await completionsRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/completions`, {
+          content: "I ran the race myself",
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { status, body } = await parseResponse(res);
+
+      expect(status).toBe(201);
+      expect(body.data.status).toBe("approved");
+      expect(body.data.reviewed_at).not.toBeNull();
+
+      const [creatorRow] = await testDb
+        .select()
+        .from(participants)
+        .where(eq(participants.user_id, creator.id))
+        .limit(1);
+      expect(creatorRow.progress).toBe(1);
+    });
+
+    it("does not auto-approve proofs from a regular participant", async () => {
+      setSession(makeSession(participant.id));
+
+      const res = await completionsRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/completions`, {
+          content: "Please review this proof",
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { status, body } = await parseResponse(res);
+
+      expect(status).toBe(201);
+      expect(body.data.status).toBe("pending");
+    });
   });
 
   describe("GET /api/challenges/[id]/completions — list", () => {

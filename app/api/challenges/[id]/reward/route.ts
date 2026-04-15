@@ -25,8 +25,13 @@ interface WinnerPayload {
   user_id: string;
   nostr_pubkey: string;
   display_name: string;
-  lightning_address: string;
+  // null when retained=true — the creator isn't paid themselves and
+  // we don't even resolve their address from relay metadata.
+  lightning_address: string | null;
   amount_sats: number;
+  // True when the winner is the challenge creator. The UI skips retained
+  // entries in the zap queue and displays "X sats retained by creator".
+  retained: boolean;
 }
 
 // Tiered payout: 50% / 30% / 20% of the prize pot rounded to whole sats
@@ -114,8 +119,11 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
   // Fill in missing lightning addresses from kind:0 metadata for every
   // winner in parallel. Each relay fetch has an 8s timeout, so doing
   // them sequentially would make split-mode rewards hang for 8s × N.
+  // Retained (creator) winners don't need a resolved address — they
+  // aren't paid, so we skip the lookup entirely.
   const resolvedLightningAddresses = await Promise.all(
     selected.map(async (row) => {
+      if (row.user_id === challenge.creator_id) return null;
       if (row.lightning_address) return row.lightning_address;
       if (!row.nostr_pubkey) return null;
       const meta = await fetchNostrMetadataServer(row.nostr_pubkey);
@@ -124,18 +132,30 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
   );
 
   const winners: WinnerPayload[] = selected.map((row, i) => {
-    const ln = resolvedLightningAddresses[i];
-    if (!ln) {
-      throw new BadRequestError(
-        `Winner ${row.display_name} has no lightning address on their Nostr profile`
-      );
+    const retained = row.user_id === challenge.creator_id;
+    if (!retained) {
+      const ln = resolvedLightningAddresses[i];
+      if (!ln) {
+        throw new BadRequestError(
+          `Winner ${row.display_name} has no lightning address on their Nostr profile`
+        );
+      }
+      return {
+        user_id: row.user_id,
+        nostr_pubkey: row.nostr_pubkey,
+        display_name: row.display_name,
+        lightning_address: ln,
+        amount_sats: amounts[i],
+        retained: false,
+      };
     }
     return {
       user_id: row.user_id,
       nostr_pubkey: row.nostr_pubkey,
       display_name: row.display_name,
-      lightning_address: ln,
+      lightning_address: null,
       amount_sats: amounts[i],
+      retained: true,
     };
   });
 

@@ -14,7 +14,7 @@ import {
 } from "@/lib/db/schema";
 import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
 import { verifyHashtagPost } from "@/lib/nostr/verify-hashtag-post";
-import { pickVerificationMethod } from "@/lib/api/verification-methods";
+import { pickVerificationMethod, shouldAutoApprove } from "@/lib/api/verification-methods";
 import type { VerificationMethod } from "@/lib/types";
 
 function isUniqueViolation(err: unknown): boolean {
@@ -150,7 +150,11 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
       throw new BadRequestError("Proof content must be at least 5 characters");
     }
     resolvedContent = content.trim();
-    autoApprove = selectedMethod === "automatic";
+    autoApprove = shouldAutoApprove(
+      selectedMethod,
+      challenge.creator_id,
+      session!.user_id
+    );
   }
 
   let completion: typeof checkpoint_completions.$inferSelect;
