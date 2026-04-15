@@ -7,6 +7,7 @@ import { useRouter } from "@/i18n/routing";
 import { ArrowRightIcon, BadgeIcon, BoltIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
+import { Modal } from "@/components/ui/modal";
 import { BlockLoader } from "@/components/ui/block-loader";
 import { Block } from "@/components/common/Block";
 import { ImageUpload } from "@/components/common/ImageUpload";
@@ -146,6 +147,8 @@ export default function ChallengeDetailPage() {
   const [rewardError, setRewardError] = useState<string | null>(null);
   const [rewardStatus, setRewardStatus] = useState<string | null>(null);
   const [shareContext, setShareContext] = useState<ShareContext | null>(null);
+  const [showCreatorJoinWarning, setShowCreatorJoinWarning] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -189,10 +192,23 @@ export default function ChallengeDetailPage() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const handleJoin = async () => {
-    // Creators joining their own challenge get a one-time warning so they
-    // know prize shares they win won't be paid out to themselves.
-    if (isCreator && !window.confirm(t("creatorJoinWarning"))) return;
+  // Click handler for the Join button. Creators joining their own
+  // challenge see a warning modal first (they don't pay themselves if
+  // they win); everyone else joins immediately.
+  const handleJoinClick = () => {
+    if (isCreator) {
+      setShowCreatorJoinWarning(true);
+      return;
+    }
+    void executeJoin();
+  };
+
+  const confirmCreatorJoin = () => {
+    setShowCreatorJoinWarning(false);
+    void executeJoin();
+  };
+
+  const executeJoin = async () => {
     if (needsSigner) {
       try {
         await requestReSignIn();
@@ -224,8 +240,18 @@ export default function ChallengeDetailPage() {
     }
   };
 
-  const handleWithdraw = async () => {
-    if (!window.confirm(t("leaveChallengeConfirm"))) return;
+  // Click handler for the "Joined ✓" toggle. Always opens the
+  // leave-confirmation modal so users don't lose progress by accident.
+  const handleWithdrawClick = () => {
+    setShowLeaveConfirm(true);
+  };
+
+  const confirmLeave = () => {
+    setShowLeaveConfirm(false);
+    void executeWithdraw();
+  };
+
+  const executeWithdraw = async () => {
     if (needsSigner) {
       try {
         await requestReSignIn();
@@ -710,13 +736,13 @@ export default function ChallengeDetailPage() {
             (isParticipant ? (
               <Button
                 variant="outline"
-                onClick={handleWithdraw}
+                onClick={handleWithdrawClick}
                 disabled={actionLoading === "withdraw"}
               >
                 {actionLoading === "withdraw" ? t("leaving") : t("joinedToggle")}
               </Button>
             ) : (
-              <Button onClick={handleJoin} disabled={actionLoading === "join"}>
+              <Button onClick={handleJoinClick} disabled={actionLoading === "join"}>
                 {actionLoading === "join" ? t("joining") : t("joinChallenge")}
               </Button>
             ))}
@@ -1076,6 +1102,48 @@ export default function ChallengeDetailPage() {
           context={shareContext}
           onClose={() => setShareContext(null)}
         />
+      )}
+
+      {showCreatorJoinWarning && (
+        <Modal
+          onClose={() => setShowCreatorJoinWarning(false)}
+          title={t("creatorJoinWarningTitle")}
+          size="sm"
+        >
+          <p className={styles.confirmMessage}>{t("creatorJoinWarning")}</p>
+          <div className={styles.confirmActions}>
+            <Button
+              variant="outline"
+              onClick={() => setShowCreatorJoinWarning(false)}
+            >
+              {tCommon("cancel")}
+            </Button>
+            <Button onClick={confirmCreatorJoin}>
+              {tCommon("continue")}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {showLeaveConfirm && (
+        <Modal
+          onClose={() => setShowLeaveConfirm(false)}
+          title={t("leaveChallengeTitle")}
+          size="sm"
+        >
+          <p className={styles.confirmMessage}>{t("leaveChallengeConfirm")}</p>
+          <div className={styles.confirmActions}>
+            <Button
+              variant="outline"
+              onClick={() => setShowLeaveConfirm(false)}
+            >
+              {tCommon("cancel")}
+            </Button>
+            <Button onClick={confirmLeave}>
+              {tCommon("continue")}
+            </Button>
+          </div>
+        </Modal>
       )}
     </div>
   );

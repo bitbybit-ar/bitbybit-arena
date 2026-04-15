@@ -348,3 +348,17 @@
   font-style: italic;
   margin: 0;
 }
+
+.confirmMessage {
+  color: $color-text-primary;
+  line-height: $line-height-base;
+  margin: 0 0 $spacing-24;
+  font-size: $font-size-base;
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-12;
+  flex-wrap: wrap;
+}
