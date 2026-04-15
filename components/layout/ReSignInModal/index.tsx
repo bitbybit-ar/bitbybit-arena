@@ -10,7 +10,7 @@ import { NsecSignerForm } from "@/components/auth/NsecSignerForm";
 import { NostrConnectPanel } from "@/components/auth/NostrConnectPanel";
 import { ArrowLeftIcon } from "@/components/icons";
 import { useSignerContext } from "@/lib/signer-context";
-import type { SignerHandle } from "@/lib/nostr/signers";
+import type { SignerHandle, SignerType } from "@/lib/nostr/signers";
 import { type AuthError, reSignInError } from "@/lib/nostr/auth-errors";
 import { useAuthErrorLookup } from "@/lib/hooks/useAuthErrorLookup";
 import styles from "./re-sign-in-modal.module.scss";
@@ -22,6 +22,34 @@ interface ReSignInModalProps {
 }
 
 type Method = "pick" | "nsec" | "nip46";
+
+const ALL_METHODS: SignerType[] = ["extension", "nip46", "nsec"];
+
+/**
+ * Restrict re-attach options based on how the user originally signed in.
+ * The hierarchy treats extension as strongest and nsec as weakest: a user
+ * is only ever offered methods at least as strong as their original one,
+ * so an extension user can't fall back to pasting their nsec just because
+ * they reloaded the tab.
+ *
+ * - Extension login → only extension
+ * - NIP-46 login    → extension or NIP-46
+ * - nsec login      → all three (the user already accepted the risk)
+ * - Login mode (no session yet) or sessions issued before this field
+ *   existed → all three (no preference recorded)
+ */
+function methodsForSigner(signerType: SignerType | null | undefined): SignerType[] {
+  switch (signerType) {
+    case "extension":
+      return ["extension"];
+    case "nip46":
+      return ["extension", "nip46"];
+    case "nsec":
+      return ALL_METHODS;
+    default:
+      return ALL_METHODS;
+  }
+}
 
 /**
  * Signer modal. Serves two flows:
@@ -60,6 +88,12 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
 
   const expectedPubkey = session?.nostr_pubkey;
   const isLoginMode = !session;
+  // Login mode hasn't picked a method yet → offer all three. Re-attach
+  // mode narrows the picker to methods at least as strong as the user's
+  // original sign-in.
+  const allowedMethods = isLoginMode
+    ? ALL_METHODS
+    : methodsForSigner(session?.signer_type);
 
   const handleError = (err: AuthError) => {
     setError(lookupAuthError(err));
@@ -127,6 +161,7 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
             onSelectNip46={() => setMethod("nip46")}
             onSelectNsec={() => setMethod("nsec")}
             disabled={busy}
+            allowedMethods={allowedMethods}
           />
 
           {error && <p className={styles.error}>{error}</p>}

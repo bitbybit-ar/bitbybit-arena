@@ -5,8 +5,11 @@ import { BadRequestError } from "@/lib/api/errors";
 import { validateAuthEvent } from "@/lib/nostr/verify";
 import { fetchNostrMetadataServer } from "@/lib/nostr/server-metadata";
 import { createSession } from "@/lib/auth";
+import type { SignerType } from "@/lib/nostr/signers";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+
+const VALID_SIGNER_TYPES: SignerType[] = ["extension", "nsec", "nip46"];
 
 // GET: Issue a challenge for NIP-42 auth
 export const GET = apiHandler(
@@ -30,8 +33,21 @@ export const GET = apiHandler(
 // POST: Verify signed event and authenticate
 export const POST = apiHandler(
   async (req, { db }) => {
-    const { signedEvent } = await req.json();
+    const { signedEvent, signer_type: signerTypeInput } = await req.json();
     if (!signedEvent) throw new BadRequestError("Missing signed event");
+
+    let signerType: SignerType | null = null;
+    if (signerTypeInput !== undefined && signerTypeInput !== null) {
+      if (
+        typeof signerTypeInput !== "string" ||
+        !VALID_SIGNER_TYPES.includes(signerTypeInput as SignerType)
+      ) {
+        throw new BadRequestError(
+          `signer_type must be one of: ${VALID_SIGNER_TYPES.join(", ")}`
+        );
+      }
+      signerType = signerTypeInput as SignerType;
+    }
 
     // Get challenge from cookie
     const cookieStore = await cookies();
@@ -120,6 +136,7 @@ export const POST = apiHandler(
       avatar_url: user.avatar_url,
       locale: (user.locale as "es" | "en") || "es",
       nostr_pubkey: pubkey,
+      signer_type: signerType,
     });
 
     cookieStore.set("session", token, {

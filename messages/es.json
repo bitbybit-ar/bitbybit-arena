@@ -385,6 +385,7 @@
     "badgeNamePlaceholder": "Ej: Maestro Zen 30 Días",
     "badgeImageLabel": "Imagen del badge",
     "createFailed": "No se pudo crear el desafío. Intentá de nuevo.",
+    "signingFailed": "No se pudo firmar el evento del desafío. Revisá tu firmante de Nostr e intentá de nuevo.",
     "startsAtLabel": "Fecha de inicio",
     "endsAtLabel": "Fecha de fin",
     "creating": "Creando...",

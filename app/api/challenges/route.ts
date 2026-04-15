@@ -25,6 +25,10 @@ const PAYOUT_DISTRIBUTIONS: PrizeDistribution[] = ["first_to_complete", "split",
 const VALID_CHECKPOINT_MODE: CheckpointMode[] = ["none", "sequential", "parallel"];
 const HEX_64 = /^[0-9a-f]{64}$/i;
 const HASHTAG = /^[a-z0-9_]{2,50}$/;
+// Mirrors what slugify() in lib/utils.ts can produce — including the
+// edge case of an empty base (e.g. an all-emoji title), which leaves
+// the slug starting with the random suffix's leading dash.
+const SLUG = /^[a-z0-9-]{1,100}$/;
 
 function normalizeHashtag(raw: unknown): string {
   if (typeof raw !== "string") {
@@ -259,7 +263,7 @@ export const GET = apiHandler(
 export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
   const body = await req.json();
 
-  const { title, description, type, tags, goal, unit, verification_methods, nostr_action_target_event_id, nostr_hashtag, checkpoint_mode, checkpoints: checkpointsInput, prize_amount_sats, prize_distribution, zap_goal_event_id, badge_name, badge_image_url, starts_at, ends_at } = body;
+  const { slug: slugInput, nostr_event_id: nostrEventIdInput, title, description, type, tags, goal, unit, verification_methods, nostr_action_target_event_id, nostr_hashtag, checkpoint_mode, checkpoints: checkpointsInput, prize_amount_sats, prize_distribution, zap_goal_event_id, badge_name, badge_image_url, starts_at, ends_at } = body;
 
   const resolvedTags = normalizeTags(tags);
   const resolvedBadgeImageUrl = validateHttpUrl(
@@ -338,12 +342,38 @@ export const POST = apiHandler(async (req: NextRequest, { session, db }) => {
   const normalizedCheckpoints =
     resolvedMode === "none" ? [] : normalizeCheckpoints(checkpointsInput);
 
-  const slug = slugify(title);
+  // Prefer the slug the client signed into the kind:30100 event so the
+  // persisted row and the published Nostr event stay in lockstep. Fall back
+  // to server-side slugify for legacy callers (tests, manual API use) that
+  // don't pre-sign anything.
+  let slug: string;
+  if (slugInput !== undefined && slugInput !== null) {
+    if (typeof slugInput !== "string" || !SLUG.test(slugInput)) {
+      throw new BadRequestError(
+        "slug must be 1-100 characters of lowercase letters, digits, or hyphens"
+      );
+    }
+    slug = slugInput;
+  } else {
+    slug = slugify(title);
+  }
+
+  let resolvedNostrEventId: string | null = null;
+  if (nostrEventIdInput !== undefined && nostrEventIdInput !== null) {
+    if (typeof nostrEventIdInput !== "string" || !HEX_64.test(nostrEventIdInput)) {
+      throw new BadRequestError(
+        "nostr_event_id must be a 64-character hex event id"
+      );
+    }
+    resolvedNostrEventId = nostrEventIdInput.toLowerCase();
+  }
+
   const newChallengeId = crypto.randomUUID();
 
   const challengeValues = {
     id: newChallengeId,
     creator_id: session!.user_id,
+    nostr_event_id: resolvedNostrEventId,
     slug,
     title: title.trim(),
     description: description.trim(),

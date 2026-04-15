@@ -385,6 +385,7 @@
     "badgeNamePlaceholder": "E.g., 30-Day Zen Master",
     "badgeImageLabel": "Badge image",
     "createFailed": "Could not create the challenge. Try again.",
+    "signingFailed": "Could not sign the challenge event. Check your Nostr signer and try again.",
     "startsAtLabel": "Start date",
     "endsAtLabel": "End date",
     "creating": "Creating...",

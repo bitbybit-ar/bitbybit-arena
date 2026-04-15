@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ExtensionSignerButton } from "@/components/auth/ExtensionSignerButton";
 import { LinkIcon, KeyIcon } from "@/components/icons";
-import type { SignerHandle } from "@/lib/nostr/signers";
+import type { SignerHandle, SignerType } from "@/lib/nostr/signers";
 import type { AuthError } from "@/lib/nostr/auth-errors";
 import styles from "./signer-method-buttons.module.scss";
 
@@ -25,6 +25,13 @@ interface SignerMethodButtonsProps {
   /** Disables the two picker buttons while the parent is busy. */
   disabled?: boolean;
   /**
+   * Restrict which signer methods are rendered. Defaults to all three.
+   * Used by the re-attach flow to hide methods that are weaker than the
+   * one the user originally signed in with — e.g. an extension user
+   * shouldn't be re-prompted with an nsec paste form.
+   */
+  allowedMethods?: SignerType[];
+  /**
    * Play the stagger fade-in when mounted. Useful on first page load
    * (sign-in page). Should stay off inside modals that re-mount the
    * picker on back navigation — otherwise the animation replays every
@@ -39,6 +46,8 @@ interface SignerMethodButtonsProps {
  * from `ExtensionSignerButton`; the NIP-46 and nsec options live
  * here as plain picker buttons that delegate to the parent.
  */
+const ALL_METHODS: SignerType[] = ["extension", "nip46", "nsec"];
+
 export function SignerMethodButtons({
   onSigner,
   onError,
@@ -46,6 +55,7 @@ export function SignerMethodButtons({
   onSelectNip46,
   onSelectNsec,
   disabled,
+  allowedMethods = ALL_METHODS,
   animate = false,
 }: SignerMethodButtonsProps) {
   const t = useTranslations("login");
@@ -54,47 +64,57 @@ export function SignerMethodButtons({
     ? `${styles.methods} ${styles.animate}`
     : styles.methods;
 
+  const showExtension = allowedMethods.includes("extension");
+  const showNip46 = allowedMethods.includes("nip46");
+  const showNsec = allowedMethods.includes("nsec");
+
   return (
     <div className={wrapperClassName}>
-      <ExtensionSignerButton
-        onSigner={onSigner}
-        onError={onError}
-        expectedPubkey={expectedPubkey}
-      />
+      {showExtension && (
+        <ExtensionSignerButton
+          onSigner={onSigner}
+          onError={onError}
+          expectedPubkey={expectedPubkey}
+        />
+      )}
 
-      <Button
-        type="button"
-        variant="primary"
-        fullWidth
-        className={styles.methodButton}
-        onClick={onSelectNip46}
-        disabled={disabled}
-      >
-        <LinkIcon size={20} />
-        <div className={styles.methodInfo}>
-          <span className={styles.methodName}>{t("connectTitle")}</span>
-          <span className={styles.methodDescription}>
-            {t("connectDescription")}
-          </span>
-        </div>
-      </Button>
+      {showNip46 && (
+        <Button
+          type="button"
+          variant="primary"
+          fullWidth
+          className={styles.methodButton}
+          onClick={onSelectNip46}
+          disabled={disabled}
+        >
+          <LinkIcon size={20} />
+          <div className={styles.methodInfo}>
+            <span className={styles.methodName}>{t("connectTitle")}</span>
+            <span className={styles.methodDescription}>
+              {t("connectDescription")}
+            </span>
+          </div>
+        </Button>
+      )}
 
-      <Button
-        type="button"
-        variant="ghost"
-        fullWidth
-        className={styles.methodButton}
-        onClick={onSelectNsec}
-        disabled={disabled}
-      >
-        <KeyIcon size={20} />
-        <div className={styles.methodInfo}>
-          <span className={styles.methodName}>{t("nsecTitle")}</span>
-          <span className={styles.methodDescription}>
-            {t("nsecDescription")}
-          </span>
-        </div>
-      </Button>
+      {showNsec && (
+        <Button
+          type="button"
+          variant="ghost"
+          fullWidth
+          className={styles.methodButton}
+          onClick={onSelectNsec}
+          disabled={disabled}
+        >
+          <KeyIcon size={20} />
+          <div className={styles.methodInfo}>
+            <span className={styles.methodName}>{t("nsecTitle")}</span>
+            <span className={styles.methodDescription}>
+              {t("nsecDescription")}
+            </span>
+          </div>
+        </Button>
+      )}
     </div>
   );
 }

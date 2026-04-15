@@ -94,6 +94,7 @@ export function makeSession(userId: string, overrides: Record<string, unknown> =
     avatar_url: null,
     locale: "es",
     nostr_pubkey: "test_pubkey",
+    signer_type: null,
     ...overrides,
   };
 }

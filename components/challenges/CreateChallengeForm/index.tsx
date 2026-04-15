@@ -17,10 +17,13 @@ import {
   buildBadgeDefinitionEvent,
 } from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
+import type { NostrEvent } from "@/lib/nostr/types";
 import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
+import { isSignerCancellation } from "@/lib/nostr/auth-errors";
 import { useSignerContext } from "@/lib/signer-context";
 import { ShareOnNostrModal } from "@/components/share/ShareOnNostrModal";
 import type { VerificationMethod } from "@/lib/types";
+import { slugify } from "@/lib/utils";
 import styles from "./create-challenge-form.module.scss";
 
 type ChallengeType = "one_time" | "streak" | "competition" | "race" | "creative";
@@ -228,10 +231,46 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
 
     setLoading(true);
     try {
+      // Sign the kind:30100 challenge event BEFORE touching the database.
+      // If the user cancels the extension prompt we must not leave an
+      // orphan row behind. The slug is generated client-side so the
+      // signed event and the persisted row stay in lockstep — the server
+      // accepts the same slug + event id verbatim in the POST body.
+      const slug = slugify(title);
+      const challengeEvent = buildChallengeEvent({
+        slug,
+        title,
+        description,
+        type,
+        tags,
+        goal: goal ? Number(goal) : undefined,
+        unit: unit || undefined,
+        verification,
+        badgeName: badgeName || undefined,
+        badgeImageUrl: badgeImage?.url || undefined,
+        startsAt: startsAt || undefined,
+        endsAt: endsAt || undefined,
+      });
+
+      let signedChallenge: NostrEvent;
+      try {
+        signedChallenge = await signWithPrompt(challengeEvent);
+      } catch (err) {
+        // Distinguish a deliberate cancel (silent) from an unexpected
+        // signer failure (surface a message). Either way we abort before
+        // touching the DB so no orphan row is created.
+        if (!isSignerCancellation(err)) {
+          setError(t("signingFailed"));
+        }
+        return;
+      }
+
       const res = await fetch("/api/challenges", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          slug,
+          nostr_event_id: signedChallenge.id,
           title,
           description,
           type,
@@ -279,26 +318,11 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
         return;
       }
 
-      try {
-        const challengeEvent = buildChallengeEvent({
-          slug: json.data.slug,
-          title,
-          description,
-          type,
-          tags,
-          goal: goal ? Number(goal) : undefined,
-          unit: unit || undefined,
-          verification,
-          badgeName: badgeName || undefined,
-          badgeImageUrl: badgeImage?.url || undefined,
-          startsAt: startsAt || undefined,
-          endsAt: endsAt || undefined,
-        });
-        const signed = await signWithPrompt(challengeEvent);
-        await publishSignedEvent(signed);
-      } catch {
+      // Publishing to relays is best-effort — the canonical record now lives
+      // in our DB regardless of relay reachability.
+      publishSignedEvent(signedChallenge).catch(() => {
         /* non-blocking */
-      }
+      });
 
       // NIP-58: publish a Badge Definition (kind 30009) so the awards we
       // emit later can `a`-tag it per spec. The challenge slug doubles as
