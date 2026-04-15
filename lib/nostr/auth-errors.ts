@@ -34,3 +34,30 @@ export const reSignInError = (key: ReSignInErrorKey): AuthError => ({
   namespace: "reSignIn",
   key,
 });
+
+/**
+ * Tell whether a signer failure was a deliberate cancellation rather than
+ * an unexpected error. Used by sign-then-persist flows that want to bail
+ * silently on cancel but still surface real errors to the user.
+ *
+ * Two sources to recognise:
+ *   1. Our own re-sign-in modal rejects with sentinel messages
+ *      (`re_sign_in_cancelled`, `re_sign_in_superseded`) when the user
+ *      closes it or another prompt supersedes it.
+ *   2. NIP-07 extensions throw plain Errors whose message contains
+ *      "rejected" / "denied" / "cancel" when the user clicks Reject.
+ *      Extension vendors don't standardise the wording, so this is a
+ *      best-effort substring match — same heuristic used in
+ *      ExtensionSignerButton.
+ */
+export function isSignerCancellation(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    msg === "re_sign_in_cancelled" ||
+    msg === "re_sign_in_superseded" ||
+    msg.includes("rejected") ||
+    msg.includes("denied") ||
+    msg.includes("cancel")
+  );
+}

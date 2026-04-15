@@ -163,7 +163,7 @@ export function SignerProvider({
         const authRes = await fetch("/api/auth/nostr", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ signedEvent: signed }),
+          body: JSON.stringify({ signedEvent: signed, signer_type: next.type }),
         });
         if (!authRes.ok) return false;
 

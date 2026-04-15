@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import type { SignerType } from "@/lib/nostr/signers";
 
 export interface SessionUser {
   user_id: string;
@@ -8,6 +9,9 @@ export interface SessionUser {
   display_name: string;
   avatar_url: string | null;
   nostr_pubkey: string;
+  // Method the user originally authenticated with. `null` for sessions
+  // issued before this field was added — treat as "no preference".
+  signer_type: SignerType | null;
 }
 
 interface SessionContextValue {
