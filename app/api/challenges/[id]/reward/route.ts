@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { eq, and, asc, desc } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
-import { parseBody } from "@/lib/api/parse";
+import { parseOptionalBody } from "@/lib/api/parse";
 import {
   NotFoundError,
   ForbiddenError,
@@ -187,8 +187,11 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
     throw new ForbiddenError("Only the creator can record rewards");
   }
 
+  // PATCH accepts an empty body — the route still flips
+  // `rewards_paid_at` even when no winner is recorded — so use the
+  // optional variant that defaults to `{}` instead of 400ing.
   const { user_id: winnerUserId, receipt_event_id: receiptEventId } =
-    await parseBody(req, RecordRewardBodySchema);
+    await parseOptionalBody(req, RecordRewardBodySchema);
 
   if (winnerUserId && receiptEventId) {
     const [target] = await db

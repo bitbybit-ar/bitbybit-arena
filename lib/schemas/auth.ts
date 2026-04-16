@@ -3,29 +3,25 @@
  * the GET (challenge issue) and signout endpoints are bodyless.
  */
 import { z } from "zod";
-import { NostrPubkeySchema } from "./primitives";
 
 const SIGNER_TYPES = ["extension", "nsec", "nip46"] as const;
 
 export const SignerTypeSchema = z.enum(SIGNER_TYPES);
 
 /**
- * Signed kind:22242 NIP-42 auth event the client sends back after
- * signing the challenge. We don't validate the full kind:22242 shape
- * here — that's `validateAuthEvent`'s job, which actually checks the
- * Schnorr signature against the challenge tag. We just guard the
- * outer envelope so a missing pubkey or non-string content gives a
- * clean 400 instead of a runtime crash inside the validator.
+ * Outer envelope check only — `validateAuthEvent` does the real
+ * signature + challenge verification downstream. We require nothing
+ * past `pubkey: string` here so the API boundary stays as permissive
+ * as the legacy "if (!signedEvent) throw" did, and the cryptographic
+ * checks remain the single source of truth for "is this signed event
+ * actually valid". Test fixtures and any client that sends only the
+ * minimum fields will fail at the verifier, not at parse time.
  */
-const SignedAuthEventSchema = z.object({
-  pubkey: NostrPubkeySchema,
-  id: z.string(),
-  sig: z.string(),
-  kind: z.number(),
-  created_at: z.number(),
-  content: z.string(),
-  tags: z.array(z.array(z.string())),
-});
+const SignedAuthEventSchema = z
+  .object({
+    pubkey: z.string().min(1, "signed event is missing a pubkey"),
+  })
+  .passthrough();
 
 export const AuthNostrPostBodySchema = z.object({
   signedEvent: SignedAuthEventSchema,
