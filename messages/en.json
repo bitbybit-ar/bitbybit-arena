@@ -158,6 +158,8 @@
     "connectExpired": "Timed out. Try again.",
     "connectRetry": "Retry",
     "connectError": "Connection failed. Check the URL and try again.",
+    "connectApproveInSigner": "Approve the connection in your signer app",
+    "connectSlowHint": "Still waiting? Open your signer app (Amber, nsec.app...) and approve the request.",
     "connectCompatible": "Compatible with: Amber, nsec.app, Damus",
     "showKey": "Show key",
     "hideKey": "Hide key",

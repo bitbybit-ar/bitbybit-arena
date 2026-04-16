@@ -19,7 +19,7 @@ import {
   reSignInError,
 } from "@/lib/nostr/auth-errors";
 import { Button } from "@/components/ui/button";
-import { CopyIcon } from "@/components/icons";
+import { CopyIcon, LinkIcon } from "@/components/icons";
 import { BlockTower } from "@/components/common/BlockTower";
 import styles from "./nostr-connect-panel.module.scss";
 
@@ -31,6 +31,25 @@ interface NostrConnectPanelProps {
 }
 
 type ConnectStatus = "scanning" | "connecting" | "expired";
+
+const SLOW_HINT_MS = 10_000;
+
+/**
+ * Reject auth URLs that aren't http(s) before rendering them as a link.
+ * A malicious bunker could otherwise return `javascript:` and hijack the
+ * click.
+ */
+function safeAuthUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+  } catch {
+    /* not a valid URL */
+  }
+  return null;
+}
 
 /**
  * NIP-46 Nostr Connect flow. Shows a QR code with a nostrconnect:// URI
@@ -51,32 +70,58 @@ export function NostrConnectPanel({
   const [bunkerUrl, setBunkerUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const [authChallengeUrl, setAuthChallengeUrl] = useState<string | null>(null);
+  const [showSlowHint, setShowSlowHint] = useState(false);
 
-  const finalize = useCallback(
-    async (bunker: BunkerSigner) => {
-      try {
-        const pubkey = await bunker.getPublicKey();
-        if (expectedPubkey && pubkey !== expectedPubkey) {
-          await bunker.close();
-          onError?.(reSignInError("mismatch"));
-          return;
-        }
-        await onSigner(makeNip46Signer(bunker, pubkey));
-      } catch {
-        try {
-          await bunker.close();
-        } catch {
-          /* ignore */
-        }
-        onError?.(loginError("connectError"));
+  // Refs hold the latest callbacks/expected pubkey so the mount-once
+  // effect below doesn't need them in its dep list. Without this, any
+  // parent re-render that passes a fresh arrow (`signin-client.tsx`
+  // does) would restart the scan, abort the in-flight BunkerSigner,
+  // and invalidate whatever QR the user had just scanned.
+  const onSignerRef = useRef(onSigner);
+  const onErrorRef = useRef(onError);
+  const expectedPubkeyRef = useRef(expectedPubkey);
+  useEffect(() => {
+    onSignerRef.current = onSigner;
+    onErrorRef.current = onError;
+    expectedPubkeyRef.current = expectedPubkey;
+  }, [onSigner, onError, expectedPubkey]);
+
+  const abortRef = useRef<AbortController | null>(null);
+  const slowHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearSlowHint = useCallback(() => {
+    if (slowHintTimerRef.current) {
+      clearTimeout(slowHintTimerRef.current);
+      slowHintTimerRef.current = null;
+    }
+    setShowSlowHint(false);
+  }, []);
+
+  const finalize = useCallback(async (bunker: BunkerSigner) => {
+    try {
+      const pubkey = await bunker.getPublicKey();
+      const expected = expectedPubkeyRef.current;
+      if (expected && pubkey !== expected) {
+        await bunker.close();
+        onErrorRef.current?.(reSignInError("mismatch"));
+        return;
       }
-    },
-    [expectedPubkey, onSigner, onError]
-  );
+      await onSignerRef.current(makeNip46Signer(bunker, pubkey));
+    } catch {
+      try {
+        await bunker.close();
+      } catch {
+        /* ignore */
+      }
+      onErrorRef.current?.(loginError("connectError"));
+    }
+  }, []);
 
   const startScan = useCallback(() => {
     setLocalError(null);
+    setAuthChallengeUrl(null);
+    clearSlowHint();
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -85,30 +130,50 @@ export function NostrConnectPanel({
     setUri(session.uri);
     setStatus("scanning");
 
-    waitForConnection(session, controller.signal)
+    slowHintTimerRef.current = setTimeout(() => {
+      setShowSlowHint(true);
+    }, SLOW_HINT_MS);
+
+    waitForConnection(session, {
+      abortSignal: controller.signal,
+      onAuthUrl: (url) => setAuthChallengeUrl(safeAuthUrl(url)),
+    })
       .then(async (bunker) => {
+        clearSlowHint();
         setStatus("connecting");
         await finalize(bunker);
       })
       .catch(() => {
+        clearSlowHint();
         if (!controller.signal.aborted) setStatus("expired");
       });
-  }, [finalize]);
+  }, [finalize, clearSlowHint]);
 
+  // Mount-once effect: start the scan when the panel opens, and abort
+  // whatever is in flight on unmount. Intentionally no dep on startScan
+  // so a parent re-render can't abort the in-flight BunkerSigner.
+  const startScanRef = useRef(startScan);
   useEffect(() => {
-    startScan();
+    startScanRef.current = startScan;
+  }, [startScan]);
+  useEffect(() => {
+    startScanRef.current();
     return () => {
       abortRef.current?.abort();
+      if (slowHintTimerRef.current) clearTimeout(slowHintTimerRef.current);
     };
-  }, [startScan]);
+  }, []);
 
   const handleBunkerConnect = async () => {
     if (!bunkerUrl.trim()) return;
     abortRef.current?.abort();
+    clearSlowHint();
     setStatus("connecting");
     setLocalError(null);
     try {
-      const bunker = await connectWithBunkerURL(bunkerUrl);
+      const bunker = await connectWithBunkerURL(bunkerUrl, {
+        onAuthUrl: (url) => setAuthChallengeUrl(safeAuthUrl(url)),
+      });
       await finalize(bunker);
     } catch {
       setLocalError(t("connectError"));
@@ -144,6 +209,19 @@ export function NostrConnectPanel({
 
   return (
     <>
+      {authChallengeUrl && (
+        <a
+          href={authChallengeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.approveBanner}
+          onClick={() => setAuthChallengeUrl(null)}
+        >
+          <LinkIcon size={16} />
+          {t("connectApproveInSigner")}
+        </a>
+      )}
+
       <p className={styles.scanTitle}>{t("connectScanTitle")}</p>
       <div
         className={styles.qrWrapper}
@@ -169,6 +247,9 @@ export function NostrConnectPanel({
         {copied ? t("connectCopiedURI") : t("connectCopyURI")}
       </Button>
       <p className={styles.waiting}>{t("connectScanning")}</p>
+      {showSlowHint && (
+        <p className={styles.slowHint}>{t("connectSlowHint")}</p>
+      )}
 
       <div className={styles.divider}>
         <span>{t("connectOrPaste")}</span>

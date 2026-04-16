@@ -34,7 +34,7 @@ export function SignInClient() {
   const t = useTranslations("login");
   const router = useRouter();
   const lookupAuthError = useAuthErrorLookup();
-  const { completeLoginWithSigner, setSigner } = useSignerContext();
+  const { completeLoginWithSigner } = useSignerContext();
 
   const [panel, setPanel] = useState<Panel>("picker");
   const [error, setError] = useState<string | null>(null);
@@ -63,28 +63,18 @@ export function SignInClient() {
     setError(null);
     setCreating(true);
     try {
-      const challengeRes = await fetch("/api/auth/nostr", { method: "GET" });
-      if (!challengeRes.ok) {
+      const { secretKey, pubkey, nsec } = createNewIdentity();
+      const signer = makeNsecSigner(secretKey, pubkey);
+      // Route through the same helper nsec login uses so the session
+      // cookie AND the client session context end up in sync. Doing a
+      // bare fetch + setSigner leaves useSession() stale until the next
+      // refetch, which made `/explore` render as logged-out.
+      const ok = await completeLoginWithSigner(signer);
+      if (!ok) {
         setError(t("error"));
         return;
       }
-      const { data: challenge } = await challengeRes.json();
-
-      const identity = createNewIdentity(challenge);
-
-      const authRes = await fetch("/api/auth/nostr", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signedEvent: identity.signedEvent }),
-      });
-      if (!authRes.ok) {
-        const body = await authRes.json().catch(() => ({}));
-        setError(body.error || t("error"));
-        return;
-      }
-
-      setSigner(makeNsecSigner(identity.secretKey, identity.pubkey));
-      setCreatedNsec(identity.nsec);
+      setCreatedNsec(nsec);
     } catch {
       setError(t("error"));
     } finally {
