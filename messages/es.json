@@ -158,6 +158,8 @@
     "connectExpired": "Tiempo agotado. Intentá de nuevo.",
     "connectRetry": "Reintentar",
     "connectError": "Error al conectar. Verificá la URL e intentá de nuevo.",
+    "connectApproveInSigner": "Aprobá la conexión en tu firmador",
+    "connectSlowHint": "¿Seguís esperando? Abrí tu firmador (Amber, nsec.app...) y aprobá la solicitud.",
     "connectCompatible": "Compatible con: Amber, nsec.app, Damus",
     "showKey": "Mostrar clave",
     "hideKey": "Ocultar clave",
