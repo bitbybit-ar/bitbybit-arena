@@ -130,6 +130,31 @@ export const GET = apiHandler(
     const sort = url.searchParams.get("sort") || "newest";
     const cursor = url.searchParams.get("cursor");
     const limit = Math.min(Number(url.searchParams.get("limit")) || 20, 50);
+    const followPubkeysParam = url.searchParams.get("follow_pubkeys");
+    const onlyFollowing = url.searchParams.get("only_following") === "true";
+
+    const followPubkeys: string[] = followPubkeysParam
+      ? followPubkeysParam
+          .split(",")
+          .map((p) => p.trim().toLowerCase())
+          .filter((p) => HEX_64.test(p))
+          .slice(0, 1000)
+      : [];
+    const useFollowBoost = followPubkeys.length > 0;
+
+    // True when the row's creator OR any active participant matches the
+    // logged-in user's follow list. Used for both the "boost to top" sort
+    // and the only_following hard filter, so they stay in lockstep.
+    const isFollowedSql = sql<boolean>`(
+      ${users.nostr_pubkey} = ANY(${followPubkeys}::text[])
+      OR EXISTS (
+        SELECT 1 FROM participants p_f
+        INNER JOIN users u_f ON u_f.id = p_f.user_id
+        WHERE p_f.challenge_id = ${challenges.id}
+          AND p_f.status != 'withdrawn'
+          AND u_f.nostr_pubkey = ANY(${followPubkeys}::text[])
+      )
+    )`;
 
     const conditions = [];
 
@@ -178,7 +203,13 @@ export const GET = apiHandler(
         )
       );
     }
-    if (cursor) {
+    if (useFollowBoost && onlyFollowing) {
+      conditions.push(isFollowedSql);
+    }
+    // Cursor pagination on created_at only applies when follow boost is
+    // off — the boost makes ordering tiered (followed first), so we
+    // switch to offset-based pagination there to keep things simple.
+    if (!useFollowBoost && cursor) {
       conditions.push(sql`${challenges.created_at} < ${cursor}`);
     }
 
@@ -223,9 +254,26 @@ export const GET = apiHandler(
         orderBy = desc(challenges.created_at);
     }
 
+    // When the caller passes a follow list, lift followed-creator and
+    // followed-participant rows to the top of whichever sort they chose.
+    // Skipped when only_following is on (every row is followed already).
+    if (useFollowBoost && !onlyFollowing) {
+      const orderByArr = Array.isArray(orderBy) ? orderBy : [orderBy];
+      orderBy = [desc(isFollowedSql), ...orderByArr];
+    }
+
+    // When follow boost is active we can't use a created_at cursor
+    // (the followed/not-followed boundary breaks monotonicity), so we
+    // interpret `cursor` as an integer offset instead. Capped to keep
+    // OFFSET scans bounded — past 10k rows the user should narrow with
+    // search/filters anyway.
+    const offset = useFollowBoost
+      ? Math.min(10_000, Math.max(0, Number.parseInt(cursor ?? "0", 10) || 0))
+      : 0;
+
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const rows = await db
+    const baseQuery = db
       .select({
         challenge: challenges,
         creator: {
@@ -243,6 +291,10 @@ export const GET = apiHandler(
       .orderBy(...(Array.isArray(orderBy) ? orderBy : [orderBy]))
       .limit(limit + 1);
 
+    const rows = useFollowBoost
+      ? await baseQuery.offset(offset)
+      : await baseQuery;
+
     const hasMore = rows.length > limit;
     const items = rows.slice(0, limit).map((row) => ({
       ...row.challenge,
@@ -251,7 +303,9 @@ export const GET = apiHandler(
     }));
 
     const nextCursor = hasMore
-      ? items[items.length - 1].created_at?.toISOString()
+      ? useFollowBoost
+        ? String(offset + limit)
+        : items[items.length - 1].created_at?.toISOString()
       : null;
 
     return { items, nextCursor };
