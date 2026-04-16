@@ -142,17 +142,29 @@ export const GET = apiHandler(
       : [];
     const useFollowBoost = followPubkeys.length > 0;
 
+    // Pre-built `(?,?,…)` value list used in two places below. We can't
+    // pass `${followPubkeys}` straight into a `sql\`\`` literal — Drizzle
+    // serialises it as a comma-joined string and Postgres rejects it with
+    // `malformed array literal`. `sql.join` expands each element as its
+    // own bound parameter, which is also injection-safe.
+    const followPubkeysSql = useFollowBoost
+      ? sql.join(
+          followPubkeys.map((pk) => sql`${pk}`),
+          sql`, `
+        )
+      : sql`NULL`;
+
     // True when the row's creator OR any active participant matches the
     // logged-in user's follow list. Used for both the "boost to top" sort
     // and the only_following hard filter, so they stay in lockstep.
     const isFollowedSql = sql<boolean>`(
-      ${users.nostr_pubkey} = ANY(${followPubkeys}::text[])
+      ${users.nostr_pubkey} IN (${followPubkeysSql})
       OR EXISTS (
         SELECT 1 FROM participants p_f
         INNER JOIN users u_f ON u_f.id = p_f.user_id
         WHERE p_f.challenge_id = ${challenges.id}
           AND p_f.status != 'withdrawn'
-          AND u_f.nostr_pubkey = ANY(${followPubkeys}::text[])
+          AND u_f.nostr_pubkey IN (${followPubkeysSql})
       )
     )`;
 
