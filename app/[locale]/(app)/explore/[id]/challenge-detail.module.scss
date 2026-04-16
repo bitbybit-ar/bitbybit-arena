@@ -450,3 +450,84 @@
   gap: $spacing-12;
   flex-wrap: wrap;
 }
+
+.rewardBlock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-20;
+
+  @include mobile {
+    flex-direction: column;
+    gap: $spacing-16;
+  }
+}
+
+.rewardBadgeBlock,
+.rewardPrizeBlock {
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
+  padding: $spacing-12 $spacing-16;
+  background: alpha($color-text-primary, 3%);
+  border-radius: $border-radius-md;
+  flex: 1;
+  min-width: 0;
+}
+
+.rewardPrizeBlock {
+  color: $color-secondary;
+  background: alpha($color-secondary, 8%);
+}
+
+.rewardBadgeImage {
+  width: 64px;
+  height: 64px;
+  border-radius: $border-radius-md;
+  object-fit: cover;
+  background: alpha($color-text-primary, 6%);
+  flex-shrink: 0;
+}
+
+.rewardBadgePlaceholder {
+  width: 64px;
+  height: 64px;
+  border-radius: $border-radius-md;
+  background: alpha($color-primary, 12%);
+  flex-shrink: 0;
+}
+
+.rewardBadgeText {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+  min-width: 0;
+}
+
+.rewardItemLabel {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $color-text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rewardBadgeName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rewardPrizeAmount {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-extrabold;
+  color: $color-secondary;
+}
+
+.rewardPrizeMode {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+}
