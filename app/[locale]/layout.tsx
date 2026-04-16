@@ -4,6 +4,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { Nunito, Nunito_Sans } from "next/font/google";
 import { routing } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
+import { getBaseUrl } from "@/lib/env";
 import { ThemeProvider } from "@/lib/contexts/theme-context";
 import { SessionProvider } from "@/lib/contexts/session-context";
 import { ToastProvider } from "@/components/ui/toast";
@@ -42,13 +43,7 @@ export async function generateMetadata({
       template: `%s | ${appName}`,
     },
     description: appDescription,
-    metadataBase: new URL(
-      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-    ),
-    alternates: {
-      canonical: `/${locale}`,
-      languages: { es: "/es", en: "/en" },
-    },
+    metadataBase: new URL(getBaseUrl()),
     openGraph: {
       title: appName,
       description: appDescription,
