@@ -1,16 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useParams, notFound } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import { useRouter } from "@/i18n/routing";
-import { ArrowRightIcon, BadgeIcon, BoltIcon } from "@/components/icons";
+import { ArrowRightIcon, BadgeIcon, BoltIcon, CopyIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { Modal } from "@/components/ui/modal";
 import { BlockLoader } from "@/components/ui/block-loader";
 import { Block } from "@/components/common/Block";
 import { ImageUpload } from "@/components/common/ImageUpload";
+import { useClipboard } from "@/lib/hooks/useClipboard";
+import { fetchNostrMetadata } from "@/lib/nostr/metadata";
 import {
   buildJoinEvent,
   buildCompletionEvent,
@@ -27,6 +30,7 @@ import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
 import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
+import { useToast } from "@/components/ui/toast";
 import type { PrizeDistribution } from "@/lib/types";
 import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
 import {
@@ -128,6 +132,7 @@ export default function ChallengeClient() {
   const params = useParams();
   const { user: sessionUser } = useSession();
   const { needsSigner, signWithPrompt, requestReSignIn } = useSignerContext();
+  const { showToast } = useToast();
   const challengeId = params.id as string;
 
   const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
@@ -149,6 +154,10 @@ export default function ChallengeClient() {
   const [shareContext, setShareContext] = useState<ShareContext | null>(null);
   const [showCreatorJoinWarning, setShowCreatorJoinWarning] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [zapLoadingId, setZapLoadingId] = useState<string | null>(null);
+  const [zapInvoice, setZapInvoice] = useState<{ pr: string; sats: number } | null>(null);
+  const submitterLnCache = useRef<Map<string, string | null>>(new Map());
+  const { copied: invoiceCopied, copy: copyInvoice } = useClipboard();
 
   const fetchAll = useCallback(async () => {
     try {
@@ -306,6 +315,78 @@ export default function ChallengeClient() {
         challenge: { id: challenge.id, title: challenge.title },
       });
     }
+  };
+
+  // Resolve the completion submitter's Lightning address from their NIP-01
+  // kind 0 metadata (lud16). Cached per-pubkey for the lifetime of the page.
+  const resolveSubmitterLightningAddress = async (
+    pubkey: string
+  ): Promise<string | null> => {
+    const cached = submitterLnCache.current.get(pubkey);
+    if (cached !== undefined) return cached;
+    const metadata = await fetchNostrMetadata(pubkey);
+    const address = metadata?.lud16?.trim() || null;
+    submitterLnCache.current.set(pubkey, address);
+    return address;
+  };
+
+  const handleZapCompletion = async (comp: CompletionItem) => {
+    const submitterPubkey = comp.user.nostr_pubkey;
+    if (!submitterPubkey) return;
+    // Guard: never zap yourself. The button is hidden in this case but
+    // we re-check here in case state drifts.
+    if (sessionUser?.nostr_pubkey === submitterPubkey) return;
+
+    setZapLoadingId(comp.id);
+    try {
+      const address = await resolveSubmitterLightningAddress(submitterPubkey);
+      if (!address) {
+        showToast(t("zapNoAddress"), "error");
+        return;
+      }
+
+      let endpoint: Awaited<ReturnType<typeof fetchLnurlPayEndpoint>>;
+      try {
+        endpoint = await fetchLnurlPayEndpoint(address);
+      } catch {
+        showToast(t("zapFailed"), "error");
+        return;
+      }
+      const minSats = Math.max(1, Math.ceil(endpoint.minSendable / 1000));
+      const amountSats = Math.max(minSats, 100);
+
+      let invoice: string;
+      try {
+        invoice = await fetchInvoice(endpoint.callback, amountSats);
+      } catch {
+        showToast(t("zapFailed"), "error");
+        return;
+      }
+
+      // Standard WebLN flow — works with any provider (Alby, Mutiny, Joule,
+      // etc.). If the user's Nostr extension doesn't bundle WebLN (e.g.
+      // nos2x, nostr-wot), fall through to the QR + invoice modal so they
+      // can pay with any external Lightning wallet.
+      if (typeof window !== "undefined" && window.webln) {
+        try {
+          await window.webln.enable();
+          await window.webln.sendPayment(invoice);
+          showToast(t("zapSuccess"), "success");
+          return;
+        } catch {
+          /* fall through to invoice modal */
+        }
+      }
+
+      setZapInvoice({ pr: invoice, sats: amountSats });
+    } finally {
+      setZapLoadingId(null);
+    }
+  };
+
+  const handleCopyZapInvoice = async () => {
+    if (!zapInvoice) return;
+    await copyInvoice(zapInvoice.pr);
   };
 
   const handleVerifyLike = async () => {
@@ -973,22 +1054,27 @@ export default function ChallengeClient() {
               onChange={(e) => setProofContent(e.target.value)}
               rows={3}
             />
-            <ImageUpload
-              value={proofImageDescriptor}
-              onChange={setProofImageDescriptor}
-              alt={t("proofImageAlt")}
-              maxSizeMB={5}
-            />
-            <Button
-              size="sm"
-              onClick={handleSubmitProof}
-              disabled={
-                (!proofContent.trim() && !proofImageDescriptor) ||
-                actionLoading === "proof"
-              }
-            >
-              {actionLoading === "proof" ? t("submitting") : tCommon("submit")}
-            </Button>
+            <div className={styles.proofActions}>
+              <div className={styles.proofActionsUpload}>
+                <ImageUpload
+                  value={proofImageDescriptor}
+                  onChange={setProofImageDescriptor}
+                  alt={t("proofImageAlt")}
+                  maxSizeMB={5}
+                />
+              </div>
+              <Button
+                className={styles.proofSubmitButton}
+                size="sm"
+                onClick={handleSubmitProof}
+                disabled={
+                  (!proofContent.trim() && !proofImageDescriptor) ||
+                  actionLoading === "proof"
+                }
+              >
+                {actionLoading === "proof" ? t("submitting") : tCommon("submit")}
+              </Button>
+            </div>
           </div>
         )}
 
@@ -1029,15 +1115,18 @@ export default function ChallengeClient() {
                       </a>
                     </p>
                   )}
-                  {comp.user.nostr_pubkey && challenge.creator.lightning_address && (
-                    <button
-                      className={styles.zapButton}
-                      onClick={() => window.open(`lightning:${challenge.creator.lightning_address}`, "_blank")}
-                      title="Zap"
-                    >
-                      <BoltIcon size={14} /> Zap
-                    </button>
-                  )}
+                  {comp.user.nostr_pubkey &&
+                    sessionUser?.nostr_pubkey !== comp.user.nostr_pubkey && (
+                      <button
+                        className={styles.zapButton}
+                        onClick={() => handleZapCompletion(comp)}
+                        disabled={zapLoadingId === comp.id}
+                        title="Zap"
+                      >
+                        <BoltIcon size={14} />{" "}
+                        {zapLoadingId === comp.id ? t("zapSending") : "Zap"}
+                      </button>
+                    )}
                   {isCreator && comp.status === "pending" && (
                     <div className={styles.verifyActions}>
                       <Button size="sm" onClick={() => handleVerify(comp.id, "approved")} disabled={actionLoading === comp.id}>
@@ -1203,6 +1292,34 @@ export default function ChallengeClient() {
               {tCommon("continue")}
             </Button>
           </div>
+        </Modal>
+      )}
+
+      {zapInvoice && (
+        <Modal
+          onClose={() => setZapInvoice(null)}
+          title={t("zapInvoiceTitle")}
+          size="sm"
+        >
+          <p className={styles.zapInvoiceHint}>
+            {t("zapInvoiceHint", { amount: zapInvoice.sats })}
+          </p>
+          <div className={styles.zapInvoiceQr}>
+            <QRCodeSVG
+              value={zapInvoice.pr}
+              size={200}
+              bgColor="transparent"
+              fgColor="var(--color-text-primary)"
+              level="M"
+            />
+          </div>
+          <div className={styles.zapInvoiceBox}>
+            <code className={styles.zapInvoiceText}>{zapInvoice.pr}</code>
+          </div>
+          <button className={styles.zapInvoiceCopyBtn} onClick={handleCopyZapInvoice}>
+            <CopyIcon size={16} />
+            {invoiceCopied ? t("zapInvoiceCopied") : t("zapCopyInvoice")}
+          </button>
         </Modal>
       )}
     </div>

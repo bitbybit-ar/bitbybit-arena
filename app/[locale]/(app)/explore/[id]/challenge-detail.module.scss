@@ -173,6 +173,32 @@
   }
 }
 
+.proofActions {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+
+  @include tabletAndUp {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: $spacing-16;
+  }
+}
+
+.proofActionsUpload {
+  flex: 1;
+  min-width: 0;
+}
+
+.proofSubmitButton {
+  align-self: stretch;
+
+  @include tabletAndUp {
+    align-self: flex-start;
+    flex-shrink: 0;
+  }
+}
+
 .zapButton {
   display: inline-flex;
   align-items: center;
@@ -188,8 +214,68 @@
   cursor: pointer;
   transition: background 0.2s ease;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: alpha($color-secondary, 20%);
+  }
+
+  &:disabled {
+    cursor: progress;
+    opacity: 0.6;
+  }
+}
+
+.zapInvoiceHint {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-12;
+}
+
+.zapInvoiceQr {
+  display: flex;
+  justify-content: center;
+  padding: $spacing-16;
+  background: alpha($color-text-primary, 3%);
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  margin-bottom: $spacing-12;
+}
+
+.zapInvoiceBox {
+  background: alpha($color-text-primary, 3%);
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  padding: $spacing-12;
+  max-height: 120px;
+  overflow-y: auto;
+  margin-bottom: $spacing-12;
+}
+
+.zapInvoiceText {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.zapInvoiceCopyBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-8;
+  width: 100%;
+  padding: $spacing-8;
+  background: $color-primary;
+  color: $static-white;
+  border: none;
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+
+  &:hover {
+    filter: brightness(1.1);
   }
 }
 
