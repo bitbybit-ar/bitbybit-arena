@@ -1,11 +1,14 @@
 import { NextRequest } from "next/server";
 import { eq, and, asc, desc } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
+import { parseBody } from "@/lib/api/parse";
 import {
   NotFoundError,
   ForbiddenError,
   BadRequestError,
 } from "@/lib/api/errors";
+import { RecordRewardBodySchema } from "@/lib/schemas/challenges";
+import { PAYOUT_DISTRIBUTIONS } from "@/lib/schemas/enums";
 import {
   challenges,
   participants,
@@ -14,12 +17,6 @@ import {
 } from "@/lib/db/schema";
 import { fetchNostrMetadataServer } from "@/lib/nostr/server-metadata";
 import type { PrizeDistribution } from "@/lib/types";
-
-const PAYOUT_DISTRIBUTIONS: PrizeDistribution[] = [
-  "first_to_complete",
-  "split",
-  "tiered",
-];
 
 interface WinnerPayload {
   user_id: string;
@@ -66,7 +63,12 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
     throw new BadRequestError("This challenge has no prize configured");
   }
   const distribution = challenge.prize_distribution as PrizeDistribution | null;
-  if (!distribution || !PAYOUT_DISTRIBUTIONS.includes(distribution)) {
+  if (
+    !distribution ||
+    !PAYOUT_DISTRIBUTIONS.includes(
+      distribution as (typeof PAYOUT_DISTRIBUTIONS)[number]
+    )
+  ) {
     throw new BadRequestError(
       "Challenge has no payout-eligible prize_distribution"
     );
@@ -185,23 +187,10 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
     throw new ForbiddenError("Only the creator can record rewards");
   }
 
-  const body = await req.json().catch(() => ({}));
   const { user_id: winnerUserId, receipt_event_id: receiptEventId } =
-    body as { user_id?: unknown; receipt_event_id?: unknown };
+    await parseBody(req, RecordRewardBodySchema);
 
-  if (winnerUserId !== undefined || receiptEventId !== undefined) {
-    if (typeof winnerUserId !== "string") {
-      throw new BadRequestError("user_id must be a string when provided");
-    }
-    if (
-      typeof receiptEventId !== "string" ||
-      !/^[0-9a-f]{64}$/i.test(receiptEventId)
-    ) {
-      throw new BadRequestError(
-        "receipt_event_id must be a 64-character hex event id when provided"
-      );
-    }
-
+  if (winnerUserId && receiptEventId) {
     const [target] = await db
       .select({ id: completions.id })
       .from(completions)
@@ -223,7 +212,7 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
 
     await db
       .update(completions)
-      .set({ reward_zap_receipt_id: receiptEventId.toLowerCase() })
+      .set({ reward_zap_receipt_id: receiptEventId })
       .where(eq(completions.id, target.id));
   }
 

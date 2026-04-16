@@ -1,12 +1,16 @@
 import { NextRequest } from "next/server";
 import { eq, and } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
+import { parseBody, parseQuery } from "@/lib/api/parse";
 import { NotFoundError, BadRequestError, ForbiddenError } from "@/lib/api/errors";
+import {
+  ListCompletionsQuerySchema,
+  SubmitCompletionBodySchema,
+} from "@/lib/schemas/completions";
 import { challenges, participants, completions, users } from "@/lib/db/schema";
 import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
 import { verifyHashtagPost } from "@/lib/nostr/verify-hashtag-post";
 import { pickVerificationMethod, shouldAutoApprove } from "@/lib/api/verification-methods";
-import { validateHttpUrl } from "@/lib/api/validate-http-url";
 import type { VerificationMethod } from "@/lib/types";
 
 function isUniqueViolation(err: unknown): boolean {
@@ -23,8 +27,7 @@ function isUniqueViolation(err: unknown): boolean {
 // GET /api/challenges/[id]/completions — list completions
 export const GET = apiHandler(
   async (req: NextRequest, { db, params }) => {
-    const url = req.nextUrl;
-    const status = url.searchParams.get("status");
+    const { status } = parseQuery(req, ListCompletionsQuerySchema);
 
     const conditions = [eq(completions.challenge_id, params.id)];
     if (status) conditions.push(eq(completions.status, status));
@@ -80,15 +83,10 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
 
   if (!participation) throw new ForbiddenError("You must join this challenge first");
 
-  const body = await req.json().catch(() => ({}));
-  const { content, image_url, step, method } = body as {
-    content?: unknown;
-    image_url?: unknown;
-    step?: unknown;
-    method?: unknown;
-  };
-
-  const resolvedImageUrl = validateHttpUrl(image_url, "image_url");
+  const { content, image_url: resolvedImageUrl, step, method } = await parseBody(
+    req,
+    SubmitCompletionBodySchema
+  );
 
   const allowedMethods = challenge.verification_methods as VerificationMethod[];
   const selectedMethod = pickVerificationMethod(method, allowedMethods);
@@ -129,14 +127,13 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     // Manual proofs accept text, an image, or both. When an image is
     // attached we relax the min-length on text since a photo is itself
     // evidence.
-    const textOk =
-      typeof content === "string" && content.trim().length >= 5;
+    const textOk = !!content && content.trim().length >= 5;
     if (!textOk && !resolvedImageUrl) {
       throw new BadRequestError(
         "Provide at least a 5-character description or an image proof"
       );
     }
-    resolvedContent = textOk ? (content as string).trim() : null;
+    resolvedContent = textOk ? content!.trim() : null;
     autoApprove = shouldAutoApprove(
       selectedMethod,
       challenge.creator_id,
@@ -154,7 +151,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
         content: resolvedContent,
         image_url: resolvedImageUrl,
         proof_event_id: proofEventId,
-        step: typeof step === "number" ? step : null,
+        step: step ?? null,
         status: autoApprove ? "approved" : "pending",
         reviewed_at: autoApprove ? new Date() : null,
       })

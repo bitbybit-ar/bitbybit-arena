@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
 import { eq, sql } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
+import { parseQuery } from "@/lib/api/parse";
+import { MyChallengesQuerySchema } from "@/lib/schemas/challenges";
 import { challenges, participants } from "@/lib/db/schema";
 
 // GET /api/my-challenges — challenges I created + joined
 export const GET = apiHandler(async (req: NextRequest, { session, db }) => {
-  const url = req.nextUrl;
-  const scope = url.searchParams.get("scope"); // "created" | "joined" | null (both)
+  const { scope } = parseQuery(req, MyChallengesQuerySchema);
 
   const userId = session!.user_id;
 

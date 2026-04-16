@@ -1,7 +1,9 @@
 import { NextRequest } from "next/server";
 import { NWCClient } from "@getalby/sdk";
 import { apiHandler } from "@/lib/api/handler";
+import { parseBody } from "@/lib/api/parse";
 import { BadRequestError } from "@/lib/api/errors";
+import { ZapStatusBodySchema } from "@/lib/schemas/zap";
 import { extractPaymentHash } from "@/lib/lightning";
 
 const NWC_URL = process.env.NWC_CONNECTION_URL;
@@ -13,10 +15,7 @@ export const POST = apiHandler(
       return { paid: false };
     }
 
-    const { invoice } = await req.json();
-    if (!invoice || typeof invoice !== "string") {
-      throw new BadRequestError("Missing invoice");
-    }
+    const { invoice } = await parseBody(req, ZapStatusBodySchema);
 
     const paymentHash = extractPaymentHash(invoice);
     if (!paymentHash) {

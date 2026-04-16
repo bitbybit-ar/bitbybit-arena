@@ -1,11 +1,13 @@
 import { NextRequest } from "next/server";
 import { eq, and, asc, inArray, lt } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
+import { parseBody } from "@/lib/api/parse";
 import {
   NotFoundError,
   BadRequestError,
   ForbiddenError,
 } from "@/lib/api/errors";
+import { CompleteCheckpointBodySchema } from "@/lib/schemas/completions";
 import {
   challenges,
   challenge_checkpoints,
@@ -105,8 +107,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     }
   }
 
-  const body = await req.json().catch(() => ({}));
-  const { content, method } = body as { content?: unknown; method?: unknown };
+  const { content, method } = await parseBody(req, CompleteCheckpointBodySchema);
 
   const allowedMethods = checkpoint.verification_methods as VerificationMethod[];
   const selectedMethod = pickVerificationMethod(method, allowedMethods);
@@ -146,7 +147,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     proofEventId = result.proofEventId;
     autoApprove = true;
   } else {
-    if (!content || typeof content !== "string" || content.trim().length < 5) {
+    if (!content || content.trim().length < 5) {
       throw new BadRequestError("Proof content must be at least 5 characters");
     }
     resolvedContent = content.trim();
