@@ -751,6 +751,66 @@ export default function ChallengeClient() {
           )}
         </div>
 
+        {/* Reward — badge + prize. Hidden when neither is set. */}
+        {(!!challenge.badge_image_url ||
+          !!challenge.badge_name ||
+          challenge.prize_amount_sats > 0) && (
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>{t("rewardDisplayTitle")}</h2>
+            <div className={styles.rewardBlock}>
+              {(challenge.badge_image_url || challenge.badge_name) && (
+                <div className={styles.rewardBadgeBlock}>
+                  {challenge.badge_image_url ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={challenge.badge_image_url}
+                      alt={challenge.badge_name ?? tCommon("badge")}
+                      className={styles.rewardBadgeImage}
+                    />
+                  ) : (
+                    <div
+                      className={styles.rewardBadgePlaceholder}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <div className={styles.rewardBadgeText}>
+                    <span className={styles.rewardItemLabel}>
+                      {t("badgeAwarded")}
+                    </span>
+                    {challenge.badge_name && (
+                      <span className={styles.rewardBadgeName}>
+                        {challenge.badge_name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+              {challenge.prize_amount_sats > 0 && (
+                <div className={styles.rewardPrizeBlock}>
+                  <BoltIcon size={20} />
+                  <div className={styles.rewardBadgeText}>
+                    <span className={styles.rewardItemLabel}>
+                      {t("prizePool")}
+                    </span>
+                    <span className={styles.rewardPrizeAmount}>
+                      {challenge.prize_amount_sats.toLocaleString()}{" "}
+                      {tCommon("sats")}
+                    </span>
+                    {challenge.prize_distribution &&
+                      challenge.prize_distribution !== "none" && (
+                        <span className={styles.rewardPrizeMode}>
+                          {tCreate(
+                            `rewardZapModes.${challenge.prize_distribution}`
+                          )}
+                        </span>
+                      )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Checkpoints */}
         {challenge.checkpoint_mode !== "none" && challenge.checkpoints.length > 0 && (
           <div className={styles.section}>

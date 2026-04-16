@@ -245,7 +245,10 @@
     "activeTagFilters": "Filtros activos",
     "clearTagFilters": "Limpiar filtros",
     "removeTagFilter": "Quitar filtro {tag}",
-    "toggleTagFilter": "Filtrar por {tag}"
+    "toggleTagFilter": "Filtrar por {tag}",
+    "by": "por",
+    "rewardLabel": "Recompensa",
+    "onlyFollowing": "Solo de quienes sigo"
   },
   "createChallenge": {
     "title": "Crear desafío",
@@ -425,6 +428,9 @@
     "checkpointError": "No se pudo completar el checkpoint. Intentá de nuevo.",
     "checkpointProofLabel": "Prueba del checkpoint {index}",
     "proofTooShort": "La prueba debe tener al menos 5 caracteres.",
+    "rewardDisplayTitle": "Recompensa",
+    "badgeAwarded": "Badge que ganás",
+    "prizePool": "Premio en sats",
     "rewardSectionTitle": "Pagar el premio",
     "rewardInstructions": "Premio total: {amount} sats. Modo: {mode}. Al hacer click, firmás una zap request por cada ganador y pagás con tu wallet Lightning.",
     "claimReward": "Pagar a los ganadores",

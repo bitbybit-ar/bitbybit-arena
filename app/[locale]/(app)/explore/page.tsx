@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { PixelIcon } from "@/components/common/PixelIcon";
@@ -8,9 +8,11 @@ import { BlockLoader } from "@/components/ui/block-loader";
 import { Button } from "@/components/ui/button";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Tag } from "@/components/ui/tag";
+import { BoltIcon } from "@/components/icons";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { useRouter } from "@/i18n/routing";
 import { useSignerContext } from "@/lib/signer-context";
+import { useFollowList } from "@/lib/hooks/useFollowList";
 import { cn } from "@/lib/utils";
 import styles from "./explore.module.scss";
 
@@ -24,12 +26,17 @@ interface ChallengeItem {
   participant_count: number;
   ends_at: string | null;
   created_at: string;
+  prize_amount_sats: number;
+  badge_name: string | null;
+  badge_image_url: string | null;
   creator: {
     username: string;
     display_name: string;
     avatar_url: string | null;
   };
 }
+
+const PAGE_LIMIT = 20;
 
 export default function ExplorePage() {
   const t = useTranslations("explore");
@@ -40,37 +47,84 @@ export default function ExplorePage() {
 
   const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [types, setTypes] = useState<string[]>([]);
   const [sort, setSort] = useState("newest");
   const [popularTags, setPopularTags] = useState<{ tag: string; count: number }[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [onlyFollowing, setOnlyFollowing] = useState(false);
 
-  const fetchChallenges = useCallback(async () => {
+  // Tracks the request id for the most recent first-page fetch so an
+  // older request that resolves late (slow relay, slow DB) can't clobber
+  // a newer one — otherwise toggling filters in quick succession leaves
+  // the list out of sync with the controls.
+  const requestIdRef = useRef(0);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const { pubkeys: followPubkeys } = useFollowList(session?.nostr_pubkey ?? null);
+  const followBoostActive = followPubkeys.length > 0;
+
+  const buildParams = useCallback(
+    (cursor: string | null) => {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (types.length > 0) params.set("type", types.join(","));
+      if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
+      params.set("sort", sort);
+      params.set("status", "open");
+      params.set("limit", String(PAGE_LIMIT));
+      if (cursor) params.set("cursor", cursor);
+      if (followBoostActive) {
+        params.set("follow_pubkeys", followPubkeys.join(","));
+      }
+      if (onlyFollowing && followBoostActive) {
+        params.set("only_following", "true");
+      }
+      return params;
+    },
+    [search, types, selectedTags, sort, followPubkeys, followBoostActive, onlyFollowing]
+  );
+
+  const fetchPage = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
-    const params = new URLSearchParams();
-    if (search) params.set("search", search);
-    if (types.length > 0) params.set("type", types.join(","));
-    if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
-    params.set("sort", sort);
-    params.set("status", "open");
-
     try {
-      const res = await fetch(`/api/challenges?${params}`);
+      const res = await fetch(`/api/challenges?${buildParams(null)}`);
       const json = await res.json();
+      if (requestIdRef.current !== requestId) return;
       if (json.success) {
         setChallenges(json.data.items);
+        setNextCursor(json.data.nextCursor ?? null);
       }
     } catch {
       // silently fail
     } finally {
-      setLoading(false);
+      if (requestIdRef.current === requestId) setLoading(false);
     }
-  }, [search, types, sort, selectedTags]);
+  }, [buildParams]);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/challenges?${buildParams(nextCursor)}`);
+      const json = await res.json();
+      if (json.success) {
+        setChallenges((prev) => [...prev, ...json.data.items]);
+        setNextCursor(json.data.nextCursor ?? null);
+      }
+    } catch {
+      // silently fail; user can scroll again to retry
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [buildParams, nextCursor, loadingMore]);
 
   useEffect(() => {
-    fetchChallenges();
-  }, [fetchChallenges]);
+    fetchPage();
+  }, [fetchPage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,6 +140,19 @@ export default function ExplorePage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !nextCursor) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { rootMargin: "400px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [nextCursor, loadMore]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((current) =>
@@ -172,6 +239,17 @@ export default function ExplorePage() {
         </div>
       </div>
 
+      {followBoostActive && (
+        <label className={styles.followToggle}>
+          <input
+            type="checkbox"
+            checked={onlyFollowing}
+            onChange={(e) => setOnlyFollowing(e.target.checked)}
+          />
+          <span>{t("onlyFollowing")}</span>
+        </label>
+      )}
+
       {popularTags.length > 0 && (
         <div className={styles.tagSection}>
           <span id="popular-tags-label" className={styles.tagSectionLabel}>
@@ -245,48 +323,115 @@ export default function ExplorePage() {
         <div className={styles.emptyState}>
           <PixelIcon shape="flag" blockSize={8} />
           <p>
-            {search || types.length > 0 || selectedTags.length > 0
+            {search ||
+            types.length > 0 ||
+            selectedTags.length > 0 ||
+            onlyFollowing
               ? t("emptyFiltered")
               : t("empty")}
           </p>
         </div>
       ) : (
-        <div className={styles.grid}>
-          {challenges.map((challenge) => (
-            <Link
-              key={challenge.id}
-              href={`/explore/${challenge.id}`}
-              className={styles.card}
-            >
-              <div className={styles.cardHeader}>
-                <Tag variant={typeVariant(challenge.type)}>
-                  {tCreate(`types.${challenge.type}`)}
-                </Tag>
-              </div>
-              <h3 className={styles.cardTitle}>{challenge.title}</h3>
-              <p className={styles.cardDescription}>
-                {challenge.description.slice(0, 120)}
-                {challenge.description.length > 120 ? "..." : ""}
-              </p>
-              <div className={styles.cardMeta}>
-                <span className={styles.metaItem}>
-                  {challenge.participant_count} {tCommon("participants")}
-                </span>
-                {challenge.ends_at && (
-                  <span className={styles.metaItem}>
-                    {formatDate(challenge.ends_at)}
-                  </span>
-                )}
-              </div>
-              <div className={styles.cardCreator}>
-                {challenge.creator.display_name}
-              </div>
-            </Link>
-          ))}
-        </div>
+        <>
+          <div className={styles.grid}>
+            {challenges.map((challenge) => (
+              <ChallengeCard
+                key={challenge.id}
+                challenge={challenge}
+                tCreate={tCreate}
+                tCommon={tCommon}
+                tExplore={t}
+              />
+            ))}
+          </div>
+          <div ref={sentinelRef} className={styles.scrollSentinel} aria-hidden="true">
+            {loadingMore && <BlockLoader label={tCommon("loading")} />}
+          </div>
+        </>
       )}
 
     </div>
+  );
+}
+
+interface ChallengeCardProps {
+  challenge: ChallengeItem;
+  tCreate: ReturnType<typeof useTranslations>;
+  tCommon: ReturnType<typeof useTranslations>;
+  tExplore: ReturnType<typeof useTranslations>;
+}
+
+function ChallengeCard({
+  challenge,
+  tCreate,
+  tCommon,
+  tExplore,
+}: ChallengeCardProps) {
+  const hasBadge = !!challenge.badge_image_url || !!challenge.badge_name;
+  const hasPrize = challenge.prize_amount_sats > 0;
+  const showReward = hasBadge || hasPrize;
+  const creatorName =
+    challenge.creator.display_name || challenge.creator.username;
+
+  return (
+    <Link href={`/explore/${challenge.id}`} className={styles.card}>
+      <div className={styles.cardHeader}>
+        <Tag variant={typeVariant(challenge.type)}>
+          {tCreate(`types.${challenge.type}`)}
+        </Tag>
+      </div>
+      <h3 className={styles.cardTitle}>{challenge.title}</h3>
+      <p className={styles.cardCreator}>
+        {tExplore("by")} {creatorName}
+      </p>
+      <p className={styles.cardDescription}>
+        {challenge.description.slice(0, 120)}
+        {challenge.description.length > 120 ? "..." : ""}
+      </p>
+      <div className={styles.cardMeta}>
+        <span className={styles.metaItem}>
+          {challenge.participant_count} {tCommon("participants")}
+        </span>
+        {challenge.ends_at && (
+          <span className={styles.metaItem}>
+            {formatDate(challenge.ends_at)}
+          </span>
+        )}
+      </div>
+      {showReward && (
+        <div className={styles.rewardSection}>
+          <span className={styles.rewardLabel}>{tExplore("rewardLabel")}</span>
+          <div className={styles.rewardItems}>
+            {hasBadge && (
+              <div className={styles.rewardBadge}>
+                {challenge.badge_image_url ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={challenge.badge_image_url}
+                    alt={challenge.badge_name ?? tCommon("badge")}
+                    className={styles.rewardBadgeImage}
+                  />
+                ) : (
+                  <div className={styles.rewardBadgePlaceholder} aria-hidden="true" />
+                )}
+                {challenge.badge_name && (
+                  <span className={styles.rewardBadgeName}>
+                    {challenge.badge_name}
+                  </span>
+                )}
+              </div>
+            )}
+            {hasPrize && (
+              <span className={styles.rewardPrize}>
+                <BoltIcon size={14} />
+                {challenge.prize_amount_sats.toLocaleString()}{" "}
+                {tCommon("sats")}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </Link>
   );
 }
 
