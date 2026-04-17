@@ -10,7 +10,8 @@ import { OptionCard, OptionCardGroup } from "@/components/common/OptionCard";
 import { TagInput } from "@/components/common/TagInput";
 import { ImageUpload } from "@/components/common/ImageUpload";
 import type { BlossomDescriptor } from "@/lib/nostr/blossom";
-import { HttpUrlSchema } from "@/lib/schemas/primitives";
+import { CreateChallengeBodySchema } from "@/lib/schemas/challenges";
+import { validateForm } from "@/lib/schemas/validate-form";
 import {
   buildChallengeEvent,
   buildZapGoalEvent,
@@ -168,67 +169,58 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
       }
     }
 
-    if (verification.length === 0) {
-      setError(t("verificationEmptyError"));
+    // Build the body once, validate it against the same schema the
+    // API uses (lib/schemas/challenges.ts), and reuse the parsed
+    // values for both the signing payload and the POST body. A single
+    // safeParse replaces the per-field regex / length checks the form
+    // used to do — and surfaces the exact same error message the
+    // server would have returned for the same input.
+    const slug = slugify(title);
+    const requestBody = {
+      slug,
+      title,
+      description,
+      type,
+      tags,
+      goal: goal ? Number(goal) : undefined,
+      unit: unit || undefined,
+      verification_methods: verification,
+      nostr_action_target_event_id: verification.includes("nostr_action")
+        ? nostrActionTarget
+        : undefined,
+      nostr_hashtag: verification.includes("nostr_hashtag")
+        ? nostrHashtag
+        : undefined,
+      prize_amount_sats: prizeAmountSats ? Number(prizeAmountSats) : undefined,
+      prize_distribution:
+        prizeAmountSats && Number(prizeAmountSats) > 0
+          ? rewardZapMode
+          : undefined,
+      checkpoint_mode: checkpointMode,
+      checkpoints:
+        checkpointMode !== "none"
+          ? checkpoints.map((cp) => ({
+              title: cp.title,
+              description: cp.description,
+              verification_methods: cp.verification_methods,
+              nostr_action_target_event_id:
+                cp.verification_methods.includes("nostr_action")
+                  ? cp.nostr_action_target_event_id
+                  : undefined,
+              nostr_hashtag: cp.verification_methods.includes("nostr_hashtag")
+                ? cp.nostr_hashtag
+                : undefined,
+            }))
+          : undefined,
+      badge_name: badgeName || undefined,
+      badge_image_url: badgeImage?.url || undefined,
+      starts_at: startsAt || undefined,
+      ends_at: endsAt || undefined,
+    };
+    const validation = validateForm(CreateChallengeBodySchema, requestBody);
+    if (!validation.success) {
+      setError(validation.firstError);
       return;
-    }
-    if (
-      verification.includes("nostr_action") &&
-      !/^[0-9a-f]{64}$/i.test(nostrActionTarget.trim())
-    ) {
-      setError(t("nostrActionTargetError"));
-      return;
-    }
-    if (
-      verification.includes("nostr_hashtag") &&
-      !/^#?[a-z0-9_]{2,50}$/i.test(nostrHashtag.trim())
-    ) {
-      setError(t("nostrHashtagError"));
-      return;
-    }
-
-    // Blossom-hosted URLs are always https://, but guard the field anyway
-    // so dev-tools edits or future paste-URL affordances can't slip a
-    // non-http(s) value past the client into the API. Same schema the
-    // API uses (lib/schemas/primitives.ts) so client + server stay in
-    // lockstep.
-    const badgeUrlResult = HttpUrlSchema.safeParse(badgeImage?.url);
-    if (!badgeUrlResult.success) {
-      const issue = badgeUrlResult.error.issues[0];
-      setError(`badge_image_url: ${issue?.message ?? t("createFailed")}`);
-      return;
-    }
-
-    if (checkpointMode !== "none") {
-      if (checkpoints.length === 0) {
-        setError(t("checkpointsEmptyError"));
-        return;
-      }
-      for (let i = 0; i < checkpoints.length; i += 1) {
-        const cp = checkpoints[i];
-        if (cp.title.trim().length < 3) {
-          setError(t("checkpointTitleError", { index: i + 1 }));
-          return;
-        }
-        if (cp.verification_methods.length === 0) {
-          setError(t("verificationEmptyError"));
-          return;
-        }
-        if (
-          cp.verification_methods.includes("nostr_action") &&
-          !/^[0-9a-f]{64}$/i.test(cp.nostr_action_target_event_id.trim())
-        ) {
-          setError(t("checkpointTargetError", { index: i + 1 }));
-          return;
-        }
-        if (
-          cp.verification_methods.includes("nostr_hashtag") &&
-          !/^#?[a-z0-9_]{2,50}$/i.test(cp.nostr_hashtag.trim())
-        ) {
-          setError(t("checkpointHashtagError", { index: i + 1 }));
-          return;
-        }
-      }
     }
 
     setLoading(true);
@@ -238,7 +230,6 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
       // orphan row behind. The slug is generated client-side so the
       // signed event and the persisted row stay in lockstep — the server
       // accepts the same slug + event id verbatim in the POST body.
-      const slug = slugify(title);
       const challengeEvent = buildChallengeEvent({
         slug,
         title,
@@ -271,46 +262,8 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slug,
+          ...requestBody,
           nostr_event_id: signedChallenge.id,
-          title,
-          description,
-          type,
-          tags,
-          goal: goal ? Number(goal) : undefined,
-          unit: unit || undefined,
-          verification_methods: verification,
-          nostr_action_target_event_id: verification.includes("nostr_action")
-            ? nostrActionTarget.trim().toLowerCase()
-            : undefined,
-          nostr_hashtag: verification.includes("nostr_hashtag")
-            ? nostrHashtag.trim().toLowerCase().replace(/^#/, "")
-            : undefined,
-          prize_amount_sats: prizeAmountSats ? Number(prizeAmountSats) : undefined,
-          prize_distribution:
-            prizeAmountSats && Number(prizeAmountSats) > 0
-              ? rewardZapMode
-              : undefined,
-          checkpoint_mode: checkpointMode,
-          checkpoints:
-            checkpointMode !== "none"
-              ? checkpoints.map((cp) => ({
-                  title: cp.title.trim(),
-                  description: cp.description.trim() || null,
-                  verification_methods: cp.verification_methods,
-                  nostr_action_target_event_id:
-                    cp.verification_methods.includes("nostr_action")
-                      ? cp.nostr_action_target_event_id.trim().toLowerCase()
-                      : null,
-                  nostr_hashtag: cp.verification_methods.includes("nostr_hashtag")
-                    ? cp.nostr_hashtag.trim().toLowerCase().replace(/^#/, "")
-                    : null,
-                }))
-              : undefined,
-          badge_name: badgeName || undefined,
-          badge_image_url: badgeImage?.url || undefined,
-          starts_at: startsAt || undefined,
-          ends_at: endsAt || undefined,
         }),
       });
 

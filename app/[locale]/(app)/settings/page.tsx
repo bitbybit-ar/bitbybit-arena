@@ -13,6 +13,8 @@ import { fetchNostrMetadata } from "@/lib/nostr/metadata";
 import { buildProfileMetadataEvent } from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import type { NostrMetadata } from "@/lib/nostr/types";
+import { UpdateProfileBodySchema } from "@/lib/schemas/profile";
+import { validateForm } from "@/lib/schemas/validate-form";
 import { useRouter, usePathname } from "@/i18n/routing";
 import styles from "./settings.module.scss";
 
@@ -72,19 +74,29 @@ export default function SettingsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
 
+    // Pre-flight against the same schema the API uses
+    // (lib/schemas/profile.ts) so the user gets instant feedback for
+    // bad inputs (empty display_name, short username, non-http(s)
+    // avatar URL) without a round-trip.
+    const validation = validateForm(UpdateProfileBodySchema, {
+      display_name: displayName,
+      username,
+      avatar_url: avatarUrl.trim() || null,
+      about: about || null,
+      lightning_address: lightningAddress || null,
+    });
+    if (!validation.success) {
+      showToast(validation.firstError, "error");
+      return;
+    }
+
+    setSaving(true);
     try {
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          display_name: displayName,
-          username,
-          avatar_url: avatarUrl.trim() || null,
-          about: about || null,
-          lightning_address: lightningAddress || null,
-        }),
+        body: JSON.stringify(validation.data),
       });
 
       const json = await res.json();
