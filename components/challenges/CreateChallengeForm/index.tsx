@@ -10,7 +10,7 @@ import { OptionCard, OptionCardGroup } from "@/components/common/OptionCard";
 import { TagInput } from "@/components/common/TagInput";
 import { ImageUpload } from "@/components/common/ImageUpload";
 import type { BlossomDescriptor } from "@/lib/nostr/blossom";
-import { validateHttpUrl } from "@/lib/api/validate-http-url";
+import { HttpUrlSchema } from "@/lib/schemas/primitives";
 import {
   buildChallengeEvent,
   buildZapGoalEvent,
@@ -189,11 +189,13 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
 
     // Blossom-hosted URLs are always https://, but guard the field anyway
     // so dev-tools edits or future paste-URL affordances can't slip a
-    // non-http(s) value past the client into the API.
-    try {
-      validateHttpUrl(badgeImage?.url, "badge_image_url");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("createFailed"));
+    // non-http(s) value past the client into the API. Same schema the
+    // API uses (lib/schemas/primitives.ts) so client + server stay in
+    // lockstep.
+    const badgeUrlResult = HttpUrlSchema.safeParse(badgeImage?.url);
+    if (!badgeUrlResult.success) {
+      const issue = badgeUrlResult.error.issues[0];
+      setError(`badge_image_url: ${issue?.message ?? t("createFailed")}`);
       return;
     }
 

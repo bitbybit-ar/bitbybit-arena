@@ -1,15 +1,14 @@
 import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
 import { apiHandler } from "@/lib/api/handler";
+import { parseBody } from "@/lib/api/parse";
 import { BadRequestError } from "@/lib/api/errors";
 import { validateAuthEvent } from "@/lib/nostr/verify";
 import { fetchNostrMetadataServer } from "@/lib/nostr/server-metadata";
 import { createSession } from "@/lib/auth";
-import type { SignerType } from "@/lib/nostr/signers";
+import { AuthNostrPostBodySchema } from "@/lib/schemas/auth";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-
-const VALID_SIGNER_TYPES: SignerType[] = ["extension", "nsec", "nip46"];
 
 // GET: Issue a challenge for NIP-42 auth
 export const GET = apiHandler(
@@ -33,28 +32,19 @@ export const GET = apiHandler(
 // POST: Verify signed event and authenticate
 export const POST = apiHandler(
   async (req, { db }) => {
-    const { signedEvent, signer_type: signerTypeInput } = await req.json();
-    if (!signedEvent) throw new BadRequestError("Missing signed event");
-
-    let signerType: SignerType | null = null;
-    if (signerTypeInput !== undefined && signerTypeInput !== null) {
-      if (
-        typeof signerTypeInput !== "string" ||
-        !VALID_SIGNER_TYPES.includes(signerTypeInput as SignerType)
-      ) {
-        throw new BadRequestError(
-          `signer_type must be one of: ${VALID_SIGNER_TYPES.join(", ")}`
-        );
-      }
-      signerType = signerTypeInput as SignerType;
-    }
+    const { signedEvent, signer_type: signerType } = await parseBody(
+      req,
+      AuthNostrPostBodySchema
+    );
 
     // Get challenge from cookie
     const cookieStore = await cookies();
     const challenge = cookieStore.get("nostr_challenge")?.value;
     if (!challenge) throw new BadRequestError("Challenge expired or missing");
 
-    // Validate the signed event
+    // Validate the signed event. validateAuthEvent now takes `unknown`
+    // and shape-checks via NostrEventSchema before doing the Schnorr
+    // verification, so the API boundary doesn't need a cast.
     const isValid = await validateAuthEvent(signedEvent, challenge);
     if (!isValid) throw new BadRequestError("Invalid signature or challenge");
 

@@ -1,10 +1,13 @@
 import { NextRequest } from "next/server";
 import { eq, and, inArray } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
+import { parseBody } from "@/lib/api/parse";
 import { NotFoundError, ForbiddenError, BadRequestError, ConflictError } from "@/lib/api/errors";
+import {
+  AwardBadgesBodySchema,
+  RecordBadgeAwardBodySchema,
+} from "@/lib/schemas/challenges";
 import { challenges, participants, badges } from "@/lib/db/schema";
-
-const HEX_64 = /^[0-9a-f]{64}$/i;
 
 // POST /api/challenges/[id]/award — creator awards badges to participants
 // Body: { user_ids: string[] } — list of participant user IDs to award
@@ -20,12 +23,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     throw new ForbiddenError("Only the challenge creator can award badges");
   }
 
-  const body = await req.json();
-  const { user_ids } = body;
-
-  if (!Array.isArray(user_ids) || user_ids.length === 0) {
-    throw new BadRequestError("user_ids must be a non-empty array");
-  }
+  const { user_ids } = await parseBody(req, AwardBadgesBodySchema);
 
   // Verify all users are participants
   const validParticipants = await db
@@ -106,20 +104,10 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
     throw new ForbiddenError("Only the challenge creator can record badge event ids");
   }
 
-  const body = await req.json().catch(() => ({}));
-  const { user_id, nostr_event_id } = body as {
-    user_id?: unknown;
-    nostr_event_id?: unknown;
-  };
-
-  if (typeof user_id !== "string" || user_id.length === 0) {
-    throw new BadRequestError("user_id is required");
-  }
-  if (typeof nostr_event_id !== "string" || !HEX_64.test(nostr_event_id)) {
-    throw new BadRequestError(
-      "nostr_event_id must be a 64-character hex event id"
-    );
-  }
+  const { user_id, nostr_event_id } = await parseBody(
+    req,
+    RecordBadgeAwardBodySchema
+  );
 
   const [badge] = await db
     .select()
@@ -138,7 +126,7 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
 
   const [updated] = await db
     .update(badges)
-    .set({ nostr_event_id: nostr_event_id.toLowerCase() })
+    .set({ nostr_event_id })
     .where(eq(badges.id, badge.id))
     .returning();
 

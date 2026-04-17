@@ -1,6 +1,7 @@
 import { schnorr } from "@noble/curves/secp256k1.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
+import { NostrEventSchema } from "@/lib/schemas/nostr";
 import type { NostrEvent } from "./types";
 
 /**
@@ -37,9 +38,17 @@ export function verifyNostrEvent(event: NostrEvent): boolean {
 
 /**
  * Validate a NIP-42 authentication event (kind 22242).
- * Checks: correct kind, recent timestamp (5 min window), matching challenge, valid signature.
+ * Accepts `unknown` and shape-checks via NostrEventSchema first so the
+ * route handler can hand us untyped JSON without needing a cast — a
+ * malformed payload returns false here rather than crashing inside
+ * verifyNostrEvent. Then: correct kind, recent timestamp (5 min
+ * window), matching challenge, valid signature.
  */
-export function validateAuthEvent(event: NostrEvent, expectedChallenge: string): boolean {
+export function validateAuthEvent(input: unknown, expectedChallenge: string): boolean {
+  const parsed = NostrEventSchema.safeParse(input);
+  if (!parsed.success) return false;
+  const event = parsed.data;
+
   if (event.kind !== 22242) return false;
 
   const now = Math.floor(Date.now() / 1000);

@@ -5,10 +5,11 @@
  * canonical value (lowercased hex, trimmed strings, …) without each
  * route re-implementing the same boilerplate.
  *
- * Errors here are deliberately written to match the messages the
- * legacy hand-rolled validators in `lib/api/normalize-tags.ts` and
- * `lib/api/validate-http-url.ts` produce, so the migration doesn't
- * silently change the wire-level contract.
+
+ * Used by both the API routes (via `parseBody`/`parseQuery` in
+ * `lib/api/parse.ts`) and any client form that needs the same
+ * validation rules — Zod runs in the browser, so importing from here
+ * is safe from `"use client"` components too.
  */
 import { z } from "zod";
 
@@ -97,25 +98,46 @@ export const TagsSchema = z
   });
 
 /**
- * `http(s)://` URL ≤ 2048 chars, with empty/null inputs collapsing to
- * `null`. The scheme check is the security-critical bit — it blocks
- * `javascript:`, `data:`, `file:` from ever being persisted and later
- * rendered into an `<img src>`.
+ * `http(s)://` URL ≤ 2048 chars, with empty/null/undefined/whitespace
+ * collapsing to `null`. The scheme check is the security-critical bit
+ * — it blocks `javascript:`, `data:`, `file:` from ever being persisted
+ * and later rendered into an `<img src>`.
+ *
+ * Implemented as a single `transform` with `ctx.addIssue` (rather than
+ * a `z.union([z.null(), z.string()...])`) so the surfaced first issue
+ * always carries the meaningful message — Zod v4 unions report the
+ * first branch's failure ("expected null") which buries the actual
+ * scheme/length error.
  */
 export const HttpUrlSchema = z
   .preprocess(
-    (v) => (v === undefined || v === "" ? null : v),
-    z.union([
-      z.null(),
-      z
-        .string()
-        .max(MAX_URL_LEN, `url must be at most ${MAX_URL_LEN} characters`)
-        .transform((s) => s.trim())
-        .refine((s) => s.length === 0 || /^https?:\/\//i.test(s), {
-          message: "url must be an http(s) URL",
-        })
-        .transform((s) => (s.length === 0 ? null : s)),
-    ])
+    (v) =>
+      v === undefined || v === null || (typeof v === "string" && v.trim() === "")
+        ? null
+        : v,
+    z
+      .string({ error: "url must be a string" })
+      .nullable()
+      .transform((v, ctx): string | null => {
+        if (v === null) return null;
+        const trimmed = v.trim();
+        if (trimmed.length === 0) return null;
+        if (trimmed.length > MAX_URL_LEN) {
+          ctx.addIssue({
+            code: "custom",
+            message: `url must be at most ${MAX_URL_LEN} characters`,
+          });
+          return z.NEVER;
+        }
+        if (!/^https?:\/\//i.test(trimmed)) {
+          ctx.addIssue({
+            code: "custom",
+            message: "url must be an http(s) URL",
+          });
+          return z.NEVER;
+        }
+        return trimmed;
+      })
   );
 
 /**

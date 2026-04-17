@@ -1,8 +1,15 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
-import { BadRequestError } from "@/lib/api/errors";
+import { parseQuery } from "@/lib/api/parse";
+import { IsoCursorSchema, LimitSchema } from "@/lib/schemas/pagination";
 import { badges, challenges, users } from "@/lib/db/schema";
+
+const QuerySchema = z.object({
+  cursor: IsoCursorSchema,
+  limit: LimitSchema(1, 50, 20),
+});
 
 // GET /api/my-badges — list the current user's earned badges joined with
 // their parent challenge and issuing creator. Powers the Achievements tab
@@ -13,16 +20,7 @@ import { badges, challenges, users } from "@/lib/db/schema";
 // return only rows with awarded_at < cursor. Default limit 20, capped 50.
 export const GET = apiHandler(async (req: NextRequest, { session, db }) => {
   const userId = session!.user_id;
-  const url = req.nextUrl;
-  const cursor = url.searchParams.get("cursor");
-  const rawLimit = Number(url.searchParams.get("limit")) || 20;
-  const limit = Math.max(1, Math.min(rawLimit, 50));
-
-  if (cursor && Number.isNaN(new Date(cursor).getTime())) {
-    throw new BadRequestError(
-      "cursor must be a valid ISO-8601 timestamp"
-    );
-  }
+  const { cursor, limit } = parseQuery(req, QuerySchema);
 
   const conditions = [eq(badges.user_id, userId)];
   if (cursor) {

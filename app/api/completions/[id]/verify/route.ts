@@ -1,17 +1,14 @@
 import { NextRequest } from "next/server";
 import { eq, and } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
+import { parseBody } from "@/lib/api/parse";
 import { NotFoundError, BadRequestError, ForbiddenError } from "@/lib/api/errors";
+import { VerifyCompletionBodySchema } from "@/lib/schemas/completions";
 import { completions, challenges, participants } from "@/lib/db/schema";
 
 // POST /api/completions/[id]/verify — creator approves or rejects a completion
 export const POST = apiHandler(async (req: NextRequest, { session, db, params }) => {
-  const body = await req.json();
-  const { status } = body;
-
-  if (!status || !["approved", "rejected"].includes(status)) {
-    throw new BadRequestError("Status must be 'approved' or 'rejected'");
-  }
+  const { status } = await parseBody(req, VerifyCompletionBodySchema);
 
   const [completion] = await db
     .select()

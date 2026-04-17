@@ -49,6 +49,31 @@ export async function parseBody<T extends ZodType>(
 }
 
 /**
+ * Same as `parseBody` but treats a missing / empty / unparseable body
+ * as `{}` and parses *that* against `schema`. Use only on routes that
+ * intentionally accept a no-body call (e.g. PATCH endpoints whose
+ * fields are all optional). Mirrors the legacy
+ * `await req.json().catch(() => ({}))` pattern, with the schema still
+ * enforcing per-field rules when the client *does* send a body.
+ */
+export async function parseOptionalBody<T extends ZodType>(
+  req: NextRequest,
+  schema: T
+): Promise<z.infer<T>> {
+  let raw: unknown = {};
+  try {
+    raw = await req.json();
+  } catch {
+    raw = {};
+  }
+  const result = schema.safeParse(raw);
+  if (!result.success) {
+    throw new BadRequestError(formatZodError(result.error));
+  }
+  return result.data;
+}
+
+/**
  * Validate `req.nextUrl.searchParams` against `schema`. The schema
  * sees a plain `Record<string, string>` (Next/URL semantics — last
  * value wins for repeated keys), so use `.transform()` for csv

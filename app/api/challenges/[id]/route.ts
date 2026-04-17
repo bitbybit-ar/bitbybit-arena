@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { eq, sql, and, asc } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
+import { parseBody } from "@/lib/api/parse";
 import { NotFoundError, ForbiddenError, BadRequestError } from "@/lib/api/errors";
-import { normalizeTags } from "@/lib/api/normalize-tags";
-import { validateHttpUrl } from "@/lib/api/validate-http-url";
+import { UpdateChallengeBodySchema } from "@/lib/schemas/challenges";
 import {
   challenges,
   users,
@@ -12,20 +12,6 @@ import {
   checkpoint_completions,
 } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth";
-import type { ChallengeType, VerificationMethod, PrizeDistribution } from "@/lib/types";
-
-const VALID_TYPES: ChallengeType[] = ["one_time", "streak", "competition", "race", "creative"];
-const VALID_VERIFICATION: VerificationMethod[] = [
-  "creator_approval",
-  "automatic",
-  "nostr_action",
-  "nostr_hashtag",
-];
-const VALID_DISTRIBUTION: PrizeDistribution[] = ["first_to_complete", "split", "tiered", "none"];
-const VALID_STATUSES = ["open", "in_progress", "completed", "cancelled"];
-const HEX_64 = /^[0-9a-f]{64}$/i;
-const MAX_UNIT_LEN = 30;
-const MAX_BADGE_NAME_LEN = 100;
 
 // GET /api/challenges/[id] — get single challenge with creator and participant count
 export const GET = apiHandler(
@@ -109,153 +95,16 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db, params }) 
   if (!existing) throw new NotFoundError("Challenge");
   if (existing.creator_id !== session!.user_id) throw new ForbiddenError("Only the creator can edit this challenge");
 
-  const body = await req.json();
-  const updates: Record<string, unknown> = {};
-
-  if (body.title !== undefined) {
-    if (typeof body.title !== "string" || body.title.trim().length < 3) {
-      throw new BadRequestError("Title must be at least 3 characters");
-    }
-    updates.title = body.title.trim();
-  }
-  if (body.description !== undefined) {
-    if (typeof body.description !== "string" || body.description.trim().length < 10) {
-      throw new BadRequestError("Description must be at least 10 characters");
-    }
-    updates.description = body.description.trim();
-  }
-  if (body.type !== undefined) {
-    if (!VALID_TYPES.includes(body.type)) throw new BadRequestError("Invalid type");
-    updates.type = body.type;
-  }
-  if (body.verification_methods !== undefined) {
-    if (!Array.isArray(body.verification_methods) || body.verification_methods.length === 0) {
-      throw new BadRequestError("verification_methods must be a non-empty array");
-    }
-    const seen = new Set<VerificationMethod>();
-    for (const m of body.verification_methods) {
-      if (typeof m !== "string" || !VALID_VERIFICATION.includes(m as VerificationMethod)) {
-        throw new BadRequestError(
-          `verification_methods contains an invalid value. Must be one of: ${VALID_VERIFICATION.join(", ")}`
-        );
-      }
-      seen.add(m as VerificationMethod);
-    }
-    updates.verification_methods = Array.from(seen);
-  }
-  if (body.status !== undefined) {
-    if (!VALID_STATUSES.includes(body.status)) throw new BadRequestError("Invalid status");
-    updates.status = body.status;
-  }
-  if (body.prize_distribution !== undefined) {
-    if (!VALID_DISTRIBUTION.includes(body.prize_distribution)) throw new BadRequestError("Invalid prize distribution");
-    updates.prize_distribution = body.prize_distribution;
-  }
-  if (body.tags !== undefined) {
-    updates.tags = normalizeTags(body.tags);
-  }
-  if (body.goal !== undefined) {
-    if (body.goal !== null && (!Number.isInteger(body.goal) || body.goal < 0)) {
-      throw new BadRequestError("goal must be a non-negative integer");
-    }
-    updates.goal = body.goal;
-  }
-  if (body.unit !== undefined) {
-    if (body.unit !== null && (typeof body.unit !== "string" || body.unit.length > MAX_UNIT_LEN)) {
-      throw new BadRequestError(`unit must be a string of at most ${MAX_UNIT_LEN} characters`);
-    }
-    updates.unit = body.unit;
-  }
-  if (body.prize_amount_sats !== undefined) {
-    if (typeof body.prize_amount_sats !== "number" || body.prize_amount_sats < 0) {
-      throw new BadRequestError("prize_amount_sats must be a non-negative number");
-    }
-    updates.prize_amount_sats = body.prize_amount_sats;
-  }
-  if (body.badge_name !== undefined) {
-    if (body.badge_name !== null && (typeof body.badge_name !== "string" || body.badge_name.length > MAX_BADGE_NAME_LEN)) {
-      throw new BadRequestError(`badge_name must be a string of at most ${MAX_BADGE_NAME_LEN} characters`);
-    }
-    updates.badge_name = body.badge_name;
-  }
-  if (body.badge_image_url !== undefined) {
-    updates.badge_image_url = validateHttpUrl(
-      body.badge_image_url,
-      "badge_image_url"
-    );
-  }
-  if (body.badge_nostr_event_id !== undefined) {
-    if (body.badge_nostr_event_id === null) {
-      updates.badge_nostr_event_id = null;
-    } else if (
-      typeof body.badge_nostr_event_id !== "string" ||
-      !HEX_64.test(body.badge_nostr_event_id)
-    ) {
-      throw new BadRequestError(
-        "badge_nostr_event_id must be a 64-character hex event id"
-      );
-    } else {
-      updates.badge_nostr_event_id = body.badge_nostr_event_id.toLowerCase();
-    }
-  }
-  if (body.result_nostr_event_id !== undefined) {
-    if (body.result_nostr_event_id === null) {
-      updates.result_nostr_event_id = null;
-    } else if (
-      typeof body.result_nostr_event_id !== "string" ||
-      !HEX_64.test(body.result_nostr_event_id)
-    ) {
-      throw new BadRequestError(
-        "result_nostr_event_id must be a 64-character hex event id"
-      );
-    } else {
-      updates.result_nostr_event_id = body.result_nostr_event_id.toLowerCase();
-    }
-  }
-  if (body.starts_at !== undefined) {
-    if (body.starts_at !== null) {
-      const d = new Date(body.starts_at);
-      if (Number.isNaN(d.getTime())) {
-        throw new BadRequestError("starts_at must be a valid date");
-      }
-      updates.starts_at = d;
-    } else {
-      updates.starts_at = null;
-    }
-  }
-  if (body.ends_at !== undefined) {
-    if (body.ends_at !== null) {
-      const d = new Date(body.ends_at);
-      if (Number.isNaN(d.getTime())) {
-        throw new BadRequestError("ends_at must be a valid date");
-      }
-      updates.ends_at = d;
-    } else {
-      updates.ends_at = null;
-    }
-  }
-  if (body.zap_goal_event_id !== undefined) {
-    if (body.zap_goal_event_id === null) {
-      updates.zap_goal_event_id = null;
-    } else if (
-      typeof body.zap_goal_event_id !== "string" ||
-      !HEX_64.test(body.zap_goal_event_id)
-    ) {
-      throw new BadRequestError(
-        "zap_goal_event_id must be a 64-character hex event id"
-      );
-    } else {
-      updates.zap_goal_event_id = body.zap_goal_event_id.toLowerCase();
-    }
-  }
-
-  if (Object.keys(updates).length === 0) throw new BadRequestError("No fields to update");
-
-  updates.updated_at = new Date();
+  // Parsed body only contains the keys the client actually sent —
+  // Zod strips missing optionals — so spreading directly into the
+  // update set preserves PATCH-style semantics. `null` values for
+  // nullish fields (e.g. `badge_name: null`) survive the spread and
+  // clear the column as intended.
+  const updates = await parseBody(req, UpdateChallengeBodySchema);
 
   const [updated] = await db
     .update(challenges)
-    .set(updates)
+    .set({ ...updates, updated_at: new Date() })
     .where(eq(challenges.id, params.id))
     .returning();
 

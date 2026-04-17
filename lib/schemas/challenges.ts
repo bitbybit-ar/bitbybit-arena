@@ -12,6 +12,7 @@ import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
 import { challenges } from "@/lib/db/schema";
 import {
+  ChallengeStatusSchema,
   ChallengeTypeSchema,
   CheckpointModeSchema,
   PrizeDistributionSchema,
@@ -288,6 +289,106 @@ export const ListChallengesQuerySchema = z
   }));
 
 export type ListChallengesQuery = z.infer<typeof ListChallengesQuerySchema>;
+
+/**
+ * PUT /api/challenges/[id] — partial update by the creator.
+ *
+ * Every field is optional (PATCH-style semantics dressed as PUT). The
+ * only invariant the route enforces beyond per-field validation is
+ * "at least one field present"; the existing handler returned 400
+ * with "No fields to update" and we keep that message.
+ */
+export const UpdateChallengeBodySchema = z
+  .object({
+    title: ChallengeRowInsertSchema.shape.title.optional(),
+    description: ChallengeRowInsertSchema.shape.description.optional(),
+    type: ChallengeTypeSchema.optional(),
+    verification_methods: VerificationMethodsSchema.optional(),
+    status: ChallengeStatusSchema.optional(),
+    prize_distribution: PrizeDistributionSchema.optional(),
+    tags: TagsSchema.optional(),
+    goal: z
+      .number()
+      .int("goal must be a non-negative integer")
+      .min(0, "goal must be a non-negative integer")
+      .nullish(),
+    unit: ChallengeRowInsertSchema.shape.unit.nullish(),
+    prize_amount_sats: z
+      .number()
+      .min(0, "prize_amount_sats must be a non-negative number")
+      .optional(),
+    badge_name: ChallengeRowInsertSchema.shape.badge_name.nullish(),
+    badge_image_url: HttpUrlSchema.optional(),
+    badge_nostr_event_id: Hex64Schema.nullish(),
+    result_nostr_event_id: Hex64Schema.nullish(),
+    starts_at: z.coerce.date().nullish(),
+    ends_at: z.coerce.date().nullish(),
+    zap_goal_event_id: Hex64Schema.nullish(),
+  })
+  .refine((b) => Object.keys(b).length > 0, {
+    message: "No fields to update",
+  });
+
+export type UpdateChallengeBody = z.infer<typeof UpdateChallengeBodySchema>;
+
+/** POST /api/challenges/[id]/award — creator awards a list of users. */
+export const AwardBadgesBodySchema = z.object({
+  user_ids: z
+    .array(z.string().uuid())
+    .min(1, "user_ids must be a non-empty array"),
+});
+
+export type AwardBadgesBody = z.infer<typeof AwardBadgesBodySchema>;
+
+/**
+ * PATCH /api/challenges/[id]/award — record the kind:8 event id the
+ * client just published for a previously awarded recipient.
+ */
+export const RecordBadgeAwardBodySchema = z.object({
+  user_id: z.string().min(1, "user_id is required"),
+  nostr_event_id: Hex64Schema,
+});
+
+export type RecordBadgeAwardBody = z.infer<typeof RecordBadgeAwardBodySchema>;
+
+/**
+ * PATCH /api/challenges/[id]/reward — record a NIP-57 zap receipt for
+ * one winner. Body is optional (the route still flips
+ * `rewards_paid_at` even with no body), but if any winner field is
+ * present BOTH must be valid.
+ */
+export const RecordRewardBodySchema = z
+  .object({
+    user_id: z.string().optional(),
+    receipt_event_id: Hex64Schema.optional(),
+  })
+  .superRefine((b, ctx) => {
+    const hasOne =
+      b.user_id !== undefined || b.receipt_event_id !== undefined;
+    if (!hasOne) return; // both absent is valid — just flips the flag
+    if (typeof b.user_id !== "string") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["user_id"],
+        message: "user_id must be a string when provided",
+      });
+    }
+    if (b.receipt_event_id === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["receipt_event_id"],
+        message:
+          "receipt_event_id must be a 64-character hex event id when provided",
+      });
+    }
+  });
+
+export type RecordRewardBody = z.infer<typeof RecordRewardBodySchema>;
+
+/** GET /api/my-challenges — `?scope=created|joined`. */
+export const MyChallengesQuerySchema = z.object({
+  scope: z.enum(["created", "joined"]).optional(),
+});
 
 // Re-export so route files only have to import from one place.
 export { NostrPubkeySchema };
