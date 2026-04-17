@@ -4,7 +4,6 @@ import { apiHandler } from "@/lib/api/handler";
 import { parseBody } from "@/lib/api/parse";
 import { BadRequestError } from "@/lib/api/errors";
 import { validateAuthEvent } from "@/lib/nostr/verify";
-import type { NostrEvent } from "@/lib/nostr/types";
 import { fetchNostrMetadataServer } from "@/lib/nostr/server-metadata";
 import { createSession } from "@/lib/auth";
 import { AuthNostrPostBodySchema } from "@/lib/schemas/auth";
@@ -43,15 +42,10 @@ export const POST = apiHandler(
     const challenge = cookieStore.get("nostr_challenge")?.value;
     if (!challenge) throw new BadRequestError("Challenge expired or missing");
 
-    // Validate the signed event. Schema only guards `pubkey`; the
-    // full kind:22242 shape (id, sig, kind, created_at, tags, content)
-    // is `validateAuthEvent`'s responsibility — it cryptographically
-    // verifies the signature against the challenge tag and returns
-    // false on any structural mismatch.
-    const isValid = await validateAuthEvent(
-      signedEvent as unknown as NostrEvent,
-      challenge
-    );
+    // Validate the signed event. validateAuthEvent now takes `unknown`
+    // and shape-checks via NostrEventSchema before doing the Schnorr
+    // verification, so the API boundary doesn't need a cast.
+    const isValid = await validateAuthEvent(signedEvent, challenge);
     if (!isValid) throw new BadRequestError("Invalid signature or challenge");
 
     // Clear challenge cookie
