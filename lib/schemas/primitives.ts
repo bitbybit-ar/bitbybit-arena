@@ -25,10 +25,15 @@ export const MAX_URL_LEN = 2048;
  * 64-character hex string (case-insensitive on the way in, lowercase
  * on the way out). Used for any Nostr event id or pubkey we persist —
  * the DB stores lowercase-only so the transform keeps callers honest.
+ *
+ * `trim` runs before the regex so leading/trailing whitespace from a
+ * pasted value never surfaces as a "must be 64 chars" error — that
+ * was a UX papercut in the client form before this primitive existed.
  */
 export const Hex64Schema = z
   .string()
-  .regex(HEX_64_RE, "must be a 64-character hex string")
+  .transform((s) => s.trim())
+  .pipe(z.string().regex(HEX_64_RE, "must be a 64-character hex string"))
   .transform((s) => s.toLowerCase());
 
 /** Same wire format as Hex64; semantic alias for pubkey-shaped fields. */
