@@ -44,9 +44,20 @@ export const POST = apiHandler(
 
     // Validate the signed event. validateAuthEvent now takes `unknown`
     // and shape-checks via NostrEventSchema before doing the Schnorr
-    // verification, so the API boundary doesn't need a cast.
-    const isValid = await validateAuthEvent(signedEvent, challenge);
-    if (!isValid) throw new BadRequestError("Invalid signature or challenge");
+    // verification, so the API boundary doesn't need a cast. The
+    // discriminated result lets us name the specific failed check in
+    // both the server log and the 400 response — critical for
+    // debugging a login issue we can't reproduce locally.
+    const validation = validateAuthEvent(signedEvent, challenge);
+    if (!validation.ok) {
+      console.warn(
+        `[auth/nostr] validation failed: ${validation.reason}`,
+        { pubkey: (signedEvent as { pubkey?: unknown })?.pubkey }
+      );
+      throw new BadRequestError(
+        `Invalid signature or challenge (${validation.reason})`
+      );
+    }
 
     // Clear challenge cookie
     cookieStore.delete("nostr_challenge");

@@ -48,7 +48,7 @@ vi.mock("next/headers", () => ({
 
 // Reactivation test needs validateAuthEvent to succeed without crypto.
 vi.mock("@/lib/nostr/verify", () => ({
-  validateAuthEvent: vi.fn(() => Promise.resolve(true)),
+  validateAuthEvent: vi.fn(() => ({ ok: true, event: {} })),
 }));
 
 // Reactivation test uses a stubbed createSession.
