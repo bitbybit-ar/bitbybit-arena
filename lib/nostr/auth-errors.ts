@@ -15,6 +15,7 @@ export type LoginErrorKey =
   | "nostr_signing_rejected"
   | "nsecInvalidKey"
   | "connectError"
+  | "rate_limited"
   | "error";
 
 /** Keys defined under the `reSignIn` namespace. */

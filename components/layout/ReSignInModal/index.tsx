@@ -11,7 +11,7 @@ import { NostrConnectPanel } from "@/components/auth/NostrConnectPanel";
 import { ArrowLeftIcon } from "@/components/icons";
 import { useSignerContext } from "@/lib/signer-context";
 import type { SignerHandle, SignerType } from "@/lib/nostr/signers";
-import { type AuthError, reSignInError } from "@/lib/nostr/auth-errors";
+import { type AuthError, loginError, reSignInError } from "@/lib/nostr/auth-errors";
 import { useAuthErrorLookup } from "@/lib/hooks/useAuthErrorLookup";
 import styles from "./re-sign-in-modal.module.scss";
 
@@ -105,9 +105,15 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
     setBusy(true);
     try {
       if (isLoginMode) {
-        const ok = await completeLoginWithSigner(signer);
-        if (!ok) {
-          setError(lookupAuthError(reSignInError("authFailed")));
+        const result = await completeLoginWithSigner(signer);
+        if (!result.ok) {
+          setError(
+            lookupAuthError(
+              result.reason === "rate_limited"
+                ? loginError("rate_limited")
+                : reSignInError("authFailed")
+            )
+          );
           return;
         }
       } else {
