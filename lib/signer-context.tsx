@@ -30,6 +30,17 @@ import {
   makeExtensionSigner,
 } from "@/lib/nostr/signers";
 
+/**
+ * Outcome of `completeLoginWithSigner`. Callers want to distinguish
+ * "rate limited" from "auth failed" so the UI can say "esperá un
+ * minuto" instead of a generic "error connecting" — otherwise users
+ * who retry and trip the per-IP bucket just see the same banner on
+ * every attempt.
+ */
+export type LoginResult =
+  | { ok: true }
+  | { ok: false; reason: "rate_limited" | "failed" };
+
 interface SignerContextValue {
   /** Reexported from SessionProvider so consumers only need one context. */
   session: SessionUser | null;
@@ -52,10 +63,11 @@ interface SignerContextValue {
   clearSigner: () => Promise<void>;
   /**
    * Run the NIP-42 challenge/response flow using the given signer and,
-   * on success, store the signer and refresh the session. Returns true
-   * on success. Used by the login mode of the signer modal.
+   * on success, store the signer and refresh the session. Returns a
+   * discriminated result so callers can tell a 429 apart from a real
+   * auth failure.
    */
-  completeLoginWithSigner: (signer: SignerHandle) => Promise<boolean>;
+  completeLoginWithSigner: (signer: SignerHandle) => Promise<LoginResult>;
   /**
    * Open the signer modal and resolve with the new signer once the user
    * completes either the reattach flow (session exists) or the full
@@ -157,10 +169,13 @@ export function SignerProvider({
   }, [clear]);
 
   const completeLoginWithSigner = useCallback(
-    async (next: SignerHandle): Promise<boolean> => {
+    async (next: SignerHandle): Promise<LoginResult> => {
       try {
         const challengeRes = await fetch("/api/auth/nostr", { method: "GET" });
-        if (!challengeRes.ok) return false;
+        if (challengeRes.status === 429) {
+          return { ok: false, reason: "rate_limited" };
+        }
+        if (!challengeRes.ok) return { ok: false, reason: "failed" };
         const { data: challenge } = await challengeRes.json();
 
         const signed = await next.sign({
@@ -175,13 +190,16 @@ export function SignerProvider({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ signedEvent: signed, signer_type: next.type }),
         });
-        if (!authRes.ok) return false;
+        if (authRes.status === 429) {
+          return { ok: false, reason: "rate_limited" };
+        }
+        if (!authRes.ok) return { ok: false, reason: "failed" };
 
         setSigner(next);
         await refresh();
-        return true;
+        return { ok: true };
       } catch {
-        return false;
+        return { ok: false, reason: "failed" };
       }
     },
     [setSigner, refresh]

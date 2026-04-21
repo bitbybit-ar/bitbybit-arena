@@ -9,7 +9,7 @@ import { createNewIdentity } from "@/lib/nostr/create-account";
 import { useSignerContext } from "@/lib/signer-context";
 import { makeNsecSigner } from "@/lib/nostr/signers";
 import type { SignerHandle } from "@/lib/nostr/signers";
-import type { AuthError } from "@/lib/nostr/auth-errors";
+import { type AuthError, loginError } from "@/lib/nostr/auth-errors";
 import { useAuthErrorLookup } from "@/lib/hooks/useAuthErrorLookup";
 import { SignerMethodButtons } from "@/components/auth/SignerMethodButtons";
 import { ExtensionUpsell } from "@/components/auth/ExtensionUpsell";
@@ -47,9 +47,13 @@ export function SignInClient() {
 
   const handleSignerFromChild = async (signer: SignerHandle) => {
     setError(null);
-    const ok = await completeLoginWithSigner(signer);
-    if (!ok) {
-      setError(t("error"));
+    const result = await completeLoginWithSigner(signer);
+    if (!result.ok) {
+      setError(
+        lookupAuthError(
+          loginError(result.reason === "rate_limited" ? "rate_limited" : "error")
+        )
+      );
       return;
     }
     router.push("/explore");
@@ -69,9 +73,13 @@ export function SignInClient() {
       // cookie AND the client session context end up in sync. Doing a
       // bare fetch + setSigner leaves useSession() stale until the next
       // refetch, which made `/explore` render as logged-out.
-      const ok = await completeLoginWithSigner(signer);
-      if (!ok) {
-        setError(t("error"));
+      const result = await completeLoginWithSigner(signer);
+      if (!result.ok) {
+        setError(
+          lookupAuthError(
+            loginError(result.reason === "rate_limited" ? "rate_limited" : "error")
+          )
+        );
         return;
       }
       setCreatedNsec(nsec);

@@ -26,7 +26,11 @@ export const GET = apiHandler(
 
     return challenge;
   },
-  { requireAuth: false, rateLimit: "auth" }
+  // GET only emits a random challenge cookie — no crypto work to
+  // protect, no brute-force surface, so run it at the cheaper
+  // `standard` tier instead of consuming an `auth` slot on every
+  // login attempt.
+  { requireAuth: false, rateLimit: "standard" }
 );
 
 // POST: Verify signed event and authenticate

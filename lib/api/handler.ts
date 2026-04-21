@@ -30,7 +30,12 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
 const rateLimitConfig: Record<RateLimitTier, { max: number; windowMs: number }> = {
   strict: { max: 5, windowMs: 15 * 60 * 1000 },
-  auth: { max: 20, windowMs: 60 * 1000 },
+  // `auth` used to be 20/min, which blew up for users behind CGNAT (all
+  // sharing an egress IP) after a handful of retries. NIP-42 login isn't
+  // brute-forceable — you still need a valid Schnorr signature — so the
+  // tier exists to cap abuse of the challenge issuer, not to slow down
+  // legitimate re-tries. 60/min = ~30 login attempts per minute per IP.
+  auth: { max: 60, windowMs: 60 * 1000 },
   standard: { max: 60, windowMs: 60 * 1000 },
 };
 
