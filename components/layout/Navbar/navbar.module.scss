@@ -163,6 +163,7 @@
   top: calc(100% + #{$spacing-8});
   right: 0;
   min-width: 180px;
+  max-width: calc(100vw - #{$spacing-16});
   background-color: $color-surface;
   background-image: linear-gradient(
     180deg,

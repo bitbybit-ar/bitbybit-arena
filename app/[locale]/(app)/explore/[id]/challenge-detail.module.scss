@@ -10,6 +10,7 @@
   padding: $spacing-32 $container-padding;
   padding-top: calc($navbar-height + #{$spacing-32});
   min-height: 100vh;
+  min-height: 100dvh;
 
   @include mobile {
     padding: $spacing-16 $container-padding-mobile;
@@ -43,6 +44,7 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .emptyState {

@@ -8,6 +8,7 @@
   padding-top: calc($navbar-height + #{$spacing-32});
   padding-bottom: $spacing-40;
   min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
 
   @include mobile {

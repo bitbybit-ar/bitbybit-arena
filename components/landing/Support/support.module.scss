@@ -40,6 +40,11 @@
 .zapButton {
   min-width: 220px;
   gap: $spacing-8;
+
+  @include mobile {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 // External GitHub link: stays a plain `<a>` (external target, no
@@ -64,6 +69,11 @@
   &:hover {
     transform: translateY(-2px);
     text-decoration: none;
+  }
+
+  @include mobile {
+    min-width: 0;
+    width: 100%;
   }
 }
 
