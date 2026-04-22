@@ -14,6 +14,7 @@
 import { z } from "zod";
 
 const HEX_64_RE = /^[0-9a-f]{64}$/i;
+const HEX_128_RE = /^[0-9a-f]{128}$/i;
 const HASHTAG_RE = /^[a-z0-9_]{2,50}$/;
 const SLUG_RE = /^[a-z0-9-]{1,100}$/;
 const TAG_RE = /^[a-z0-9-]{1,30}$/;
@@ -38,6 +39,21 @@ export const Hex64Schema = z
 
 /** Same wire format as Hex64; semantic alias for pubkey-shaped fields. */
 export const NostrPubkeySchema = Hex64Schema;
+
+/**
+ * 128-character hex string — the wire shape of a BIP-340 Schnorr
+ * signature (64 raw bytes). Used for the `sig` field of a Nostr
+ * event. Keep this separate from `Hex64Schema` so we don't reject
+ * valid signatures against the 64-char regex — that was the bug
+ * that broke NIP-42 login after the zod migration: `NostrEventSchema`
+ * typed `sig` as Hex64 and every real signed event failed the
+ * schema parse.
+ */
+export const Hex128Schema = z
+  .string()
+  .transform((s) => s.trim())
+  .pipe(z.string().regex(HEX_128_RE, "must be a 128-character hex string"))
+  .transform((s) => s.toLowerCase());
 
 /**
  * NIP-12 hashtag — letters/digits/underscore only, 2-50 chars. Strips

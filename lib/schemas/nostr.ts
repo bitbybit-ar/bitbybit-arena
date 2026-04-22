@@ -6,19 +6,22 @@
  * event.
  */
 import { z } from "zod";
-import { Hex64Schema, NostrPubkeySchema } from "./primitives";
+import { Hex64Schema, Hex128Schema, NostrPubkeySchema } from "./primitives";
 
 /**
- * Bare-minimum NIP-01 event shape: id + pubkey + sig as 64-hex,
- * created_at as a Unix timestamp, kind as a non-negative integer,
- * content as a string, tags as a string[][]. Permissive on tag
- * contents (each tag is an array of strings) since the schema lives
- * upstream of any tag-specific consumer.
+ * Bare-minimum NIP-01 event shape:
+ *  - `id` and `pubkey` are 32-byte values → 64 hex chars
+ *  - `sig` is a 64-byte BIP-340 Schnorr signature → 128 hex chars
+ *  - `created_at` is a Unix timestamp, `kind` a non-negative integer
+ *  - `content` is a string, `tags` a `string[][]`
+ *
+ * Permissive on tag contents (each tag is an array of strings) since
+ * the schema lives upstream of any tag-specific consumer.
  */
 export const NostrEventSchema = z.object({
   id: Hex64Schema,
   pubkey: NostrPubkeySchema,
-  sig: Hex64Schema,
+  sig: Hex128Schema,
   created_at: z.number().int().nonnegative(),
   kind: z.number().int().nonnegative(),
   content: z.string(),
