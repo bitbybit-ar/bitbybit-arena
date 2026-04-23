@@ -8,6 +8,16 @@ const intlMiddleware = createMiddleware(routing);
 const LOCALES = routing.locales;
 const PROTECTED_PATHS = ["my-challenges", "settings"];
 
+// Must match lib/auth.ts SESSION_COOKIE_NAME exactly. Production uses
+// the `__Host-` prefix (browser-enforced Secure + Path=/ + no Domain);
+// dev falls back to a plain name because `__Host-` can't ride on
+// plain HTTP. This proxy runs on the edge before the page renders,
+// so it has to know the right cookie name itself — importing from
+// lib/auth.ts would pull in `next/headers`, which the edge runtime
+// rejects.
+const SESSION_COOKIE_NAME =
+  process.env.NODE_ENV === "production" ? "__Host-session" : "session";
+
 function isProtectedPath(pathname: string): boolean {
   for (const locale of LOCALES) {
     const prefix = `/${locale}/`;
@@ -33,7 +43,7 @@ export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isProtectedPath(pathname)) {
-    const sessionCookie = request.cookies.get("session")?.value;
+    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 
     if (!sessionCookie) {
       return NextResponse.redirect(getLoginUrl(request));

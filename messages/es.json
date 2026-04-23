@@ -282,7 +282,9 @@
     "toggleTagFilter": "Filtrar por {tag}",
     "by": "por",
     "rewardLabel": "Recompensa",
-    "onlyFollowing": "Solo de quienes sigo"
+    "source": "Origen",
+    "sourceEveryone": "Todos",
+    "sourceFollowing": "Quienes sigo"
   },
   "createChallenge": {
     "title": "Crear desafío",

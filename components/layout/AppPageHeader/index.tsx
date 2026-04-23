@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { Link } from "@/i18n/routing";
 import { ArrowLeftIcon } from "@/components/icons";
+import { cn } from "@/lib/utils";
 import styles from "./app-page-header.module.scss";
 
 interface AppPageHeaderProps {
@@ -8,6 +9,12 @@ interface AppPageHeaderProps {
   backHref?: string;
   backLabel?: string;
   actions?: ReactNode;
+  /**
+   * Pins the header below the navbar while the page scrolls so the
+   * primary action stays reachable. Defaults to true; pass false only
+   * for short pages where sticking would waste vertical space.
+   */
+  sticky?: boolean;
 }
 
 export function AppPageHeader({
@@ -15,9 +22,10 @@ export function AppPageHeader({
   backHref,
   backLabel,
   actions,
+  sticky = true,
 }: AppPageHeaderProps) {
   return (
-    <div className={styles.header}>
+    <div className={cn(styles.header, sticky && styles.headerSticky)}>
       <div className={styles.left}>
         {backHref && (
           <Link

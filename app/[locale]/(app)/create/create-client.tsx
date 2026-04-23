@@ -18,6 +18,7 @@ export function CreateClient() {
             title={t("title")}
             backHref="/explore"
             backLabel={tCommon("back")}
+            sticky
             actions={
               <Button type="submit" size="sm" disabled={loading} aria-busy={loading || undefined}>
                 {loading ? t("creating") : tCommon("save")}
