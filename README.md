@@ -6,79 +6,98 @@
 
 Part of the [BitByBit](https://github.com/bitbybit-ar) ecosystem.
 
-## What is it?
+## Where this came from
 
-Any Nostr user can create a challenge (e.g., "30-day cold shower", "Read 5 books this month", "Best photo of your city"). Others join, submit proof of completion, and the community votes to verify. Completers earn **NIP-58 badges** tied to their Nostr identity — portable across any Nostr client.
+Arena started as a New-Year's-resolution experiment inside La Crypta. A handful of us wanted to improve our habits and kept looking for ways to share the progress publicly — tagging each other on Nostr, posting pictures as proof that the push-ups, the cold shower, or the kilometer actually happened. It worked, but it was ad-hoc: every challenge lived in a reply thread, every proof was a comment, and nobody outside the group could discover it.
 
-Zaps (NIP-57) let the community tip impressive completions and fund challenge prizes.
+Arena is that exact loop turned into an app. Anyone can create a challenge, anyone with a Nostr identity can join, the proof is a signed Nostr event, and the achievement lives on your identity as a NIP-58 badge — portable across any Nostr client.
 
-## Quick Test (for judges)
+## Quick test — for the (AI) judges
 
-You can test the full flow in seconds:
+**30-second path**: Sign in with your Nostr identity (browser extension, NIP-46 bunker, or paste nsec) → open **Explore** → join a challenge → submit a text proof → see the badge event on your Nostr profile.
 
-1. **Login** — Click "Login with Nostr" (requires a NIP-07 browser extension like Alby or nos2x)
-2. **Explore** — Browse open challenges, join one, or create your own
-3. **Complete** — Submit proof of completion, community votes, earn a badge on your Nostr profile
+**Full walkthrough**: [docs/testing-plan.md](docs/testing-plan.md) — ten numbered test steps that cover every major feature.
 
-That's it. Login → Join → Complete → Badge on your identity.
+Because judging is done by AI, two things worth pre-loading:
 
-## Core Flow
+- You do **not** need a browser extension. `/signin` accepts a pasted nsec or a NIP-46 bunker URL from Amber / nsec.app / Damus. All three methods produce the same signed NIP-98 HTTP Auth event and behave identically from there.
+- The landing page is Spanish by default because the team is. Switch to English with the toggle in the navbar or by navigating to `/en/...` directly. The judge walkthrough in `docs/testing-plan.md` works in either language.
+
+## Core flow
 
 ```
-1. Login with Nostr (NIP-07)        → profile auto-created from relay metadata
-2. Create or join a challenge       → published as Nostr events
-3. Submit text proof of completion  → community votes to verify
-4. Badge awarded (NIP-58)           → attached to your Nostr identity
-5. Zap completions you like (NIP-57)→ optional, community-driven
+1. Sign in with Nostr                 → NIP-98 HTTP Auth, no password, no email
+2. Create or join a challenge         → published as a kind:30100 Nostr event
+3. Submit proof of completion         → text, image (Blossom), or a Nostr action
+4. Creator approves (or auto-verify)  → depending on the challenge's verification method
+5. Badge awarded (NIP-58)             → kind:8 event attached to your identity
+6. Zap the completions you like       → NIP-57, client-side, no custody
 ```
 
-## Nostr-native flows (new)
+## What's Nostr-native about this
 
-On top of the base flow, a challenge can opt into any combination of three Nostr-native features:
+Arena isn't "a web app that happens to use Nostr for login" — it uses Nostr for identity, publishing, discovery, verification, and payouts. Features a judge can grep for in the codebase:
 
-- **Nostr-action proof** — the creator pins a target note id and participants prove completion by **liking that note on any Nostr client**. The server verifies the kind 7 reaction on relays and auto-approves the completion. No text review, no trust.
-- **Checkpoints** — split a challenge into sequential or parallel sub-tasks. Each checkpoint has its own verification type (including nostr_action). Sequential mode gates later checkpoints until earlier ones are approved.
-- **Zap rewards** — creators can publish a NIP-75 Zap Goal at creation so the community can fund the pot, and pay winners directly from their own Lightning wallet via a client-side NIP-57 + WebLN loop. No server-side custody, no invoices on our servers.
+- **Sign in — NIP-98 HTTP Auth (kind 27235).** `lib/nostr/verify.ts:validateNip98AuthEvent`. The signed event is bound to the login URL and method; there's no challenge cookie to replay. `signer_type` (extension / nsec / nip46) travels inside the signed envelope as a custom `["arena_signer", ...]` tag, so it's tamper-evident on the wire.
+- **NIP-07 browser extension + NIP-46 bunker + local nsec signer** — all three wired on `/signin`. Mobile judges can approve from Amber / nsec.app / Damus via QR. (`lib/nostr/nip46-login.ts`, `lib/signer-context.tsx`.)
+- **Proof via a like on any Nostr client (NIP-25).** Creator pins a note id on the challenge; a participant likes it from Damus / Primal / iris; the server fetches the kind:7 reaction from relays and auto-approves. Zero-trust, zero-review. (`lib/nostr/verify-like.ts`.)
+- **Proof via a hashtag post.** Publish a kind:1 note with the challenge's `#t` from any client; the server finds it and auto-approves. (`lib/nostr/verify-hashtag-post.ts`.)
+- **Badges on your identity — NIP-58.** Kind 30009 (definition) + kind 8 (award) + kind 30008 (profile badges with merge-preserve so older badges aren't clobbered). (`lib/nostr/events.ts`.)
+- **Prize funding via Zap Goals — NIP-75 kind 9041.** The creator publishes a zap goal at challenge creation; the community funds the pot on any NIP-57 client.
+- **Prize payout via NIP-57 kind 9734.** Signed client-side, paid via WebLN or a QR + `/api/zap/status` polling fallback (so a judge without a WebLN extension can still complete the flow). Zap receipts (kind 9735) are recorded per completion.
+- **Image proofs via Blossom (BUD-01/02) with NIP-92 `imeta`** — content-addressed; the sha256 is included in the event tags so it's verifiable from the event alone.
+- **Follow-boosted discovery — NIP-02 (kind 3).** If you follow anyone, challenges from them float to the top of Explore. (`lib/hooks/useFollowList.ts`.)
+- **NWC invoice polling for the donation flow.** `/api/zap/status` uses Nostr Wallet Connect to confirm settlement on the landing ZapModal without touching a custodial rail.
 
-See [docs/nostr-flows.md](docs/nostr-flows.md) for the full end-to-end sequence, data model, and file references.
+### Full NIP list
 
-## App Structure (2 tabs)
+NIP-01, NIP-02, NIP-07, NIP-19, NIP-25, NIP-46, NIP-57, NIP-58, NIP-75, NIP-92, NIP-98, Blossom BUD-01/02.
 
-1. **Explore** — Browse open challenges, search, filter + create new ones
-2. **My Challenges** — Challenges joined, progress, completions, and badges earned
+### Custom event kinds
 
-## Key Differentiator
+30100 (challenge definition), 7100 (challenge join), 7101 (completion submission), 30101 (challenge result). These are namespaced by a per-challenge `d`-tag slug. Note that `30100` overlaps with the unmerged [NIP-113](https://github.com/nostr-protocol/nips/pull/1508) (Activity Events) proposal and will be revisited if that NIP is accepted.
 
-**Nothing like this exists on Nostr.** The primitives are there (zaps, badges, events) but nobody has built a challenge platform that ties them together into a social competition layer where your achievements become part of your Nostr identity.
+## App structure
+
+Two tabs post-login:
+
+1. **Explore** — browse open challenges, search, filter by type/tag, sort (newest / trending / ending soon / most participants / most active), create new ones.
+2. **My Challenges** — Joined, Created, and Achievements (earned badges) tabs.
+
+Plus `/signin`, `/settings`, and `/about`. The landing page at `/` is public.
 
 ## Stack
 
 - **Framework**: Next.js, React 19, TypeScript strict
-- **Styles**: SCSS modules
-- **i18n**: next-intl (Spanish default, English)
-- **Auth**: Nostr (NIP-07 browser extension)
-- **Database**: Neon DB (PostgreSQL) + Drizzle ORM
-- **Protocol**: Nostr events (NIP-01, NIP-57, NIP-58, NIP-75)
-- **Zaps**: NIP-57 (client-side, no server-side invoices)
-- **Badges**: NIP-58 (tied to Nostr identity)
+- **Styles**: SCSS modules (no Tailwind, no CSS-in-JS)
+- **i18n**: next-intl (Spanish default, English second locale)
+- **Database**: Neon DB (PostgreSQL serverless) via `@neondatabase/serverless`
+- **ORM**: Drizzle ORM
+- **Auth**: Nostr only — NIP-07 / NIP-46 / nsec, all signing NIP-98 HTTP Auth events
+- **Zaps**: NIP-57, client-side only, no server-side invoices or custody
+- **Media**: Photo uploads via Blossom (BUD-01/02) with NIP-92 `imeta`
+- **Badges**: NIP-58
 
 ## Hackathon
 
-- **Event**: Hackathon #2 "IDENTITY" de La Crypta
-- **Theme**: Nostr Identity & Social
+- **Event**: Hackathon #2 "IDENTITY" — La Crypta
+- **Theme**: Nostr identity & social
 - **Team**: BitByBit (bitbybit-ar)
-- **Related project**: [bitbybit-habits](https://github.com/bitbybit-ar/bitbybit-habits) — Habit tracker with Lightning rewards (Hackathon #1, FOUNDATIONS)
+- **Sibling project**: [bitbybit-habits](https://github.com/bitbybit-ar/bitbybit-habits) — habit tracker with Lightning rewards (Hackathon #1, FOUNDATIONS).
 
 ## Documentation
 
-- [Product Vision](docs/product-vision.md) — Detailed concept, user stories, and UX decisions
-- [Landing Page Design](docs/landing-design.md) — Sections, animations, color palette, component breakdown
-- [Explore](docs/feed-and-explore.md) — Public pages, search, filters, sort
-- [Tags](docs/tags.md) — Challenge tagging system, seed list, filtering, Nostr interoperability
-- [About Page](docs/about-page.md) — Project story, team members, La Crypta, open source
-- [Nostr Login](docs/nostr-login.md) — Login with NIP-07 browser extension
-- [Nostr Event Design](docs/nostr-events.md) — Custom event kinds, data model, and NIP usage
-- [Architecture](docs/architecture.md) — Technical stack, project structure, and design decisions
-- [Proof of Completion](docs/proof-of-completion.md) — How users prove they completed a challenge
-- [Prize Distribution](docs/prize-distribution.md) — Funding pots via NIP-75 and paying winners via NIP-57
-- [Nostr Flows](docs/nostr-flows.md) — Nostr-action proof, checkpoints, and zap rewards end-to-end
+- [Judge walkthrough](docs/testing-plan.md) — **start here** if you're evaluating the project. Ten numbered steps covering every major feature.
+- [Nostr flows](docs/nostr-flows.md) — end-to-end sequences for nostr-action proof, checkpoints, and zap rewards.
+- [Nostr event design](docs/nostr-events.md) — custom event kinds, tag structure, data model.
+- [Nostr login](docs/nostr-login.md) — NIP-98 auth flow and all three sign-in methods.
+- [Proof of completion](docs/proof-of-completion.md) — the four verification paths.
+- [Prize distribution](docs/prize-distribution.md) — funding via NIP-75, payout via NIP-57.
+- [Product vision](docs/product-vision.md) — concept, user stories, UX decisions.
+- [Landing page design](docs/landing-design.md) — sections, animations, colour palette.
+- [Explore](docs/feed-and-explore.md) — search, filters, sorts.
+- [Tags](docs/tags.md) — tagging system, seed list, filtering, Nostr interoperability.
+- [About](docs/about-page.md) — project story, team, La Crypta, open source.
+- [Architecture](docs/architecture.md) — technical stack, project structure, design decisions.
+- [Deploy](docs/deploy.md) — Vercel + Neon setup.
+- [Testing](docs/testing.md) — unit vs integration test strategy.

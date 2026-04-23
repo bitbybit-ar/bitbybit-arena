@@ -39,6 +39,10 @@ import {
 } from "@/components/share/ShareOnNostrModal";
 import styles from "./challenge-detail.module.scss";
 
+// Same cadence as the landing ZapModal's NWC polling. 4 s keeps latency
+// tolerable without hammering the wallet endpoint.
+const REWARD_POLL_INTERVAL_MS = 4000;
+
 interface CheckpointItem {
   id: string;
   challenge_id: string;
@@ -156,8 +160,22 @@ export default function ChallengeClient() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [zapLoadingId, setZapLoadingId] = useState<string | null>(null);
   const [zapInvoice, setZapInvoice] = useState<{ pr: string; sats: number } | null>(null);
+  // Reward-payout QR fallback. When the creator has no WebLN we render a
+  // modal per-winner with the BOLT11 invoice and poll /api/zap/status until
+  // it settles; on success we advance to the next winner, on user cancel we
+  // abort the whole payout loop and roll back the ongoing Promise.
+  const [rewardInvoice, setRewardInvoice] = useState<
+    | { pr: string; sats: number; name: string; index: number; total: number }
+    | null
+  >(null);
+  const rewardPayResolverRef = useRef<{
+    resolve: () => void;
+    reject: (err: Error) => void;
+  } | null>(null);
+  const rewardPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const submitterLnCache = useRef<Map<string, string | null>>(new Map());
   const { copied: invoiceCopied, copy: copyInvoice } = useClipboard();
+  const { copied: rewardInvoiceCopied, copy: copyRewardInvoice } = useClipboard();
 
   const fetchAll = useCallback(async () => {
     try {
@@ -461,6 +479,109 @@ export default function ChallengeClient() {
     });
   };
 
+  // Finish the current reward-invoice modal: clear the poll, close the
+  // modal, and settle the outstanding Promise for the waiting for-loop.
+  // `resolve` advances to the next winner; `reject` aborts the whole payout.
+  const finishRewardPay = useCallback((mode: "resolved" | "cancelled") => {
+    if (rewardPollRef.current) {
+      clearInterval(rewardPollRef.current);
+      rewardPollRef.current = null;
+    }
+    setRewardInvoice(null);
+    const r = rewardPayResolverRef.current;
+    rewardPayResolverRef.current = null;
+    if (!r) return;
+    if (mode === "resolved") {
+      r.resolve();
+    } else {
+      r.reject(new Error("payout_cancelled"));
+    }
+  }, []);
+
+  // Clean up any pending poll if the user navigates away mid-payout.
+  useEffect(() => {
+    return () => {
+      if (rewardPollRef.current) clearInterval(rewardPollRef.current);
+    };
+  }, []);
+
+  // Pay a single winner: try WebLN first, fall back to a QR + invoice modal
+  // that polls /api/zap/status until settlement. Resolves when paid; rejects
+  // with `payout_cancelled` if the user dismisses the modal.
+  const payWinner = async (
+    winner: PayableWinner,
+    index: number,
+    total: number
+  ): Promise<void> => {
+    if (!challenge) throw new Error("challenge_not_loaded");
+    setRewardStatus(
+      t("rewardPaying", {
+        name: winner.display_name,
+        amount: winner.amount_sats,
+      })
+    );
+    // Build + sign a NIP-57 zap request. eventId is the challenge's
+    // Nostr definition event id when present; otherwise fall back to
+    // the DB id so the zap request still has an `e` tag.
+    const zapRequest = buildZapRequestEvent({
+      recipientPubkey: winner.nostr_pubkey,
+      eventId: challenge.id,
+      amount: winner.amount_sats,
+      relays: DEFAULT_RELAYS,
+      comment: `BitByBit Arena reward: ${challenge.title}`,
+    });
+    const signedZap = await signWithPrompt(zapRequest);
+    const endpoint = await fetchLnurlPayEndpoint(winner.lightning_address);
+    const invoice = await fetchInvoice(
+      endpoint.callback,
+      winner.amount_sats,
+      undefined,
+      signedZap
+    );
+
+    // Preferred path: WebLN provider settles the invoice silently and we
+    // advance immediately. If the extension rejects or isn't installed we
+    // fall through to the QR modal so the creator can pay from any
+    // external Lightning wallet.
+    if (typeof window !== "undefined" && window.webln) {
+      try {
+        await window.webln.enable();
+        await window.webln.sendPayment(invoice);
+        return;
+      } catch {
+        /* fall through to QR fallback */
+      }
+    }
+
+    // No WebLN — show the BOLT11 as a QR, poll /api/zap/status (NWC-backed)
+    // until the invoice settles, then resolve so the for-loop moves on.
+    await new Promise<void>((resolve, reject) => {
+      rewardPayResolverRef.current = { resolve, reject };
+      setRewardInvoice({
+        pr: invoice,
+        sats: winner.amount_sats,
+        name: winner.display_name,
+        index,
+        total,
+      });
+
+      rewardPollRef.current = setInterval(async () => {
+        try {
+          const res = await fetch("/api/zap/status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ invoice }),
+          });
+          if (!res.ok) return;
+          const { paid } = await res.json();
+          if (paid) finishRewardPay("resolved");
+        } catch {
+          // Silently ignore polling errors — we'll try again next tick.
+        }
+      }, REWARD_POLL_INTERVAL_MS);
+    });
+  };
+
   const handleClaimReward = async () => {
     if (!challenge) return;
     setRewardError(null);
@@ -507,38 +628,17 @@ export default function ChallengeClient() {
         await fetchAll();
         return;
       }
-      if (typeof window === "undefined" || !window.webln) {
-        setRewardError(t("rewardNoWebln"));
-        return;
-      }
-      await window.webln.enable();
 
-      for (const winner of payable) {
-        setRewardStatus(
-          t("rewardPaying", {
-            name: winner.display_name,
-            amount: winner.amount_sats,
-          })
-        );
-        // Build + sign a NIP-57 zap request. eventId is the challenge's
-        // Nostr definition event id when present; otherwise fall back to
-        // the DB id so the zap request still has an `e` tag.
-        const zapRequest = buildZapRequestEvent({
-          recipientPubkey: winner.nostr_pubkey,
-          eventId: challenge.id,
-          amount: winner.amount_sats,
-          relays: DEFAULT_RELAYS,
-          comment: `BitByBit Arena reward: ${challenge.title}`,
-        });
-        const signedZap = await signWithPrompt(zapRequest);
-        const endpoint = await fetchLnurlPayEndpoint(winner.lightning_address);
-        const invoice = await fetchInvoice(
-          endpoint.callback,
-          winner.amount_sats,
-          undefined,
-          signedZap
-        );
-        await window.webln.sendPayment(invoice);
+      for (let i = 0; i < payable.length; i++) {
+        try {
+          await payWinner(payable[i], i + 1, payable.length);
+        } catch (err) {
+          if (err instanceof Error && err.message === "payout_cancelled") {
+            setRewardError(t("rewardCancelled"));
+            return;
+          }
+          throw err;
+        }
       }
 
       await fetch(`/api/challenges/${challengeId}/reward`, { method: "PATCH" });
@@ -1320,6 +1420,42 @@ export default function ChallengeClient() {
             <CopyIcon size={16} />
             {invoiceCopied ? t("zapInvoiceCopied") : t("zapCopyInvoice")}
           </button>
+        </Modal>
+      )}
+
+      {rewardInvoice && (
+        <Modal
+          onClose={() => finishRewardPay("cancelled")}
+          title={t("rewardQrTitle", {
+            name: rewardInvoice.name,
+            index: rewardInvoice.index,
+            total: rewardInvoice.total,
+          })}
+          size="sm"
+        >
+          <p className={styles.zapInvoiceHint}>
+            {t("rewardQrHint", { amount: rewardInvoice.sats })}
+          </p>
+          <div className={styles.zapInvoiceQr}>
+            <QRCodeSVG
+              value={rewardInvoice.pr}
+              size={200}
+              bgColor="transparent"
+              fgColor="var(--color-text-primary)"
+              level="M"
+            />
+          </div>
+          <div className={styles.zapInvoiceBox}>
+            <code className={styles.zapInvoiceText}>{rewardInvoice.pr}</code>
+          </div>
+          <button
+            className={styles.zapInvoiceCopyBtn}
+            onClick={() => copyRewardInvoice(rewardInvoice.pr)}
+          >
+            <CopyIcon size={16} />
+            {rewardInvoiceCopied ? t("zapInvoiceCopied") : t("zapCopyInvoice")}
+          </button>
+          <p className={styles.zapInvoiceHint}>{t("rewardQrWaiting")}</p>
         </Modal>
       )}
     </div>

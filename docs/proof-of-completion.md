@@ -50,10 +50,6 @@ The challenge creator chooses the verification method when creating the challeng
 - On approval, participant progress is bumped and `status=completed` is set when `progress >= goal`
 - Simple, trusted, works well for small challenges
 
-### Community Vote (post-MVP, not implemented)
-
-Planned: completions would be visible to all participants, who vote to approve/reject, with a majority threshold within a time window. Not available in the current MVP — `community_vote` is rejected by the challenge validators. Tracked for a future release alongside the kind:7102 verification event (see below).
-
 ### Automatic (Honor System)
 
 - Completion is auto-approved when submitted
@@ -114,14 +110,7 @@ POST /api/challenges/[id]/completions
 
 ## Verification architecture (MVP)
 
-Earlier drafts of this doc and `docs/nostr-events.md` modelled verification as a dedicated Nostr event (`kind:7102`) published to relays. The shipped MVP **does not publish verification events** — it stores the verification state in the `completions` row (`status`, `reviewed_by`, `reviewed_at`) and updates participant progress in the same transaction.
-
-**Why inline state for MVP:**
-- Avoids a second round-trip to relays on every review action, which would make the creator queue feel laggy
-- Keeps the verification authoritative in a place we control — relays can drop events and reviews need to be deterministic
-- Unblocks the creator queue, auto-verification paths (`nostr_action`, `nostr_hashtag`), and the reward flow without needing a custom kind to be finalized first
-
-**Post-MVP extension:** once kind numbers are finalized, we plan to mirror each verification decision as a `kind:7102` event published by the reviewer. That makes the verification publicly auditable on relays and unlocks community-vote tallies. The DB row stays the source of truth; the relay event is a signed, shareable attestation of the same decision.
+Verification state lives in the `completions` row (`status`, `reviewed_by`, `reviewed_at`) and participant progress updates in the same transaction. We don't publish a separate Nostr event for the decision: it keeps the creator queue snappy, keeps the authoritative record in a place we control, and unblocks the auto-verification paths (`nostr_action`, `nostr_hashtag`) and the reward flow without depending on a custom event kind.
 
 ## Anti-Fraud Considerations
 

@@ -48,7 +48,7 @@ function parseSecretKey(input: string): Uint8Array {
  * Nsec paste form. Parses the key client-side, derives the pubkey,
  * optionally checks it against `expectedPubkey`, and emits a
  * `SignerHandle` via `onSigner`. The parent decides whether that
- * triggers a NIP-42 login or a re-attach.
+ * triggers a NIP-98 login or a re-attach.
  */
 export function NsecSignerForm({
   onSigner,
