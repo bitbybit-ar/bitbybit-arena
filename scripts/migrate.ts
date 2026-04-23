@@ -23,11 +23,61 @@ async function main() {
   if (!databaseUrl) {
     throw new Error("DATABASE_URL is not set");
   }
+  assertMonotonicMigrationTimestamps();
   const client = neon(databaseUrl);
   const db = drizzle(client);
   await baselineIfNeeded(db);
   await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
+  await assertJournalIsComplete(db);
   console.log("Migrations applied");
+}
+
+// Drizzle's migrator only applies migrations whose folderMillis is STRICTLY
+// GREATER than the latest already-applied row's created_at. If a migration
+// file lands with a folderMillis earlier than an already-applied migration
+// (e.g. because the author's clock was behind, or two migrations were
+// generated in parallel), it falls below the watermark and gets silently
+// skipped forever. The workflow reports success while the schema drifts.
+//
+// Fail loudly at the start of every run instead. Fix is to edit
+// drizzle/meta/_journal.json and bump the offending entry's `when` so the
+// sequence is strictly increasing in tag order.
+function assertMonotonicMigrationTimestamps(): void {
+  const migrations = readMigrationFiles({ migrationsFolder: MIGRATIONS_FOLDER });
+  for (let i = 1; i < migrations.length; i++) {
+    const prev = migrations[i - 1];
+    const curr = migrations[i];
+    if (curr.folderMillis <= prev.folderMillis) {
+      throw new Error(
+        `Migration timestamps are not strictly increasing in _journal.json: ` +
+          `entry ${i} has when=${curr.folderMillis} but entry ${i - 1} has when=${prev.folderMillis}. ` +
+          `Drizzle would silently skip the out-of-order migration. ` +
+          `Fix: edit drizzle/meta/_journal.json and bump the "when" value of the offending entry so it exceeds its predecessor.`,
+      );
+    }
+  }
+}
+
+// Second line of defense: after migrate() returns, verify every migration
+// file's hash is present in the DB journal. Catches silent skips from any
+// cause (watermark drift, manual journal edits, cross-DB URL mismatches).
+// Without this, a misconfigured run can exit 0 with the schema out of sync.
+async function assertJournalIsComplete(db: NeonHttpDatabase): Promise<void> {
+  const migrations = readMigrationFiles({ migrationsFolder: MIGRATIONS_FOLDER });
+  const { rows } = await db.execute<{ hash: string }>(
+    sql`SELECT hash FROM drizzle.__drizzle_migrations`,
+  );
+  const applied = new Set(rows.map((r) => r.hash));
+  const missing = migrations.filter((m) => !applied.has(m.hash));
+  if (missing.length > 0) {
+    const details = missing
+      .map((m) => `  - when=${m.folderMillis} hash=${m.hash}`)
+      .join("\n");
+    throw new Error(
+      `After migrate(), ${missing.length} migration(s) are missing from the DB journal:\n${details}\n` +
+        `The migrator did not apply them (likely silent skip). Investigate before shipping.`,
+    );
+  }
 }
 
 // If the schema already exists (e.g. created by a prior `drizzle-kit push` or
