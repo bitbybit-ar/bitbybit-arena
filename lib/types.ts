@@ -124,6 +124,7 @@ export interface CheckpointCompletion {
   checkpoint_id: string;
   proof_event_id: string | null;
   content: string | null;
+  image_url: string | null;
   status: CompletionStatus;
   completed_at: string | null;
 }
@@ -135,6 +136,7 @@ export interface PendingCheckpointSubmission {
   checkpoint_id: string;
   participant_id: string;
   content: string | null;
+  image_url: string | null;
   proof_event_id: string | null;
   created_at: string;
   participant: {

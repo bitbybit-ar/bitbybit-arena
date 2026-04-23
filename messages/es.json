@@ -475,6 +475,8 @@
     "checkpointLocked": "Primero completá el checkpoint anterior.",
     "checkpointError": "No se pudo completar el checkpoint. Intentá de nuevo.",
     "checkpointProofLabel": "Prueba del checkpoint {index}",
+    "checkpointProofImageAlt": "Foto del checkpoint {index}",
+    "checkpointProofRequired": "Agregá una descripción o una foto como prueba.",
     "checkpointAwaitingReview": "En revisión",
     "checkpointPendingReviewHint": "Enviaste tu prueba. Esperá a que el creador la revise.",
     "checkpointResubmitHint": "Tu prueba anterior fue rechazada. Editá tu respuesta y volvé a enviarla.",
@@ -586,7 +588,10 @@
     "acceptSuccess": "Badge agregado a tu perfil de Nostr",
     "acceptFailed": "No se pudo publicar tus profile badges. Intentá de nuevo.",
     "acceptMissingIds": "A este badge le faltan los event ids de Nostr y todavía no se puede agregar a un perfil.",
-    "acceptMissingSession": "Necesitás estar firmado con una clave Nostr para aceptar un badge."
+    "acceptMissingSession": "Necesitás estar firmado con una clave Nostr para aceptar un badge.",
+    "checkpointProgress": "{approved}/{total} checkpoints",
+    "checkpointProgressLabel": "{approved} de {total} checkpoints aprobados",
+    "checkpointPending": "{count} en revisión"
   },
   "about": {
     "story": {

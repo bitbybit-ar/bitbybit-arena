@@ -1,0 +1,1 @@
+ALTER TABLE "checkpoint_completions" ADD COLUMN "image_url" text;

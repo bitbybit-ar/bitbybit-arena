@@ -109,12 +109,16 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     }
   }
 
-  const { content, method } = await parseBody(req, CompleteCheckpointBodySchema);
+  const { content, image_url, method } = await parseBody(
+    req,
+    CompleteCheckpointBodySchema
+  );
 
   const allowedMethods = checkpoint.verification_methods as VerificationMethod[];
   const selectedMethod = pickVerificationMethod(method, allowedMethods);
 
   let resolvedContent: string | null = null;
+  let resolvedImageUrl: string | null = null;
   let proofEventId: string | null = null;
   let autoApprove = false;
 
@@ -149,10 +153,18 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     proofEventId = result.proofEventId;
     autoApprove = true;
   } else {
-    if (!content || content.trim().length < 5) {
-      throw new BadRequestError("Proof content must be at least 5 characters");
+    // Manual proof: either a ≥ 5-char text, an image, or both. Short
+    // text alongside an image is silently dropped (the image itself is
+    // evidence) — same rule as /api/challenges/[id]/completions so the
+    // two submission surfaces behave identically.
+    const textOk = !!content && content.trim().length >= 5;
+    if (!textOk && !image_url) {
+      throw new BadRequestError(
+        "Provide at least a 5-character description or an image proof"
+      );
     }
-    resolvedContent = content.trim();
+    resolvedContent = textOk ? content!.trim() : null;
+    resolvedImageUrl = image_url ?? null;
     autoApprove = shouldAutoApprove(
       selectedMethod,
       challenge.creator_id,
@@ -190,6 +202,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
       .update(checkpoint_completions)
       .set({
         content: resolvedContent,
+        image_url: resolvedImageUrl,
         proof_event_id: proofEventId,
         status: autoApprove ? "approved" : "pending",
         completed_at: autoApprove ? new Date() : null,
@@ -204,6 +217,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
           participant_id: participation.id,
           checkpoint_id: checkpoint.id,
           content: resolvedContent,
+          image_url: resolvedImageUrl,
           proof_event_id: proofEventId,
           status: autoApprove ? "approved" : "pending",
           completed_at: autoApprove ? new Date() : null,
