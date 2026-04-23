@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, AuthSession } from "@/lib/auth";
 import { getDb, Db } from "@/lib/db";
 import { ApiError, RateLimitError } from "./errors";
+import { defaultRateLimitStore, type RateLimitStore } from "./rate-limit";
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
@@ -26,7 +27,9 @@ interface HandlerOptions {
   rateLimit?: RateLimitTier;
 }
 
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+// Indirect through `RateLimitStore` so we can swap in Upstash/KV
+// later without touching this file. See lib/api/rate-limit.ts.
+const rateLimitStore: RateLimitStore = defaultRateLimitStore;
 
 const rateLimitConfig: Record<RateLimitTier, { max: number; windowMs: number }> = {
   strict: { max: 5, windowMs: 15 * 60 * 1000 },
@@ -39,6 +42,30 @@ const rateLimitConfig: Record<RateLimitTier, { max: number; windowMs: number }> 
   standard: { max: 60, windowMs: 60 * 1000 },
 };
 
+/**
+ * Extract the client's real IP from `x-forwarded-for`. The header is
+ * a comma-separated chain `<client>, <proxy1>, <proxy2>, ...`. The
+ * leftmost entry is set by the *client* and therefore attacker-
+ * controlled — using it for rate-limit keys lets a single bad actor
+ * trivially evict legit users from the bucket. The rightmost entry
+ * is set by the closest trusted proxy (Vercel's edge in our case),
+ * so it's the only value we can attribute to a real network peer.
+ *
+ * Falls back to `x-real-ip` (set by some hosts/proxies) and finally
+ * to a static "unknown" so behavior degrades to "global bucket per
+ * route" rather than crashing.
+ */
+function getClientIp(req: NextRequest): string {
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1];
+  }
+  const xri = req.headers.get("x-real-ip");
+  if (xri) return xri.trim();
+  return "unknown";
+}
+
 function checkRateLimit(key: string, tier: RateLimitTier): void {
   const config = rateLimitConfig[tier];
   const now = Date.now();
@@ -49,9 +76,10 @@ function checkRateLimit(key: string, tier: RateLimitTier): void {
     return;
   }
 
-  entry.count++;
-  if (entry.count > config.max) {
-    throw new RateLimitError(entry.resetAt - now);
+  const next = { count: entry.count + 1, resetAt: entry.resetAt };
+  rateLimitStore.set(key, next);
+  if (next.count > config.max) {
+    throw new RateLimitError(next.resetAt - now);
   }
 }
 
@@ -63,8 +91,7 @@ export function apiHandler<T>(
 
   return async (req: NextRequest, routeCtx?: { params: Promise<Record<string, string>> }) => {
     try {
-      const ip = req.headers.get("x-forwarded-for") || "unknown";
-      checkRateLimit(`${ip}:${req.nextUrl.pathname}`, rateLimit);
+      checkRateLimit(`${getClientIp(req)}:${req.nextUrl.pathname}`, rateLimit);
 
       const session = await getSession();
 

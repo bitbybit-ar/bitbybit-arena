@@ -171,24 +171,29 @@ export function SignerProvider({
   const completeLoginWithSigner = useCallback(
     async (next: SignerHandle): Promise<LoginResult> => {
       try {
-        const challengeRes = await fetch("/api/auth/nostr", { method: "GET" });
-        if (challengeRes.status === 429) {
-          return { ok: false, reason: "rate_limited" };
-        }
-        if (!challengeRes.ok) return { ok: false, reason: "failed" };
-        const { data: challenge } = await challengeRes.json();
-
+        // NIP-98 HTTP Auth: build a kind:27235 event whose `u` tag
+        // pins the absolute request URL, `method` tag pins the verb,
+        // and a custom `arena_signer` tag carries the signer method
+        // so it travels inside the signed envelope (a MITM can't
+        // forge a different signer_type without invalidating the
+        // signature). Empty content per the spec.
+        const url = new URL("/api/auth/nostr", window.location.origin).toString();
         const signed = await next.sign({
-          kind: 22242,
+          kind: 27235,
           created_at: Math.floor(Date.now() / 1000),
-          tags: [],
-          content: challenge,
+          tags: [
+            ["u", url],
+            ["method", "POST"],
+            ["arena_signer", next.type],
+          ],
+          content: "",
         });
 
         const authRes = await fetch("/api/auth/nostr", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ signedEvent: signed, signer_type: next.type }),
+          headers: {
+            Authorization: `Nostr ${btoa(JSON.stringify(signed))}`,
+          },
         });
         if (authRes.status === 429) {
           return { ok: false, reason: "rate_limited" };

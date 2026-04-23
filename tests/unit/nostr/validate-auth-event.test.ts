@@ -1,89 +1,158 @@
 import { describe, it, expect } from "vitest";
-import { finalizeEvent, generateSecretKey, getPublicKey } from "nostr-tools/pure";
-import { validateAuthEvent } from "@/lib/nostr/verify";
+import { finalizeEvent, generateSecretKey } from "nostr-tools/pure";
+import { validateNip98AuthEvent } from "@/lib/nostr/verify";
+
+const REQUEST_URL = "https://arena.bitbybit.com.ar/api/auth/nostr";
+const REQUEST_METHOD = "POST";
 
 /**
- * Round-trip a real kind:22242 NIP-42 event through the validator.
- * The first iteration of `NostrEventSchema` typed `sig` as Hex64,
- * which rejected every actual Schnorr signature (128 hex chars) and
- * broke login on the deploy. This test exists to make sure the
- * happy path — sign the challenge, verify it server-side — never
- * regresses again.
+ * Round-trip a real kind:27235 NIP-98 event through the validator.
+ * This file replaced the old NIP-42 (kind 22242) tests when we
+ * migrated to NIP-98 — the previous incarnation also caught the
+ * Hex64 vs Hex128 sig regression that broke login on the deploy.
  */
-function signAuthEvent(challenge: string, createdAt?: number) {
+function signAuthEvent(
+  opts: {
+    url?: string;
+    method?: string;
+    createdAt?: number;
+    content?: string;
+    extraTags?: string[][];
+    kind?: number;
+  } = {}
+) {
   const sk = generateSecretKey();
-  const pubkey = getPublicKey(sk);
   const event = finalizeEvent(
     {
-      kind: 22242,
-      created_at: createdAt ?? Math.floor(Date.now() / 1000),
-      tags: [],
-      content: challenge,
+      kind: opts.kind ?? 27235,
+      created_at: opts.createdAt ?? Math.floor(Date.now() / 1000),
+      tags: [
+        ["u", opts.url ?? REQUEST_URL],
+        ["method", opts.method ?? REQUEST_METHOD],
+        ...(opts.extraTags ?? []),
+      ],
+      content: opts.content ?? "",
     },
     sk
   );
-  return { event, pubkey };
+  return event;
 }
 
-describe("validateAuthEvent", () => {
-  it("accepts a freshly signed kind:22242 event whose content matches the challenge", () => {
-    const challenge = "a".repeat(64);
-    const { event } = signAuthEvent(challenge);
-
-    const result = validateAuthEvent(event, challenge);
+describe("validateNip98AuthEvent", () => {
+  it("accepts a freshly signed kind:27235 event whose u + method match", () => {
+    const event = signAuthEvent();
+    const result = validateNip98AuthEvent(event, {
+      url: REQUEST_URL,
+      method: REQUEST_METHOD,
+    });
     expect(result.ok).toBe(true);
   });
 
-  it("rejects with reason=schema when the signed event is missing fields", () => {
-    const result = validateAuthEvent(
+  it("rejects with reason=schema when fields are missing", () => {
+    const result = validateNip98AuthEvent(
       { pubkey: "a".repeat(64) },
-      "challenge"
+      { url: REQUEST_URL, method: REQUEST_METHOD }
     );
     expect(result).toEqual({ ok: false, reason: "schema" });
   });
 
   it("rejects with reason=schema when sig is 64 hex (the old buggy contract)", () => {
-    // A Schnorr signature is 128 hex chars. If Hex64Schema sneaks back
-    // onto `sig`, a 128-hex real sig would be rejected. This test
-    // guards the inverse: a 64-hex sig must NOT be accepted.
+    // A Schnorr signature is 128 hex chars. Guard against any future
+    // schema regression that types `sig` as Hex64.
     const fakeEvent = {
       id: "a".repeat(64),
       pubkey: "b".repeat(64),
-      sig: "c".repeat(64), // wrong length — real sigs are 128
+      sig: "c".repeat(64), // wrong length
       created_at: Math.floor(Date.now() / 1000),
-      kind: 22242,
-      content: "challenge",
-      tags: [],
+      kind: 27235,
+      content: "",
+      tags: [
+        ["u", REQUEST_URL],
+        ["method", REQUEST_METHOD],
+      ],
     };
-    const result = validateAuthEvent(fakeEvent, "challenge");
+    const result = validateNip98AuthEvent(fakeEvent, {
+      url: REQUEST_URL,
+      method: REQUEST_METHOD,
+    });
     expect(result).toEqual({ ok: false, reason: "schema" });
   });
 
-  it("rejects with reason=kind when the event isn't kind 22242", () => {
-    const challenge = "a".repeat(64);
-    const { event } = signAuthEvent(challenge);
-    const wrongKind = { ...event, kind: 1 };
-
-    const result = validateAuthEvent(wrongKind, challenge);
+  it("rejects with reason=kind when the event isn't kind 27235", () => {
+    const event = signAuthEvent({ kind: 1 });
+    const result = validateNip98AuthEvent(event, {
+      url: REQUEST_URL,
+      method: REQUEST_METHOD,
+    });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe("kind");
   });
 
-  it("rejects with reason=clock when created_at is more than 5 minutes off", () => {
-    const challenge = "a".repeat(64);
-    const now = Math.floor(Date.now() / 1000);
-    const { event } = signAuthEvent(challenge, now - 10 * 60);
-
-    const result = validateAuthEvent(event, challenge);
+  it("rejects with reason=clock when created_at is more than 60s off", () => {
+    const event = signAuthEvent({
+      createdAt: Math.floor(Date.now() / 1000) - 5 * 60,
+    });
+    const result = validateNip98AuthEvent(event, {
+      url: REQUEST_URL,
+      method: REQUEST_METHOD,
+    });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe("clock");
   });
 
-  it("rejects with reason=challenge when content doesn't match", () => {
-    const { event } = signAuthEvent("a".repeat(64));
-
-    const result = validateAuthEvent(event, "b".repeat(64));
+  it("rejects with reason=content when content is non-empty (NIP-98 says empty)", () => {
+    const event = signAuthEvent({ content: "not empty" });
+    const result = validateNip98AuthEvent(event, {
+      url: REQUEST_URL,
+      method: REQUEST_METHOD,
+    });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toBe("challenge");
+    if (!result.ok) expect(result.reason).toBe("content");
+  });
+
+  it("rejects with reason=url when the u tag doesn't match the request URL", () => {
+    const event = signAuthEvent({ url: "https://attacker.example/api/x" });
+    const result = validateNip98AuthEvent(event, {
+      url: REQUEST_URL,
+      method: REQUEST_METHOD,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe("url");
+  });
+
+  it("rejects with reason=method when the method tag doesn't match", () => {
+    const event = signAuthEvent({ method: "GET" });
+    const result = validateNip98AuthEvent(event, {
+      url: REQUEST_URL,
+      method: REQUEST_METHOD,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe("method");
+  });
+
+  it("ignores trailing slashes and host case when matching the u tag", () => {
+    const event = signAuthEvent({
+      url: "https://ARENA.bitbybit.com.ar/api/auth/nostr/",
+    });
+    const result = validateNip98AuthEvent(event, {
+      url: REQUEST_URL,
+      method: REQUEST_METHOD,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("preserves custom tags (e.g. arena_signer) on a successful validation", () => {
+    const event = signAuthEvent({
+      extraTags: [["arena_signer", "extension"]],
+    });
+    const result = validateNip98AuthEvent(event, {
+      url: REQUEST_URL,
+      method: REQUEST_METHOD,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const signerTag = result.event.tags.find((t) => t[0] === "arena_signer");
+      expect(signerTag?.[1]).toBe("extension");
+    }
   });
 });

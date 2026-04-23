@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { apiHandler } from "@/lib/api/handler";
 import { parseBody } from "@/lib/api/parse";
 import { UpdateProfileBodySchema } from "@/lib/schemas/profile";
+import { SESSION_COOKIE_NAME } from "@/lib/auth";
 import { users } from "@/lib/db/schema";
 
 // GET /api/profile — get current user profile
@@ -52,7 +53,7 @@ export const DELETE = apiHandler(async (_req: NextRequest, { session, db }) => {
     .where(eq(users.id, session!.user_id));
 
   const cookieStore = await cookies();
-  cookieStore.delete("session");
+  cookieStore.delete(SESSION_COOKIE_NAME);
 
   return { deleted: true };
 });

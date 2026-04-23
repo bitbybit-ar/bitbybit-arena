@@ -46,9 +46,18 @@ vi.mock("next/headers", () => ({
   cookies: () => Promise.resolve(cookieStore),
 }));
 
-// Reactivation test needs validateAuthEvent to succeed without crypto.
+// Reactivation test needs the NIP-98 validator to succeed without
+// crypto. The route handler downstream reads `event.pubkey` and
+// `event.tags`, so the mock returns a minimal shape that satisfies
+// both reads.
 vi.mock("@/lib/nostr/verify", () => ({
-  validateAuthEvent: vi.fn(() => ({ ok: true, event: {} })),
+  validateNip98AuthEvent: vi.fn((input: unknown) => ({
+    ok: true,
+    event: {
+      pubkey: (input as { pubkey?: string })?.pubkey ?? "a".repeat(64),
+      tags: [],
+    },
+  })),
 }));
 
 // Reactivation test uses a stubbed createSession.
