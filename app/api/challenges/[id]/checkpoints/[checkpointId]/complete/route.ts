@@ -109,12 +109,16 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     }
   }
 
-  const { content, method } = await parseBody(req, CompleteCheckpointBodySchema);
+  const { content, image_url, method } = await parseBody(
+    req,
+    CompleteCheckpointBodySchema
+  );
 
   const allowedMethods = checkpoint.verification_methods as VerificationMethod[];
   const selectedMethod = pickVerificationMethod(method, allowedMethods);
 
   let resolvedContent: string | null = null;
+  let resolvedImageUrl: string | null = null;
   let proofEventId: string | null = null;
   let autoApprove = false;
 
@@ -149,10 +153,19 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     proofEventId = result.proofEventId;
     autoApprove = true;
   } else {
-    if (!content || content.trim().length < 5) {
+    // Manual proof: either a non-empty text (>= 5 chars) or an image —
+    // or both. Empty/whitespace content alongside no image is rejected.
+    const trimmed = content?.trim() ?? "";
+    if (!trimmed && !image_url) {
+      throw new BadRequestError(
+        "Provide a text proof or attach an image"
+      );
+    }
+    if (trimmed && trimmed.length < 5) {
       throw new BadRequestError("Proof content must be at least 5 characters");
     }
-    resolvedContent = content.trim();
+    resolvedContent = trimmed || null;
+    resolvedImageUrl = image_url ?? null;
     autoApprove = shouldAutoApprove(
       selectedMethod,
       challenge.creator_id,
@@ -190,6 +203,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
       .update(checkpoint_completions)
       .set({
         content: resolvedContent,
+        image_url: resolvedImageUrl,
         proof_event_id: proofEventId,
         status: autoApprove ? "approved" : "pending",
         completed_at: autoApprove ? new Date() : null,
@@ -204,6 +218,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
           participant_id: participation.id,
           checkpoint_id: checkpoint.id,
           content: resolvedContent,
+          image_url: resolvedImageUrl,
           proof_event_id: proofEventId,
           status: autoApprove ? "approved" : "pending",
           completed_at: autoApprove ? new Date() : null,

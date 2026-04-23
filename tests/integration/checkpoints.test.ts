@@ -296,6 +296,94 @@ describe("Integration: Checkpoints", () => {
       expect(rows).toHaveLength(1);
     });
 
+    it("accepts an image-only submission when no text is provided", async () => {
+      // Spin up a creator_approval checkpoint so we can inspect the
+      // persisted row before it auto-advances to completed.
+      const [challenge] = await testDb
+        .insert(challenges)
+        .values({
+          creator_id: creator.id,
+          slug: `img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          title: "Image-only checkpoint",
+          description: "Challenge used to verify image-only submissions",
+          type: "one_time",
+          verification_methods: ["creator_approval"],
+          checkpoint_mode: "parallel",
+          goal: 1,
+          unit: "checkpoints",
+          status: "open",
+        })
+        .returning();
+      const [cp] = await testDb
+        .insert(challenge_checkpoints)
+        .values({
+          challenge_id: challenge.id,
+          order: 0,
+          title: "Attach a photo",
+          verification_methods: ["creator_approval"],
+        })
+        .returning();
+      await seedParticipant(challenge.id, participant.id, { status: "active" });
+      setSession(makeSession(participant.id, { nostr_pubkey: "doer_pubkey" }));
+
+      const res = await completeCheckpointRoute.POST(
+        buildRequest(
+          "POST",
+          `/api/challenges/${challenge.id}/checkpoints/${cp.id}/complete`,
+          { image_url: "https://blossom.example/abc123.png" }
+        ),
+        { params: Promise.resolve({ id: challenge.id, checkpointId: cp.id }) }
+      );
+      expect(res.status).toBe(201);
+
+      const [row] = await testDb
+        .select()
+        .from(checkpoint_completions)
+        .where(eq(checkpoint_completions.checkpoint_id, cp.id));
+      expect(row.image_url).toBe("https://blossom.example/abc123.png");
+      expect(row.content).toBeNull();
+      expect(row.status).toBe("pending");
+    });
+
+    it("rejects a submission with neither text nor image", async () => {
+      const [challenge] = await testDb
+        .insert(challenges)
+        .values({
+          creator_id: creator.id,
+          slug: `empty-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          title: "Empty proof checkpoint",
+          description: "Needs either text or image",
+          type: "one_time",
+          verification_methods: ["creator_approval"],
+          checkpoint_mode: "parallel",
+          goal: 1,
+          unit: "checkpoints",
+          status: "open",
+        })
+        .returning();
+      const [cp] = await testDb
+        .insert(challenge_checkpoints)
+        .values({
+          challenge_id: challenge.id,
+          order: 0,
+          title: "Anything",
+          verification_methods: ["creator_approval"],
+        })
+        .returning();
+      await seedParticipant(challenge.id, participant.id, { status: "active" });
+      setSession(makeSession(participant.id, { nostr_pubkey: "doer_pubkey" }));
+
+      const res = await completeCheckpointRoute.POST(
+        buildRequest(
+          "POST",
+          `/api/challenges/${challenge.id}/checkpoints/${cp.id}/complete`,
+          {}
+        ),
+        { params: Promise.resolve({ id: challenge.id, checkpointId: cp.id }) }
+      );
+      expect(res.status).toBe(400);
+    });
+
     it("rejects non-participants", async () => {
       const { challenge, checkpoints } = await seedChallengeWithCheckpoints(
         creator.id,

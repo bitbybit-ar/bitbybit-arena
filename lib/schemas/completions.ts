@@ -45,12 +45,20 @@ export const SubmitCompletionBodySchema = z.object({
 
 export type SubmitCompletionBody = z.infer<typeof SubmitCompletionBodySchema>;
 
-/** POST /api/challenges/[id]/checkpoints/[checkpointId]/complete */
+/**
+ * POST /api/challenges/[id]/checkpoints/[checkpointId]/complete
+ *
+ * Mirrors `SubmitCompletionBodySchema`: either `content` (≥ 5 chars when
+ * not empty) or `image_url` is required for manual proofs. The cross-
+ * field rule is enforced in the handler because the required fields
+ * depend on the verification method the checkpoint actually advertises.
+ */
 export const CompleteCheckpointBodySchema = z.object({
   content: z
     .string()
     .nullish()
     .transform((v) => (v == null ? null : v)),
+  image_url: HttpUrlSchema.optional(),
   method: VerificationMethodSchema.optional(),
 });
 

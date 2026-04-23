@@ -32,7 +32,11 @@ interface MyChallengeItem {
   title: string;
   type: string;
   status: string;
+  checkpoint_mode?: "none" | "sequential" | "parallel";
   participant_count: number;
+  checkpoints_total?: number;
+  checkpoints_approved?: number;
+  checkpoints_pending?: number;
   participation?: { progress: number; status: string } | null;
 }
 
@@ -333,23 +337,69 @@ export default function MyChallengesPage() {
           </div>
         ) : (
           <div className={styles.list}>
-            {items.map((item) => (
-              <Link
-                key={item.id}
-                href={`/explore/${item.id}`}
-                className={styles.card}
-              >
-                <div className={styles.cardTop}>
-                  <Tag variant={typeVariant(item.type)}>{tCreate(`types.${item.type}`)}</Tag>
-                  <Tag variant={statusVariant(item.status)}>{tCommon(statusKey(item.status))}</Tag>
-                </div>
-                <h3 className={styles.cardTitle}>{item.title}</h3>
-                <div className={styles.cardMeta}>
-                  <span>{item.participant_count} {tCommon("participants")}</span>
-                  {item.participation?.status === "completed" && <span className={styles.completed}>{tCommon("completed")}</span>}
-                </div>
-              </Link>
-            ))}
+            {items.map((item) => {
+              const total = item.checkpoints_total ?? 0;
+              const hasCheckpoints =
+                tab === "joined" &&
+                item.checkpoint_mode &&
+                item.checkpoint_mode !== "none" &&
+                total > 0;
+              const approved = item.checkpoints_approved ?? 0;
+              const pending = item.checkpoints_pending ?? 0;
+              return (
+                <Link
+                  key={item.id}
+                  href={`/explore/${item.id}`}
+                  className={styles.card}
+                >
+                  <div className={styles.cardTop}>
+                    <Tag variant={typeVariant(item.type)}>{tCreate(`types.${item.type}`)}</Tag>
+                    <Tag variant={statusVariant(item.status)}>{tCommon(statusKey(item.status))}</Tag>
+                  </div>
+                  <h3 className={styles.cardTitle}>{item.title}</h3>
+                  <div className={styles.cardMeta}>
+                    <span>{item.participant_count} {tCommon("participants")}</span>
+                    {item.participation?.status === "completed" && <span className={styles.completed}>{tCommon("completed")}</span>}
+                  </div>
+                  {hasCheckpoints && (
+                    <div className={styles.checkpointProgress}>
+                      <div
+                        className={styles.checkpointDots}
+                        aria-label={t("checkpointProgressLabel", {
+                          approved,
+                          total,
+                        })}
+                      >
+                        {Array.from({ length: total }).map((_, i) => (
+                          <span
+                            key={i}
+                            className={
+                              i < approved
+                                ? styles.checkpointDotDone
+                                : i < approved + pending
+                                  ? styles.checkpointDotPending
+                                  : styles.checkpointDotTodo
+                            }
+                            aria-hidden="true"
+                          />
+                        ))}
+                      </div>
+                      <span className={styles.checkpointProgressText}>
+                        {t("checkpointProgress", { approved, total })}
+                        {pending > 0 && (
+                          <>
+                            {" "}
+                            <span className={styles.checkpointPending}>
+                              · {t("checkpointPending", { count: pending })}
+                            </span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

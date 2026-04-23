@@ -67,6 +67,7 @@ interface CheckpointCompletionItem {
   checkpoint_id: string;
   proof_event_id: string | null;
   content: string | null;
+  image_url: string | null;
   status: CompletionStatus;
   completed_at: string | null;
 }
@@ -160,6 +161,9 @@ export default function ChallengeClient() {
   const [selectedWinners, setSelectedWinners] = useState<Set<string>>(new Set());
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [checkpointProofs, setCheckpointProofs] = useState<Record<string, string>>({});
+  const [checkpointImages, setCheckpointImages] = useState<
+    Record<string, BlossomDescriptor | null>
+  >({});
   const [checkpointErrors, setCheckpointErrors] = useState<Record<string, string>>({});
   const [rewardError, setRewardError] = useState<string | null>(null);
   const [rewardStatus, setRewardStatus] = useState<string | null>(null);
@@ -767,15 +771,24 @@ export default function ChallengeClient() {
       body.method = cpPrimary;
       const needsContent = cpPrimary !== "nostr_action" && cpPrimary !== "nostr_hashtag";
       if (needsContent) {
-        const content = checkpointProofs[checkpoint.id] ?? "";
-        if (content.trim().length < 5) {
+        const content = (checkpointProofs[checkpoint.id] ?? "").trim();
+        const image = checkpointImages[checkpoint.id];
+        if (!content && !image) {
+          setCheckpointErrors((prev) => ({
+            ...prev,
+            [checkpoint.id]: t("checkpointProofRequired"),
+          }));
+          return;
+        }
+        if (content && content.length < 5) {
           setCheckpointErrors((prev) => ({
             ...prev,
             [checkpoint.id]: t("proofTooShort"),
           }));
           return;
         }
-        body.content = content.trim();
+        if (content) body.content = content;
+        if (image) body.image_url = image.url;
       }
       const res = await fetch(
         `/api/challenges/${challengeId}/checkpoints/${checkpoint.id}/complete`,
@@ -794,6 +807,11 @@ export default function ChallengeClient() {
         return;
       }
       setCheckpointProofs((prev) => {
+        const next = { ...prev };
+        delete next[checkpoint.id];
+        return next;
+      });
+      setCheckpointImages((prev) => {
         const next = { ...prev };
         delete next[checkpoint.id];
         return next;
@@ -1129,6 +1147,14 @@ export default function ChallengeClient() {
                       {sub.content && (
                         <p className={styles.completionContent}>{sub.content}</p>
                       )}
+                      {sub.image_url && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={sub.image_url}
+                          alt={sub.content ?? t("proofImageAlt")}
+                          className={styles.completionImage}
+                        />
+                      )}
                       {sub.proof_event_id && (
                         <p className={styles.completionContent}>
                           <a
@@ -1247,6 +1273,14 @@ export default function ChallengeClient() {
                           {completion.content}
                         </p>
                       )}
+                      {isAwaitingReview && completion?.image_url && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={completion.image_url}
+                          alt={t("checkpointProofImageAlt", { index: idx + 1 })}
+                          className={styles.completionImage}
+                        />
+                      )}
                       {isAwaitingReview && (
                         <p className={styles.checkpointLocked}>
                           {t("checkpointPendingReviewHint")}
@@ -1300,15 +1334,35 @@ export default function ChallengeClient() {
                                 }
                                 rows={2}
                               />
-                              <Button
-                                size="sm"
-                                onClick={() => handleCompleteCheckpoint(cp)}
-                                disabled={actionLoading === `cp_${cp.id}`}
-                              >
-                                {actionLoading === `cp_${cp.id}`
-                                  ? t("submitting")
-                                  : tCommon("submit")}
-                              </Button>
+                              <div className={styles.proofActions}>
+                                <div className={styles.proofActionsUpload}>
+                                  <ImageUpload
+                                    value={checkpointImages[cp.id] ?? null}
+                                    onChange={(next) =>
+                                      setCheckpointImages((prev) => ({
+                                        ...prev,
+                                        [cp.id]: next,
+                                      }))
+                                    }
+                                    alt={t("checkpointProofImageAlt", { index: idx + 1 })}
+                                    maxSizeMB={5}
+                                  />
+                                </div>
+                                <Button
+                                  className={styles.proofSubmitButton}
+                                  size="sm"
+                                  onClick={() => handleCompleteCheckpoint(cp)}
+                                  disabled={
+                                    actionLoading === `cp_${cp.id}` ||
+                                    (!(checkpointProofs[cp.id] ?? "").trim() &&
+                                      !checkpointImages[cp.id])
+                                  }
+                                >
+                                  {actionLoading === `cp_${cp.id}`
+                                    ? t("submitting")
+                                    : tCommon("submit")}
+                                </Button>
+                              </div>
                             </>
                           )}
                         </div>

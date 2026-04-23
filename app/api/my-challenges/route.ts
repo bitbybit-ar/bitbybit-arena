@@ -29,7 +29,9 @@ export const GET = apiHandler(async (req: NextRequest, { session, db }) => {
       .orderBy(challenges.created_at);
   };
 
-  // Challenges I joined
+  // Challenges I joined. For challenges with checkpoints we return the
+  // per-participant approved/pending/total counts so the list card can
+  // render "X/Y checkpoints" without a second round-trip per row.
   const getJoined = async () => {
     if (scope === "created") return [];
     return db
@@ -39,6 +41,20 @@ export const GET = apiHandler(async (req: NextRequest, { session, db }) => {
           SELECT COUNT(*)::int FROM participants
           WHERE participants.challenge_id = ${challenges.id}
           AND participants.status != 'withdrawn'
+        )`,
+        checkpoints_total: sql<number>`(
+          SELECT COUNT(*)::int FROM challenge_checkpoints
+          WHERE challenge_checkpoints.challenge_id = ${challenges.id}
+        )`,
+        checkpoints_approved: sql<number>`(
+          SELECT COUNT(*)::int FROM checkpoint_completions
+          WHERE checkpoint_completions.participant_id = ${participants.id}
+          AND checkpoint_completions.status = 'approved'
+        )`,
+        checkpoints_pending: sql<number>`(
+          SELECT COUNT(*)::int FROM checkpoint_completions
+          WHERE checkpoint_completions.participant_id = ${participants.id}
+          AND checkpoint_completions.status = 'pending'
         )`,
         participation: participants,
         role: sql<string>`'participant'`,
@@ -60,6 +76,9 @@ export const GET = apiHandler(async (req: NextRequest, { session, db }) => {
     joined: joined.map((row) => ({
       ...row.challenge,
       participant_count: row.participant_count,
+      checkpoints_total: row.checkpoints_total,
+      checkpoints_approved: row.checkpoints_approved,
+      checkpoints_pending: row.checkpoints_pending,
       participation: "participation" in row ? row.participation : null,
       role: "participant",
     })),

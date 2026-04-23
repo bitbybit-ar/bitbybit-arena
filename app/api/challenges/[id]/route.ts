@@ -93,6 +93,7 @@ export const GET = apiHandler(
           checkpoint_id: checkpoint_completions.checkpoint_id,
           participant_id: checkpoint_completions.participant_id,
           content: checkpoint_completions.content,
+          image_url: checkpoint_completions.image_url,
           proof_event_id: checkpoint_completions.proof_event_id,
           created_at: checkpoint_completions.created_at,
           user_id: users.id,
@@ -123,6 +124,7 @@ export const GET = apiHandler(
         checkpoint_id: p.checkpoint_id,
         participant_id: p.participant_id,
         content: p.content,
+        image_url: p.image_url,
         proof_event_id: p.proof_event_id,
         created_at: p.created_at,
         participant: {

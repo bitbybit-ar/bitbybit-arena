@@ -206,6 +206,7 @@ export const checkpoint_completions = pgTable(
       .references(() => challenge_checkpoints.id, { onDelete: "cascade" }),
     proof_event_id: varchar("proof_event_id", { length: 64 }),
     content: text("content"),
+    image_url: text("image_url"), // optional Blossom-hosted photo proof, mirrors completions.image_url
     status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
     completed_at: timestamp("completed_at"),
     created_at: timestamp("created_at").notNull().defaultNow(),
