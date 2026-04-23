@@ -178,12 +178,22 @@ async function hydrateMetadata(
   user: UserRow,
   pubkey: string
 ): Promise<UserRow> {
+  // Race the relay fetch against a hard timeout. We hold the
+  // setTimeout handle and clear it in `.finally()` so a fast relay
+  // response doesn't leave a dangling timer pinned in the serverless
+  // event loop until it fires (a small per-login cost, but real).
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   try {
     const metadata = await Promise.race([
-      fetchNostrMetadataServer(pubkey),
-      new Promise<null>((resolve) =>
-        setTimeout(() => resolve(null), METADATA_HYDRATE_TIMEOUT_MS)
-      ),
+      fetchNostrMetadataServer(pubkey).finally(() => {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+      }),
+      new Promise<null>((resolve) => {
+        timeoutHandle = setTimeout(
+          () => resolve(null),
+          METADATA_HYDRATE_TIMEOUT_MS
+        );
+      }),
     ]);
     if (!metadata) return user;
 

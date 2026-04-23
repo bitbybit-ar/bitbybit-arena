@@ -62,7 +62,7 @@ interface SignerContextValue {
   setSigner: (signer: SignerHandle) => void;
   clearSigner: () => Promise<void>;
   /**
-   * Run the NIP-42 challenge/response flow using the given signer and,
+   * Run the NIP-98 HTTP-auth login flow using the given signer and,
    * on success, store the signer and refresh the session. Returns a
    * discriminated result so callers can tell a 429 apart from a real
    * auth failure.
@@ -212,7 +212,7 @@ export function SignerProvider({
 
   const handleModalSigner = useCallback((next: SignerHandle) => {
     // The modal itself has already run either the reattach check or the
-    // NIP-42 login flow (which already called setSigner). We just close
+    // NIP-98 login flow (which already called setSigner). We just close
     // the modal and resolve the pending promise here.
     const pending = pendingPromptRef.current;
     pendingPromptRef.current = null;
