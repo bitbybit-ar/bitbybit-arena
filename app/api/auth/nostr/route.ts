@@ -1,72 +1,82 @@
 import { cookies } from "next/headers";
-import { randomBytes } from "crypto";
 import { apiHandler } from "@/lib/api/handler";
-import { parseBody } from "@/lib/api/parse";
 import { BadRequestError } from "@/lib/api/errors";
-import { validateAuthEvent } from "@/lib/nostr/verify";
+import { validateNip98AuthEvent } from "@/lib/nostr/verify";
 import { fetchNostrMetadataServer } from "@/lib/nostr/server-metadata";
-import { createSession } from "@/lib/auth";
-import { AuthNostrPostBodySchema } from "@/lib/schemas/auth";
+import { createSession, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { SignerTypeSchema } from "@/lib/schemas/auth";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import type { SignerType } from "@/lib/nostr/signers";
 
-// GET: Issue a challenge for NIP-42 auth
-export const GET = apiHandler(
-  async () => {
-    const challenge = randomBytes(32).toString("hex");
+/**
+ * NIP-98 (HTTP Auth) login.
+ *
+ * The request carries the signed event in the `Authorization` header,
+ * base64-encoded per the spec:
+ *
+ *     Authorization: Nostr <base64(JSON.stringify(event))>
+ *
+ * No challenge cookie, no GET round-trip. Replay protection comes
+ * from:
+ *   - the `u` tag binding the event to this exact URL
+ *   - the `method` tag binding it to POST
+ *   - the ±60 s `created_at` window
+ *   - server-side rate limiting per IP
+ *
+ * The signer method (extension / nsec / nip46) travels in a custom
+ * `["arena_signer", ...]` tag so it's part of the signed envelope —
+ * a man-in-the-middle can't forge a different signer_type onto a
+ * captured event without invalidating the signature.
+ */
 
-    const cookieStore = await cookies();
-    cookieStore.set("nostr_challenge", challenge, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 300, // 5 minutes
-      path: "/",
-    });
+const SIGNER_TAG = "arena_signer";
 
-    return challenge;
-  },
-  // GET only emits a random challenge cookie — no crypto work to
-  // protect, no brute-force surface, so run it at the cheaper
-  // `standard` tier instead of consuming an `auth` slot on every
-  // login attempt.
-  { requireAuth: false, rateLimit: "standard" }
-);
+function parseAuthorizationHeader(header: string | null): unknown {
+  if (!header) {
+    throw new BadRequestError("Missing Authorization header");
+  }
+  const [scheme, encoded] = header.split(/\s+/, 2);
+  if (scheme !== "Nostr" || !encoded) {
+    throw new BadRequestError("Authorization header must use the Nostr scheme");
+  }
+  try {
+    const json = Buffer.from(encoded, "base64").toString("utf8");
+    return JSON.parse(json);
+  } catch {
+    throw new BadRequestError("Authorization header is not valid base64 JSON");
+  }
+}
 
-// POST: Verify signed event and authenticate
+function readSignerType(tags: ReadonlyArray<ReadonlyArray<string>>): SignerType | null {
+  const raw = tags.find((t) => t[0] === SIGNER_TAG)?.[1];
+  if (!raw) return null;
+  const parsed = SignerTypeSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
+
 export const POST = apiHandler(
   async (req, { db }) => {
-    const { signedEvent, signer_type: signerType } = await parseBody(
-      req,
-      AuthNostrPostBodySchema
+    const signedEvent = parseAuthorizationHeader(
+      req.headers.get("authorization")
     );
 
-    // Get challenge from cookie
-    const cookieStore = await cookies();
-    const challenge = cookieStore.get("nostr_challenge")?.value;
-    if (!challenge) throw new BadRequestError("Challenge expired or missing");
-
-    // Validate the signed event. validateAuthEvent now takes `unknown`
-    // and shape-checks via NostrEventSchema before doing the Schnorr
-    // verification, so the API boundary doesn't need a cast. The
-    // discriminated result lets us name the specific failed check in
-    // both the server log and the 400 response — critical for
-    // debugging a login issue we can't reproduce locally.
-    const validation = validateAuthEvent(signedEvent, challenge);
+    const validation = validateNip98AuthEvent(signedEvent, {
+      url: req.nextUrl.toString(),
+      method: req.method,
+    });
     if (!validation.ok) {
       console.warn(
         `[auth/nostr] validation failed: ${validation.reason}`,
         { pubkey: (signedEvent as { pubkey?: unknown })?.pubkey }
       );
       throw new BadRequestError(
-        `Invalid signature or challenge (${validation.reason})`
+        `Invalid signature or auth event (${validation.reason})`
       );
     }
-
-    // Clear challenge cookie
-    cookieStore.delete("nostr_challenge");
-
-    const pubkey = signedEvent.pubkey;
+    const event = validation.event;
+    const pubkey = event.pubkey;
+    const signerType = readSignerType(event.tags);
 
     // Find or create user
     const existingUsers = await db
@@ -76,11 +86,16 @@ export const POST = apiHandler(
       .limit(1);
 
     let user = existingUsers[0];
+    const isReactivation = !!(user && user.deleted_at);
+    const isNewSignup = !user;
 
     // Reactivate soft-deleted account: signing in with the same Nostr key
-    // restores access; PII fields will be re-populated by the background
-    // metadata sync below.
-    if (user && user.deleted_at) {
+    // restores access. We re-hydrate the row from relay metadata BEFORE
+    // issuing the session so the JWT carries the user's real display
+    // name instead of the `Nostr <pubkey-prefix>` placeholder, otherwise
+    // the first post-reactivation render flashes the placeholder until
+    // the next refresh.
+    if (isReactivation) {
       const shortPubkey = pubkey.slice(0, 8);
       const [reactivated] = await db
         .update(users)
@@ -95,7 +110,7 @@ export const POST = apiHandler(
       user = reactivated;
     }
 
-    if (!user) {
+    if (isNewSignup) {
       const shortPubkey = pubkey.slice(0, 8);
       const [newUser] = await db
         .insert(users)
@@ -109,28 +124,14 @@ export const POST = apiHandler(
       user = newUser;
     }
 
-    // Sync metadata from relays (best-effort, non-blocking).
-    // Runs for both fresh signups and reactivations so the profile
-    // re-populates from the user's latest kind:0 event.
-    if (!existingUsers[0] || existingUsers[0].deleted_at) {
-      fetchNostrMetadataServer(pubkey)
-        .then(async (metadata) => {
-          if (metadata) {
-            await db
-              .update(users)
-              .set({
-                display_name: metadata.display_name || metadata.name || user.display_name,
-                avatar_url: metadata.picture || null,
-                about: metadata.about || null,
-                lightning_address: metadata.lud16 || null,
-                nostr_metadata: metadata,
-                nostr_metadata_updated_at: new Date(),
-                updated_at: new Date(),
-              })
-              .where(eq(users.id, user.id));
-          }
-        })
-        .catch(() => {});
+    // Hydrate metadata from relays for fresh signups and reactivations.
+    // We `await` (with a short timeout) so the JWT we mint a few lines
+    // below carries the user's real display_name / avatar_url. Best
+    // effort: if relays are slow or the user has no kind:0, the session
+    // still issues with the placeholder — the user can re-sync from
+    // settings later.
+    if (isNewSignup || isReactivation) {
+      user = await hydrateMetadata(db, user, pubkey);
     }
 
     // Create session
@@ -144,7 +145,13 @@ export const POST = apiHandler(
       signer_type: signerType,
     });
 
-    cookieStore.set("session", token, {
+    // `__Host-` prefix forces secure + path=/ + no Domain attribute,
+    // which blocks subdomain cookie injection from any future
+    // `*.bitbybit.com.ar` service. Browsers refuse to set the cookie
+    // if any of those constraints are violated, so this is a hard
+    // guarantee, not just convention.
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -161,3 +168,51 @@ export const POST = apiHandler(
   },
   { requireAuth: false, rateLimit: "auth" }
 );
+
+const METADATA_HYDRATE_TIMEOUT_MS = 2_500;
+
+type UserRow = typeof users.$inferSelect;
+
+async function hydrateMetadata(
+  db: import("@/lib/db").Db,
+  user: UserRow,
+  pubkey: string
+): Promise<UserRow> {
+  // Race the relay fetch against a hard timeout. We hold the
+  // setTimeout handle and clear it in `.finally()` so a fast relay
+  // response doesn't leave a dangling timer pinned in the serverless
+  // event loop until it fires (a small per-login cost, but real).
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const metadata = await Promise.race([
+      fetchNostrMetadataServer(pubkey).finally(() => {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+      }),
+      new Promise<null>((resolve) => {
+        timeoutHandle = setTimeout(
+          () => resolve(null),
+          METADATA_HYDRATE_TIMEOUT_MS
+        );
+      }),
+    ]);
+    if (!metadata) return user;
+
+    const [updated] = await db
+      .update(users)
+      .set({
+        display_name:
+          metadata.display_name || metadata.name || user.display_name,
+        avatar_url: metadata.picture || null,
+        about: metadata.about || null,
+        lightning_address: metadata.lud16 || null,
+        nostr_metadata: metadata,
+        nostr_metadata_updated_at: new Date(),
+        updated_at: new Date(),
+      })
+      .where(eq(users.id, user.id))
+      .returning();
+    return updated ?? user;
+  } catch {
+    return user;
+  }
+}
