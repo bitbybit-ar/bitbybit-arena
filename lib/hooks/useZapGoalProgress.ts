@@ -9,7 +9,7 @@ import {
 import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import type { NostrEvent } from "@/lib/nostr/types";
 import type {
-  ZapGoalProgress,
+  ZapGoalProgressData,
   ZapGoalProgressZapper,
 } from "@/app/api/challenges/[id]/zap-goal-progress/route";
 
@@ -20,7 +20,7 @@ interface UseZapGoalProgressOptions {
    * Initial snapshot from the server endpoint — avoids an empty-state
    * flash before the first client-side fetch resolves.
    */
-  initial?: ZapGoalProgress | null;
+  initial?: ZapGoalProgressData | null;
   /** Skip relay work entirely — useful when the challenge has no prize. */
   enabled?: boolean;
 }

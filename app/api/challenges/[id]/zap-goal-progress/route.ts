@@ -9,7 +9,7 @@ import {
 } from "@/lib/nostr/fetch-zap-receipts";
 
 interface CacheEntry {
-  progress: ZapGoalProgress;
+  progress: ZapGoalProgressData;
   expiresAt: number;
 }
 
@@ -20,7 +20,7 @@ export interface ZapGoalProgressZapper {
   received_at: number;
 }
 
-export interface ZapGoalProgress {
+export interface ZapGoalProgressData {
   challenge_id: string;
   goal_event_id: string | null;
   goal_sats: number;
@@ -63,7 +63,7 @@ export const GET = apiHandler(
     // No goal on-relay yet → return empty-but-valid shape so the UI
     // can render "0 / X sats" without a conditional branch per caller.
     if (!challenge.zap_goal_event_id) {
-      const progress: ZapGoalProgress = {
+      const progress: ZapGoalProgressData = {
         challenge_id: challenge.id,
         goal_event_id: null,
         goal_sats: goalSats,
@@ -89,7 +89,7 @@ export const GET = apiHandler(
         raised_sats: 0,
         zapper_count: 0,
         recent_zappers: [],
-      } satisfies ZapGoalProgress;
+      } satisfies ZapGoalProgressData;
     }
 
     const raisedSats = receipts.reduce((sum, r) => sum + r.amount_sats, 0);
@@ -103,7 +103,7 @@ export const GET = apiHandler(
         received_at: r.received_at,
       }));
 
-    const progress: ZapGoalProgress = {
+    const progress: ZapGoalProgressData = {
       challenge_id: challenge.id,
       goal_event_id: challenge.zap_goal_event_id,
       goal_sats: goalSats,

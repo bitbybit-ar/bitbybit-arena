@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BoltIcon } from "@/components/icons";
 import { useZapGoalProgress } from "@/lib/hooks/useZapGoalProgress";
-import type { ZapGoalProgress } from "@/app/api/challenges/[id]/zap-goal-progress/route";
+import type { ZapGoalProgressData } from "@/app/api/challenges/[id]/zap-goal-progress/route";
 import { FundPotModal } from "@/components/challenges/FundPotModal";
 import styles from "./zap-goal-progress.module.scss";
 
@@ -17,7 +17,7 @@ interface ZapGoalProgressProps {
   /** True once `rewards_paid_at` is set — switch to a "paid" final state. */
   rewardsPaid: boolean;
   /** Optional server snapshot for the first paint. */
-  initial?: ZapGoalProgress | null;
+  initial?: ZapGoalProgressData | null;
   /**
    * When true, show the "Republish zap goal" recovery button instead of
    * the funding CTA. Passed when the viewer is the creator AND the

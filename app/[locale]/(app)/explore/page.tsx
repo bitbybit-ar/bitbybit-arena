@@ -11,7 +11,7 @@ import { Tag } from "@/components/ui/tag";
 import { BoltIcon } from "@/components/icons";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { ZapGoalBar } from "@/components/challenges/ZapGoalBar";
-import type { ZapGoalProgress } from "@/app/api/challenges/[id]/zap-goal-progress/route";
+import type { ZapGoalProgressData } from "@/app/api/challenges/[id]/zap-goal-progress/route";
 import { useRouter } from "@/i18n/routing";
 import { useSignerContext } from "@/lib/signer-context";
 import { useFollowList } from "@/lib/hooks/useFollowList";
@@ -460,7 +460,7 @@ interface CardZapGoalBarProps {
  * shows the prize amount in the reward row, the bar is optional polish.
  */
 function CardZapGoalBar({ challengeId, goalSats }: CardZapGoalBarProps) {
-  const [progress, setProgress] = useState<ZapGoalProgress | null>(null);
+  const [progress, setProgress] = useState<ZapGoalProgressData | null>(null);
 
   useEffect(() => {
     let cancelled = false;
