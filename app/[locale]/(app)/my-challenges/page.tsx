@@ -7,6 +7,7 @@ import { PixelIcon } from "@/components/common/PixelIcon";
 import { BlockLoader } from "@/components/ui/block-loader";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
+import { CheckpointProgress } from "@/components/challenges/CheckpointProgress";
 import { Tabs, panelIdFor } from "@/components/ui/tabs";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { useRouter } from "@/i18n/routing";
@@ -420,39 +421,12 @@ export default function MyChallengesPage() {
                     {item.participation?.status === "completed" && <span className={styles.completed}>{tCommon("completed")}</span>}
                   </div>
                   {hasCheckpoints && (
-                    <div className={styles.checkpointProgress}>
-                      <div
-                        className={styles.checkpointDots}
-                        aria-label={t("checkpointProgressLabel", {
-                          approved,
-                          total,
-                        })}
-                      >
-                        {Array.from({ length: total }).map((_, i) => (
-                          <span
-                            key={i}
-                            className={
-                              i < approved
-                                ? styles.checkpointDotDone
-                                : i < approved + pending
-                                  ? styles.checkpointDotPending
-                                  : styles.checkpointDotTodo
-                            }
-                            aria-hidden="true"
-                          />
-                        ))}
-                      </div>
-                      <span className={styles.checkpointProgressText}>
-                        {t("checkpointProgress", { approved, total })}
-                        {pending > 0 && (
-                          <>
-                            {" "}
-                            <span className={styles.checkpointPending}>
-                              · {t("checkpointPending", { count: pending })}
-                            </span>
-                          </>
-                        )}
-                      </span>
+                    <div className={styles.progressRow}>
+                      <CheckpointProgress
+                        approved={approved}
+                        pending={pending}
+                        total={total}
+                      />
                     </div>
                   )}
                 </Link>

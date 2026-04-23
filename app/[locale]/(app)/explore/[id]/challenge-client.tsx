@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { Modal } from "@/components/ui/modal";
 import { BlockLoader } from "@/components/ui/block-loader";
-import { Block } from "@/components/common/Block";
 import { ImageUpload } from "@/components/common/ImageUpload";
+import { CheckpointItem, type CheckpointItemStatus } from "@/components/challenges/CheckpointItem";
+import { CheckpointProgress } from "@/components/challenges/CheckpointProgress";
+import { CheckpointSubmitForm } from "@/components/challenges/CheckpointSubmitForm";
 import { useClipboard } from "@/lib/hooks/useClipboard";
 import { fetchNostrMetadata } from "@/lib/nostr/metadata";
 import {
@@ -1279,11 +1281,18 @@ export default function ChallengeClient() {
         {/* Checkpoints */}
         {challenge.checkpoint_mode !== "none" && challenge.checkpoints.length > 0 && (
           <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>
-              {t("checkpointsTitle")} (
-              {challenge.my_checkpoint_completions.filter((c) => c.status === "approved").length}
-              /{challenge.checkpoints.length})
-            </h2>
+            <div className={styles.checkpointsHeader}>
+              <h2 className={styles.sectionTitle}>{t("checkpointsTitle")}</h2>
+              <CheckpointProgress
+                variant="compact"
+                approved={
+                  challenge.my_checkpoint_completions.filter(
+                    (c) => c.status === "approved"
+                  ).length
+                }
+                total={challenge.checkpoints.length}
+              />
+            </div>
             <p className={styles.emptyText}>
               {challenge.checkpoint_mode === "sequential"
                 ? t("checkpointModeSequential")
@@ -1294,9 +1303,6 @@ export default function ChallengeClient() {
                 const completion = challenge.my_checkpoint_completions.find(
                   (c) => c.checkpoint_id === cp.id
                 );
-                const isDone = completion?.status === "approved";
-                const isAwaitingReview = completion?.status === "pending";
-                const isRejected = completion?.status === "rejected";
                 const priorIncomplete =
                   challenge.checkpoint_mode === "sequential" &&
                   challenge.checkpoints
@@ -1309,164 +1315,76 @@ export default function ChallengeClient() {
                             c.status === "approved"
                         )
                     );
+                // `locked` is only meaningful to someone who has joined —
+                // a non-participant can't act on a lock, so we render the
+                // row as a neutral todo until they join.
+                const status: CheckpointItemStatus =
+                  completion?.status === "approved"
+                    ? "done"
+                    : completion?.status === "pending"
+                      ? "awaiting-review"
+                      : completion?.status === "rejected"
+                        ? "rejected"
+                        : isParticipant && priorIncomplete
+                          ? "locked"
+                          : "todo";
+                const canSubmit =
+                  isParticipant &&
+                  status !== "done" &&
+                  status !== "awaiting-review" &&
+                  status !== "locked";
                 return (
-                  <div key={cp.id} className={styles.checkpointItem}>
-                    <Block
-                      size="small"
-                      color={
-                        isDone
-                          ? "green"
-                          : isAwaitingReview
-                            ? "gold"
-                            : isRejected
-                              ? "red"
-                              : priorIncomplete
-                                ? "red"
-                                : "purple"
-                      }
-                    />
-                    <div className={styles.checkpointBody}>
-                      <div className={styles.checkpointTitleRow}>
-                        <span className={styles.checkpointOrder}>
-                          {idx + 1}.
-                        </span>
-                        <strong>{cp.title}</strong>
-                        {isDone && (
-                          <Tag variant="green">{tCommon("completed")}</Tag>
-                        )}
-                        {isAwaitingReview && (
-                          <Tag variant="gold">
-                            {t("checkpointAwaitingReview")}
-                          </Tag>
-                        )}
-                        {isRejected && (
-                          <Tag variant="red">{tCommon("rejected")}</Tag>
-                        )}
-                      </div>
-                      {cp.description && (
-                        <p className={styles.checkpointDescription}>
-                          {cp.description}
-                        </p>
-                      )}
-                      {isAwaitingReview && completion?.content && (
-                        <p className={styles.completionContent}>
-                          {completion.content}
-                        </p>
-                      )}
-                      {isAwaitingReview && completion?.image_url && (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={completion.image_url}
-                          alt={t("checkpointProofImageAlt", { index: idx + 1 })}
-                          className={styles.completionImage}
-                        />
-                      )}
-                      {isAwaitingReview && (
-                        <p className={styles.checkpointLocked}>
-                          {t("checkpointPendingReviewHint")}
-                        </p>
-                      )}
-                      {isRejected && (
-                        <p className={styles.checkpointLocked}>
-                          {t("checkpointResubmitHint")}
-                        </p>
-                      )}
-                      {isParticipant &&
-                        !isDone &&
-                        !isAwaitingReview &&
-                        !priorIncomplete && (
-                        <div className={styles.checkpointActions}>
-                          {cp.verification_methods?.[0] === "nostr_action" ? (
-                            <>
-                              {cp.nostr_action_target_event_id && (
-                                <p className={styles.targetEventId}>
-                                  <a
-                                    href={`https://njump.me/${cp.nostr_action_target_event_id}`}
-                                    target="_blank"
-                                    rel="noreferrer noopener"
-                                  >
-                                    {cp.nostr_action_target_event_id.slice(0, 16)}…
-                                  </a>
-                                </p>
-                              )}
-                              <Button
-                                size="sm"
-                                onClick={() => handleCompleteCheckpoint(cp)}
-                                disabled={actionLoading === `cp_${cp.id}`}
-                              >
-                                {actionLoading === `cp_${cp.id}`
-                                  ? t("verifying")
-                                  : t("verifyLikeButton")}
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <textarea
-                                className={styles.proofInput}
-                                placeholder={t("proofPlaceholder")}
-                                aria-label={t("checkpointProofLabel", { index: idx + 1 })}
-                                value={checkpointProofs[cp.id] ?? ""}
-                                onChange={(e) =>
-                                  setCheckpointProofs((prev) => {
-                                    const next = { ...prev };
-                                    if (e.target.value) {
-                                      next[cp.id] = e.target.value;
-                                    } else {
-                                      delete next[cp.id];
-                                    }
-                                    return next;
-                                  })
-                                }
-                                rows={2}
-                              />
-                              <div className={styles.proofActions}>
-                                <div className={styles.proofActionsUpload}>
-                                  <ImageUpload
-                                    value={checkpointImages[cp.id] ?? null}
-                                    onChange={(descriptor) =>
-                                      setCheckpointImages((prev) => {
-                                        const next = { ...prev };
-                                        if (descriptor) {
-                                          next[cp.id] = descriptor;
-                                        } else {
-                                          delete next[cp.id];
-                                        }
-                                        return next;
-                                      })
-                                    }
-                                    alt={t("checkpointProofImageAlt", { index: idx + 1 })}
-                                    maxSizeMB={5}
-                                  />
-                                </div>
-                                <Button
-                                  className={styles.proofSubmitButton}
-                                  size="sm"
-                                  onClick={() => handleCompleteCheckpoint(cp)}
-                                  disabled={
-                                    actionLoading === `cp_${cp.id}` ||
-                                    (!(checkpointProofs[cp.id] ?? "").trim() &&
-                                      !checkpointImages[cp.id])
-                                  }
-                                >
-                                  {actionLoading === `cp_${cp.id}`
-                                    ? t("submitting")
-                                    : tCommon("submit")}
-                                </Button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
-                      {priorIncomplete && (
-                        <p className={styles.checkpointLocked}>
-                          {t("checkpointLocked")}
-                        </p>
-                      )}
-                      {checkpointErrors[cp.id] && (
-                        <p className={styles.error}>{checkpointErrors[cp.id]}</p>
-                      )}
-                    </div>
-                  </div>
+                  <CheckpointItem
+                    key={cp.id}
+                    index={idx + 1}
+                    title={cp.title}
+                    description={cp.description}
+                    status={status}
+                    submittedContent={completion?.content ?? null}
+                    submittedImageUrl={completion?.image_url ?? null}
+                    formSlot={
+                      canSubmit ? (
+                        cp.verification_methods[0] === "nostr_action" ? (
+                          <CheckpointSubmitForm
+                            mode="nostr-action"
+                            checkpointIndex={idx + 1}
+                            nostrActionTargetEventId={
+                              cp.nostr_action_target_event_id
+                            }
+                            error={checkpointErrors[cp.id] ?? null}
+                            loading={actionLoading === `cp_${cp.id}`}
+                            onSubmit={() => handleCompleteCheckpoint(cp)}
+                          />
+                        ) : (
+                          <CheckpointSubmitForm
+                            mode="manual"
+                            checkpointIndex={idx + 1}
+                            content={checkpointProofs[cp.id] ?? ""}
+                            image={checkpointImages[cp.id] ?? null}
+                            error={checkpointErrors[cp.id] ?? null}
+                            loading={actionLoading === `cp_${cp.id}`}
+                            onContentChange={(next) =>
+                              setCheckpointProofs((prev) => {
+                                const updated = { ...prev };
+                                if (next) updated[cp.id] = next;
+                                else delete updated[cp.id];
+                                return updated;
+                              })
+                            }
+                            onImageChange={(next) =>
+                              setCheckpointImages((prev) => {
+                                const updated = { ...prev };
+                                if (next) updated[cp.id] = next;
+                                else delete updated[cp.id];
+                                return updated;
+                              })
+                            }
+                            onSubmit={() => handleCompleteCheckpoint(cp)}
+                          />
+                        )
+                      ) : null
+                    }
+                  />
                 );
               })}
             </div>
