@@ -17,6 +17,15 @@ config({ path: ".env" });
 
 const MOCK_PREFIX = "mock-";
 
+// Every seeded mock gets this lud16 so the payout flow (POST /reward)
+// can resolve a Lightning address and the "Distribute rewards" loop
+// actually works against seed data. It's intentionally a real address
+// that belongs to the devs — if a judge actually completes the payout
+// during testing, the sats end up in the project wallet rather than
+// disappearing into a placeholder. Kept identical across mocks because
+// LNURL-pay doesn't support subaddressing (`user+tag@domain`).
+const MOCK_LUD16 = "devs@bitbybit.com.ar";
+
 type MockUser = {
   pubkey: string;
   username: string;
@@ -107,7 +116,18 @@ type MockChallenge = {
   ends_in_days?: number;
   badge_name?: string;
   checkpoints?: { title: string; description: string }[];
-  participants: { username: string; progress: number; points: number; status?: "active" | "completed" | "withdrawn" }[];
+  participants: {
+    username: string;
+    progress: number;
+    points: number;
+    status?: "active" | "completed" | "withdrawn";
+    /**
+     * Offset applied to `completed_at` when `status === "completed"`.
+     * Lets us stagger finishers so the tiered-payout winner order is
+     * deterministic across seeds. Defaults to 0 (finished just now).
+     */
+    completed_seconds_ago?: number;
+  }[];
 };
 
 const MOCK_CHALLENGES: MockChallenge[] = [
@@ -329,6 +349,55 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     ],
   },
   {
+    // Ready-to-payout demo for judges. Three participants are already
+    // `completed` with staggered `completed_at` timestamps (10 / 20 /
+    // 30 minutes ago), so the real user can log in, open this
+    // challenge, and click "Distribute rewards" immediately to see the
+    // full NIP-57 payout loop without walking through join + proof +
+    // approve for every participant first.
+    slug: `${MOCK_PREFIX}demo-tiered-payout`,
+    creator: REAL_USER_KEY,
+    title: "Demo: Tiered Prize Payout",
+    description:
+      "Demo challenge for judges. Three mock participants have already completed; open the detail page as the creator and click \"Distribute rewards\" to trigger the NIP-57 zap payout loop end to end (50% / 30% / 20% of a 10 000 sat pot).",
+    type: "competition",
+    tags: ["demo"],
+    verification_methods: ["automatic"],
+    checkpoint_mode: "none",
+    prize_amount_sats: 10_000,
+    prize_distribution: "tiered",
+    ends_in_days: 7,
+    badge_name: "Demo Champion",
+    participants: [
+      {
+        username: "mock-aria-storm",
+        progress: 1,
+        points: 100,
+        status: "completed",
+        completed_seconds_ago: 30 * 60, // 1st — earliest finisher
+      },
+      {
+        username: "mock-kaito-mori",
+        progress: 1,
+        points: 100,
+        status: "completed",
+        completed_seconds_ago: 20 * 60, // 2nd
+      },
+      {
+        username: "mock-luna-ibarra",
+        progress: 1,
+        points: 100,
+        status: "completed",
+        completed_seconds_ago: 10 * 60, // 3rd
+      },
+      {
+        username: "mock-nora-ocean",
+        progress: 0,
+        points: 0,
+      },
+    ],
+  },
+  {
     slug: `${MOCK_PREFIX}write-daily-journal`,
     creator: REAL_USER_KEY,
     title: "Daily Journal — 14 Days",
@@ -408,6 +477,7 @@ async function main() {
         display_name: u.display_name,
         about: u.about,
         avatar_url: u.avatar,
+        lightning_address: MOCK_LUD16,
         locale: "es",
       })),
     )
@@ -486,13 +556,17 @@ async function main() {
         mc.participants.map((p) => {
           const user = userByUsername.get(p.username);
           if (!user) throw new Error(`Missing participant user ${p.username}`);
+          const completedAt =
+            p.status === "completed"
+              ? new Date(Date.now() - (p.completed_seconds_ago ?? 0) * 1000)
+              : null;
           return {
             challenge_id: challenge.id,
             user_id: user.id,
             progress: p.progress,
             points: p.points,
             status: p.status ?? "active",
-            completed_at: p.status === "completed" ? new Date() : null,
+            completed_at: completedAt,
           };
         }),
       );
