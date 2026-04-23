@@ -42,6 +42,38 @@
     "active": "Active",
     "withdrawn": "Withdrawn"
   },
+  "notifications": {
+    "ariaLabel": "Notifications",
+    "empty": "You don't have any notifications yet.",
+    "markAllRead": "Mark all as read",
+    "unreadCount": "{count, plural, =0 {No new} one {# new} other {# new}}",
+    "types": {
+      "challenge_joined": {
+        "title": "New participant",
+        "body": "{name} joined your challenge \"{challenge}\"."
+      },
+      "completion_submitted": {
+        "title": "New proof to review",
+        "body": "{name} submitted a proof on \"{challenge}\"."
+      },
+      "completion_verified_approved": {
+        "title": "Proof approved!",
+        "body": "Your proof on \"{challenge}\" was approved."
+      },
+      "completion_verified_rejected": {
+        "title": "Proof rejected",
+        "body": "Your proof on \"{challenge}\" was rejected."
+      },
+      "prize_awarded": {
+        "title": "You won sats!",
+        "body": "You received the prize for \"{challenge}\"."
+      },
+      "badge_earned": {
+        "title": "New badge!",
+        "body": "You earned the \"{badge}\" badge for \"{challenge}\"."
+      }
+    }
+  },
   "imageUpload": {
     "chooseFile": "Choose an image",
     "hint": "PNG, JPG, WEBP or GIF up to {max}MB",
@@ -607,6 +639,18 @@
     "publishSuccess": "Profile published to Nostr",
     "publishFailed": "Could not publish to Nostr",
     "preferences": "Preferences",
+    "notifications": {
+      "sectionTitle": "Notifications",
+      "sectionHint": "Choose which events ring the bell. Changes save instantly.",
+      "saveFailed": "Couldn't save the preference. Try again.",
+      "labels": {
+        "challenge_joined": "Someone joins your challenge",
+        "completion_submitted": "A new proof needs review",
+        "completion_verified": "Your proof gets a verdict",
+        "prize_awarded": "You receive a sats prize",
+        "badge_earned": "You earn a badge"
+      }
+    },
     "theme": "Theme",
     "themeSystem": "System",
     "themeLight": "Light",

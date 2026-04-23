@@ -109,3 +109,70 @@
     font-size: $font-size-xs;
   }
 }
+
+.notifPrefsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+}
+
+.notifPrefRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-12;
+  padding: $spacing-8 0;
+
+  & + & {
+    border-top: 1px solid $color-border;
+  }
+}
+
+.notifPrefLabel {
+  font-family: $font-body;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  cursor: pointer;
+  flex: 1;
+}
+
+.notifPrefToggle {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 36px;
+  height: 20px;
+  border-radius: $border-radius-full;
+  background: alpha($color-text-secondary, 30%);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: $border-radius-full;
+    background: $static-white;
+    transition: transform 0.2s ease;
+  }
+
+  &:checked {
+    background: $color-primary;
+
+    &::after {
+      transform: translateX(16px);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+}

@@ -22,9 +22,29 @@ export const GET = apiHandler(async (_req: NextRequest, { session, db }) => {
 export const PUT = apiHandler(async (req: NextRequest, { session, db }) => {
   const body = await parseBody(req, UpdateProfileBodySchema);
 
+  // `notification_prefs` arrives as a partial patch — we don't want the
+  // client to have to send the full object every time they flip one
+  // toggle, otherwise concurrent tabs race and stomp each other. Merge
+  // with whatever's currently on the row.
+  let mergedPrefs: Record<string, boolean> | undefined;
+  if (body.notification_prefs) {
+    const [current] = await db
+      .select({ prefs: users.notification_prefs })
+      .from(users)
+      .where(eq(users.id, session!.user_id))
+      .limit(1);
+    mergedPrefs = { ...(current?.prefs ?? {}), ...body.notification_prefs };
+  }
+
+  const { notification_prefs: _ignored, ...rest } = body;
+
   const [updated] = await db
     .update(users)
-    .set({ ...body, updated_at: new Date() })
+    .set({
+      ...rest,
+      ...(mergedPrefs ? { notification_prefs: mergedPrefs } : {}),
+      updated_at: new Date(),
+    })
     .where(eq(users.id, session!.user_id))
     .returning();
 

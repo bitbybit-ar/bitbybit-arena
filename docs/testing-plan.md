@@ -31,6 +31,7 @@ On first login the app creates a `users` row keyed by your Nostr pubkey and kick
 2. Click **Sync from relays** — the app fetches your kind:0 metadata from `relay.damus.io`, `relay.nostr.band`, `nos.lol`, `relay.primal.net` and pre-fills the form.
 3. Change a field (e.g. About) and click **Publish to Nostr** — a fresh signed kind:0 event ships to relays, preserving any fields Arena doesn't manage (`nip05`, `website`, `banner`, …).
 4. Toggle theme (light / dark) and language (ES / EN). Both persist.
+5. Scroll to **Notifications** — flip any of the five per-type toggles (someone joins, new proof, verdict, prize, badge). Each toggle auto-saves as a partial `PATCH /api/profile` with only that key, so a second tab's pending change can't clobber this one. Disabled types are silently skipped in `createNotification` — no bell entry, no DB write.
 
 ## Step 3 — Create a challenge
 
@@ -125,6 +126,16 @@ Verify the kind:30101 event on a relay explorer (e.g. `https://njump.me/<event-i
 
 ---
 
+## Step 11 — Notification bell
+
+1. From any page, watch the **bell** icon in the navbar. The client polls `GET /api/notifications` every 30s and shows an unread count badge (caps at `9+`).
+2. Trigger any of the five emission paths from a second account against yours: join, submit pending proof, approve/reject proof, award badge, record reward receipt. Each writes one row keyed by `type` and stores an English fallback plus a `metadata` object (challenge_id, display_name, etc.).
+3. Open the bell. Titles and bodies render from i18n keys (`notifications.types.<key>.title|body`) scoped to your current locale — the English strings in the DB row are the fallback if a key is missing. `completion_verified` picks between `..._approved` and `..._rejected` from `metadata.status`.
+4. Click a row — the client `PATCH`es `/api/notifications` to flip `read`, closes the dropdown, then routes to `/explore/<challenge_id>` via the i18n `Link` (navigation keeps the locale prefix).
+5. Click **Mark all as read** — `POST /api/notifications` flips every unread row for the caller in one query. Ownership is enforced server-side: you can't mark or read another user's notifications (the `WHERE` clause pairs `user_id = session.user_id` with the row id).
+
+Self-triggered events are skipped: the creator joining their own challenge doesn't ping themselves, and a retained creator prize doesn't fire `prize_awarded`. Auto-approved proofs (`nostr_action` / `nostr_hashtag` / `automatic`) skip the creator ping too — there's nothing to review.
+
 ## Language pass
 
 Quick final check: switch between Spanish and English and glance at:
@@ -135,8 +146,8 @@ Quick final check: switch between Spanish and English and glance at:
 ## Known deferrals
 
 - **Community voting** — the original concept included participant-voted approvals. We shipped creator_approval + automatic + nostr_action + nostr_hashtag for MVP and deferred community voting. The API explicitly rejects a `community_vote` value if any client tries to set one.
-- **Notifications** — the `notifications` table exists in the schema; the UI and API routes that populate it are in-flight in a separate branch.
+- **Real-time push** — the bell polls every 30s rather than streaming. SSE or a relay-native subscription are candidates if that interval ever bites.
 
 ## What you've covered
 
-By the end of the ten steps you'll have exercised: all three sign-in methods, profile sync + publish, all five challenge types, all four verification methods, sequential and parallel checkpoints, text and image proofs, Blossom uploads, creator approval, NIP-58 badge award + accept, NIP-57 Lightning payout (with QR fallback), NIP-75 zap goal publishing, NIP-02 follow-boosted discovery, and `/api/zap/status` NWC polling.
+By the end of the eleven steps you'll have exercised: all three sign-in methods, profile sync + publish, per-type notification preferences, all five challenge types, all four verification methods, sequential and parallel checkpoints, text and image proofs, Blossom uploads, creator approval, NIP-58 badge award + accept, NIP-57 Lightning payout (with QR fallback), NIP-75 zap goal publishing, NIP-02 follow-boosted discovery, `/api/zap/status` NWC polling, and the in-app notifications bell with mark-read / mark-all-read / click-through.

@@ -3,6 +3,7 @@ export type { IconProps } from "./types";
 export { ArrowLeftIcon } from "./ArrowLeftIcon";
 export { ArrowRightIcon } from "./ArrowRightIcon";
 export { BadgeIcon } from "./BadgeIcon";
+export { BellIcon } from "./BellIcon";
 export { BoltIcon } from "./BoltIcon";
 export { CameraIcon } from "./CameraIcon";
 export { CheckIcon } from "./CheckIcon";

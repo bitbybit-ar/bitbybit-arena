@@ -27,7 +27,7 @@ Nostr relays are not databases. We need server-side storage for:
 - **Participation tracking** — Who joined what, completion progress, streak counts
 - **Verification queue** — Pending completions awaiting creator/community approval
 - **Caching** — Relay responses cached for performance
-- **User preferences** — Notification settings, favorite challenges, display options
+- **User preferences** — Per-type notification opt-outs (stored as a jsonb `notification_prefs` map on `users`), favorite challenges, display options
 
 The Nostr events are the **source of truth** for public data. The database is an **index and cache** that enables fast queries the app needs.
 

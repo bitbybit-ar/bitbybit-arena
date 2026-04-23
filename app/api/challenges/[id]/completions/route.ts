@@ -12,6 +12,7 @@ import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
 import { verifyHashtagPost } from "@/lib/nostr/verify-hashtag-post";
 import { pickVerificationMethod, shouldAutoApprove } from "@/lib/api/verification-methods";
 import type { VerificationMethod } from "@/lib/types";
+import { createNotification } from "@/lib/notifications";
 
 function isUniqueViolation(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
@@ -179,6 +180,29 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
         ...(isComplete ? { status: "completed" as const, completed_at: new Date() } : {}),
       })
       .where(eq(participants.id, participation.id));
+  }
+
+  // Only notify the creator when there's actually something to review.
+  // Auto-approved proofs (nostr_action / nostr_hashtag / honor-system)
+  // need no human action, so pinging the creator there is pure noise.
+  // Also skip when the creator submitted their own proof.
+  if (!autoApprove && challenge.creator_id !== session!.user_id) {
+    try {
+      await createNotification(
+        challenge.creator_id,
+        "completion_submitted",
+        "New proof to review",
+        `${session!.display_name} submitted a proof on "${challenge.title}".`,
+        {
+          name: session!.display_name,
+          challenge: challenge.title,
+          challenge_id: challenge.id,
+          completion_id: completion.id,
+        }
+      );
+    } catch (err) {
+      console.error("notification:completion_submitted failed", err);
+    }
   }
 
   return new CreatedResponse(completion);

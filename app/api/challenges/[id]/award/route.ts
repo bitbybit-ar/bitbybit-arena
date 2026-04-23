@@ -8,6 +8,7 @@ import {
   RecordBadgeAwardBodySchema,
 } from "@/lib/schemas/challenges";
 import { challenges, participants, badges } from "@/lib/db/schema";
+import { createNotification } from "@/lib/notifications";
 
 // POST /api/challenges/[id]/award — creator awards badges to participants
 // Body: { user_ids: string[] } — list of participant user IDs to award
@@ -84,6 +85,29 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
         inArray(participants.user_id, newUserIds)
       )
     );
+
+  // One notification per newly awarded recipient. Skip the creator to
+  // avoid self-ping when they award themselves in a challenge they also
+  // participated in.
+  await Promise.all(
+    newUserIds
+      .filter((uid: string) => uid !== challenge.creator_id)
+      .map((uid: string) =>
+        createNotification(
+          uid,
+          "badge_earned",
+          "New badge!",
+          `You earned the "${badgeName}" badge for "${challenge.title}".`,
+          {
+            badge: badgeName,
+            challenge: challenge.title,
+            challenge_id: challenge.id,
+          }
+        ).catch((err) => {
+          console.error("notification:badge_earned failed", err);
+        })
+      )
+  );
 
   return new CreatedResponse(awarded);
 });

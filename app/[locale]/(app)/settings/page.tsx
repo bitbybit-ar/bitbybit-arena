@@ -16,6 +16,7 @@ import type { NostrMetadata } from "@/lib/nostr/types";
 import { UpdateProfileBodySchema } from "@/lib/schemas/profile";
 import { validateForm } from "@/lib/schemas/validate-form";
 import { useRouter, usePathname } from "@/i18n/routing";
+import { NOTIFICATION_TYPES, type NotificationType, type NotificationPrefs } from "@/lib/types";
 import styles from "./settings.module.scss";
 
 interface UserProfile {
@@ -27,6 +28,7 @@ interface UserProfile {
   lightning_address: string | null;
   nostr_pubkey: string;
   locale: string;
+  notification_prefs: NotificationPrefs;
 }
 
 export default function SettingsPage() {
@@ -52,6 +54,7 @@ export default function SettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [about, setAbout] = useState("");
   const [lightningAddress, setLightningAddress] = useState("");
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>({});
 
   const applyProfile = (p: UserProfile) => {
     setProfile(p);
@@ -60,6 +63,32 @@ export default function SettingsPage() {
     setAvatarUrl(p.avatar_url || "");
     setAbout(p.about || "");
     setLightningAddress(p.lightning_address || "");
+    setNotifPrefs(p.notification_prefs ?? {});
+  };
+
+  const handleToggleNotifPref = async (type: NotificationType) => {
+    // Default (missing key) is enabled. Flip to the opposite of that.
+    const currentlyEnabled = notifPrefs[type] !== false;
+    const nextValue = !currentlyEnabled;
+    setNotifPrefs((prev) => ({ ...prev, [type]: nextValue }));
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          notification_prefs: { [type]: nextValue },
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+      if (json.data) applyProfile(json.data);
+    } catch {
+      // Revert only this key — if the user flipped another toggle in
+      // parallel, snapshotting the whole map here would clobber that
+      // one too.
+      setNotifPrefs((prev) => ({ ...prev, [type]: currentlyEnabled }));
+      showToast(t("notifications.saveFailed"), "error");
+    }
   };
 
   useEffect(() => {
@@ -314,6 +343,34 @@ export default function SettingsPage() {
             { value: "en", label: t("languageEn") },
           ]}
         />
+      </section>
+
+      <section className={styles.card}>
+        <h2 className={styles.sectionTitle}>
+          {t("notifications.sectionTitle")}
+        </h2>
+        <p className={styles.hint}>{t("notifications.sectionHint")}</p>
+        <ul className={styles.notifPrefsList}>
+          {NOTIFICATION_TYPES.map((type) => {
+            const enabled = notifPrefs[type] !== false;
+            const inputId = `notif-pref-${type}`;
+            return (
+              <li key={type} className={styles.notifPrefRow}>
+                <label htmlFor={inputId} className={styles.notifPrefLabel}>
+                  {t(`notifications.labels.${type}`)}
+                </label>
+                <input
+                  id={inputId}
+                  type="checkbox"
+                  role="switch"
+                  checked={enabled}
+                  onChange={() => handleToggleNotifPref(type)}
+                  className={styles.notifPrefToggle}
+                />
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
       <section className={`${styles.card} ${styles.dangerCard}`}>

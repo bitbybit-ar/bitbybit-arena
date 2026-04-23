@@ -5,6 +5,7 @@ import { parseBody } from "@/lib/api/parse";
 import { NotFoundError, BadRequestError, ForbiddenError } from "@/lib/api/errors";
 import { VerifyCompletionBodySchema } from "@/lib/schemas/completions";
 import { completions, challenges, participants } from "@/lib/db/schema";
+import { createNotification } from "@/lib/notifications";
 
 // POST /api/completions/[id]/verify — creator approves or rejects a completion
 export const POST = apiHandler(async (req: NextRequest, { session, db, params }) => {
@@ -64,6 +65,27 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
           ...(isComplete ? { status: "completed" as const, completed_at: new Date() } : {}),
         })
         .where(eq(participants.id, participation.id));
+    }
+  }
+
+  // Ping the submitter with the verdict. Client renders approved vs
+  // rejected from metadata.status, so we only need one notification type.
+  if (completion.user_id !== session!.user_id) {
+    try {
+      await createNotification(
+        completion.user_id,
+        "completion_verified",
+        status === "approved" ? "Proof approved!" : "Proof rejected",
+        `Your proof on "${challenge.title}" was ${status}.`,
+        {
+          status,
+          challenge: challenge.title,
+          challenge_id: challenge.id,
+          completion_id: completion.id,
+        }
+      );
+    } catch (err) {
+      console.error("notification:completion_verified failed", err);
     }
   }
 

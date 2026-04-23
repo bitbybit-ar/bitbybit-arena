@@ -11,6 +11,25 @@ import { HttpUrlSchema } from "./primitives";
 const LOCALES = ["es", "en"] as const;
 export const LocaleSchema = z.enum(LOCALES);
 
+const NOTIFICATION_TYPE_VALUES = [
+  "challenge_joined",
+  "completion_submitted",
+  "completion_verified",
+  "prize_awarded",
+  "badge_earned",
+] as const;
+
+// Partial per-type opt-out map. Missing keys = enabled. The PUT route
+// merges this into the stored JSON instead of replacing, so toggling
+// one type doesn't wipe the others. `z.partialRecord` (Zod 4) keeps the
+// enum key constraint while making every key optional — `z.record` in
+// v4 treats enum keys as required, which isn't what we want here.
+export const NotificationPrefsSchema = z
+  .partialRecord(z.enum(NOTIFICATION_TYPE_VALUES), z.boolean())
+  .refine((v) => Object.keys(v).length > 0, {
+    message: "notification_prefs cannot be an empty patch",
+  });
+
 // Pull column-level rules from the users table (varchar caps, NOT
 // NULL on display_name/username, etc.) so we don't duplicate them.
 const UserRowInsertSchema = createInsertSchema(users, {
@@ -34,6 +53,7 @@ export const UpdateProfileBodySchema = z
     about: z.string().nullish(),
     lightning_address: z.string().nullish(),
     locale: LocaleSchema.optional(),
+    notification_prefs: NotificationPrefsSchema.optional(),
   })
   .refine((b) => Object.keys(b).length > 0, {
     message: "No fields to update",

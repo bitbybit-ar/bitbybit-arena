@@ -3,6 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { NotFoundError, ConflictError, BadRequestError } from "@/lib/api/errors";
 import { challenges, participants } from "@/lib/db/schema";
+import { createNotification } from "@/lib/notifications";
 
 // POST /api/challenges/[id]/join — join a challenge
 export const POST = apiHandler(async (_req: NextRequest, { session, db, params }) => {
@@ -50,6 +51,22 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
       user_id: session!.user_id,
     })
     .returning();
+
+  // Notify the creator that someone joined — but not when the creator
+  // joins their own challenge (that's not signal, it's self-talk).
+  if (challenge.creator_id !== session!.user_id) {
+    try {
+      await createNotification(
+        challenge.creator_id,
+        "challenge_joined",
+        "New participant",
+        `${session!.display_name} joined your challenge "${challenge.title}".`,
+        { name: session!.display_name, challenge: challenge.title, challenge_id: challenge.id }
+      );
+    } catch (err) {
+      console.error("notification:challenge_joined failed", err);
+    }
+  }
 
   return new CreatedResponse(participant);
 });
