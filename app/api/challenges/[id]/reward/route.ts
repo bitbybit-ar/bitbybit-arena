@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { eq, and, asc, desc } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
-import { parseOptionalBody } from "@/lib/api/parse";
+import { parseBody } from "@/lib/api/parse";
 import {
   NotFoundError,
   ForbiddenError,
@@ -171,12 +171,25 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
 });
 
 // PATCH /api/challenges/[id]/reward — creator-only.
-// Body is optional. If `user_id` + `receipt_event_id` are provided, we
-// record the NIP-57 kind 9735 receipt id on that winner's most recent
-// approved completion. Regardless of body, we flip
-// challenge.rewards_paid_at to now() so the UI can stop showing the
-// "Claim reward" button. The receipt write-back is best-effort because
-// most WebLN wallets don't return the on-relay receipt event id today.
+// Body must explicitly request one of two actions (schema enforces; an
+// empty body is a 400):
+//   - `{user_id, receipt_event_id}` — record a kind:9735 zap receipt
+//     on that winner's most recent approved completion.
+//   - `{all_winners_paid: true}` — stamp `rewards_paid_at` so the UI
+//     stops showing the "Claim reward" button.
+//   - Both — do both in one request.
+//
+// We used to flip `rewards_paid_at` on every PATCH regardless of body.
+// That meant a misbehaving caller could mark a challenge paid without
+// having sent any zaps. The explicit flag is the only way to stamp it
+// now, so the UI's "paid" state reflects actual creator intent.
+//
+// Known residual risk not addressed here: if the payout loop is
+// interrupted mid-way (tab crash, signer abort after paying N of M
+// winners), `rewards_paid_at` stays null and a retry will re-offer
+// every winner for payment — including the ones already paid. Closing
+// that gap needs per-winner bookkeeping on the participants row; out
+// of scope for this fix.
 export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }) => {
   const [challenge] = await db
     .select()
@@ -188,11 +201,11 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
     throw new ForbiddenError("Only the creator can record rewards");
   }
 
-  // PATCH accepts an empty body — the route still flips
-  // `rewards_paid_at` even when no winner is recorded — so use the
-  // optional variant that defaults to `{}` instead of 400ing.
-  const { user_id: winnerUserId, receipt_event_id: receiptEventId } =
-    await parseOptionalBody(req, RecordRewardBodySchema);
+  const {
+    user_id: winnerUserId,
+    receipt_event_id: receiptEventId,
+    all_winners_paid: allWinnersPaid,
+  } = await parseBody(req, RecordRewardBodySchema);
 
   if (winnerUserId && receiptEventId) {
     const [target] = await db
@@ -240,10 +253,12 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
     }
   }
 
-  await db
-    .update(challenges)
-    .set({ rewards_paid_at: new Date() })
-    .where(eq(challenges.id, params.id));
+  if (allWinnersPaid) {
+    await db
+      .update(challenges)
+      .set({ rewards_paid_at: new Date() })
+      .where(eq(challenges.id, params.id));
+  }
 
   return { ok: true };
 });

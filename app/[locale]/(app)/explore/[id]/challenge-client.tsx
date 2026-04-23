@@ -627,7 +627,14 @@ export default function ChallengeClient() {
       );
       if (payable.length === 0) {
         setRewardStatus(t("rewardAllRetained"));
-        await fetch(`/api/challenges/${challengeId}/reward`, { method: "PATCH" });
+        // No zaps to send — every winner is the creator (retained). The
+        // `all_winners_paid` flag still flips `rewards_paid_at` so the
+        // UI swaps out of the "Distribute rewards" state.
+        await fetch(`/api/challenges/${challengeId}/reward`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ all_winners_paid: true }),
+        });
         try {
           await publishResultEvent(winners);
         } catch {
@@ -649,7 +656,14 @@ export default function ChallengeClient() {
         }
       }
 
-      await fetch(`/api/challenges/${challengeId}/reward`, { method: "PATCH" });
+      // Explicit "all winners paid" signal — the server only stamps
+      // `rewards_paid_at` when this flag is present, so a failed or
+      // empty PATCH can never flip the challenge into the "paid" state.
+      await fetch(`/api/challenges/${challengeId}/reward`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all_winners_paid: true }),
+      });
 
       // Publish the Challenge Result event. Best-effort: a relay failure
       // shouldn't prevent us from showing the success state since the

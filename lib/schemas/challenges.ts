@@ -353,33 +353,54 @@ export type RecordBadgeAwardBody = z.infer<typeof RecordBadgeAwardBodySchema>;
 
 /**
  * PATCH /api/challenges/[id]/reward — record a NIP-57 zap receipt for
- * one winner. Body is optional (the route still flips
- * `rewards_paid_at` even with no body), but if any winner field is
- * present BOTH must be valid.
+ * one winner, mark the challenge as paid, or both. Exactly one of the
+ * two actions must be requested — an empty body is a 400, not a silent
+ * "flip the flag". The explicit `all_winners_paid` bool is the only way
+ * to stamp `rewards_paid_at`: without it, a buggy or malicious caller
+ * can't mark a challenge as paid just by poking the route.
+ *
+ * If `user_id` and `receipt_event_id` are provided together, they
+ * record the kind:9735 zap receipt id on that winner's most recent
+ * approved completion. One without the other is a 400 — keeping them
+ * paired avoids a half-written record.
  */
 export const RecordRewardBodySchema = z
   .object({
     user_id: z.string().optional(),
     receipt_event_id: Hex64Schema.optional(),
+    all_winners_paid: z.boolean().optional(),
   })
   .superRefine((b, ctx) => {
-    const hasOne =
+    const recordingReceipt =
       b.user_id !== undefined || b.receipt_event_id !== undefined;
-    if (!hasOne) return; // both absent is valid — just flips the flag
-    if (typeof b.user_id !== "string") {
+    const markingPaid = b.all_winners_paid === true;
+
+    if (!recordingReceipt && !markingPaid) {
       ctx.addIssue({
         code: "custom",
-        path: ["user_id"],
-        message: "user_id must be a string when provided",
-      });
-    }
-    if (b.receipt_event_id === undefined) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["receipt_event_id"],
+        path: [],
         message:
-          "receipt_event_id must be a 64-character hex event id when provided",
+          "PATCH body must include either {user_id, receipt_event_id} or all_winners_paid: true",
       });
+      return;
+    }
+
+    if (recordingReceipt) {
+      if (typeof b.user_id !== "string") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["user_id"],
+          message: "user_id must be provided alongside receipt_event_id",
+        });
+      }
+      if (b.receipt_event_id === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["receipt_event_id"],
+          message:
+            "receipt_event_id must be a 64-character hex event id when recording a receipt",
+        });
+      }
     }
   });
 
