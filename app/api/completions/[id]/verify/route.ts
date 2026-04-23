@@ -18,7 +18,6 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     .limit(1);
 
   if (!completion) throw new NotFoundError("Completion");
-  if (completion.status !== "pending") throw new BadRequestError("This completion has already been reviewed");
 
   const [challenge] = await db
     .select()
@@ -27,9 +26,12 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     .limit(1);
 
   if (!challenge) throw new NotFoundError("Challenge");
+  // Authz before the status check so a non-creator probing a completion
+  // id can't tell whether it exists or whether it's been reviewed.
   if (challenge.creator_id !== session!.user_id) {
     throw new ForbiddenError("Only the challenge creator can verify completions");
   }
+  if (completion.status !== "pending") throw new BadRequestError("This completion has already been reviewed");
 
   const [updated] = await db
     .update(completions)

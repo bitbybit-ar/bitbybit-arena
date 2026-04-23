@@ -33,7 +33,12 @@ import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
 import { useToast } from "@/components/ui/toast";
-import type { PrizeDistribution } from "@/lib/types";
+import type {
+  CompletionStatus,
+  PendingCheckpointSubmission,
+  PrizeDistribution,
+  VerificationMethod,
+} from "@/lib/types";
 import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
 import {
   ShareOnNostrModal,
@@ -51,7 +56,7 @@ interface CheckpointItem {
   order: number;
   title: string;
   description: string | null;
-  verification_methods: string[];
+  verification_methods: VerificationMethod[];
   nostr_action_target_event_id: string | null;
   nostr_hashtag: string | null;
 }
@@ -62,7 +67,7 @@ interface CheckpointCompletionItem {
   checkpoint_id: string;
   proof_event_id: string | null;
   content: string | null;
-  status: string;
+  status: CompletionStatus;
   completed_at: string | null;
 }
 
@@ -96,6 +101,7 @@ interface ChallengeDetail {
   creator: { id: string; display_name: string; username: string; nostr_pubkey: string; lightning_address?: string };
   checkpoints: CheckpointItem[];
   my_checkpoint_completions: CheckpointCompletionItem[];
+  pending_checkpoint_submissions?: PendingCheckpointSubmission[];
 }
 
 interface RewardWinner {
@@ -814,6 +820,36 @@ export default function ChallengeClient() {
     setActionLoading(null);
   };
 
+  const handleVerifyCheckpoint = async (
+    submissionId: string,
+    status: "approved" | "rejected"
+  ) => {
+    setActionLoading(`cpv_${submissionId}`);
+    try {
+      const res = await fetch(
+        `/api/checkpoint-completions/${submissionId}/verify`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        }
+      );
+      const json = await res.json().catch(() => ({ success: false }));
+      if (!json.success) {
+        showToast(
+          json.error || t("checkpointReviewError"),
+          "error"
+        );
+        return;
+      }
+      await fetchAll();
+    } catch {
+      showToast(t("checkpointReviewError"), "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleAwardBadges = async () => {
     if (selectedWinners.size === 0 || !challenge) return;
     if (needsSigner) {
@@ -1054,6 +1090,86 @@ export default function ChallengeClient() {
           />
         )}
 
+        {/* Creator review — pending checkpoint submissions */}
+        {isCreator &&
+          challenge.checkpoint_mode !== "none" &&
+          (challenge.pending_checkpoint_submissions?.length ?? 0) > 0 && (
+            <div className={styles.section}>
+              <h2 className={styles.sectionTitle}>
+                {t("reviewCheckpointsTitle")} (
+                {challenge.pending_checkpoint_submissions!.length})
+              </h2>
+              <div className={styles.completionList}>
+                {challenge.pending_checkpoint_submissions!.map((sub) => {
+                  const cp = challenge.checkpoints.find(
+                    (c) => c.id === sub.checkpoint_id
+                  );
+                  const cpOrder = cp
+                    ? challenge.checkpoints.findIndex((c) => c.id === cp.id) + 1
+                    : null;
+                  const loadingKey = `cpv_${sub.id}`;
+                  return (
+                    <div key={sub.id} className={styles.completionCard}>
+                      <div className={styles.completionHeader}>
+                        <span className={styles.completionUser}>
+                          {sub.participant.user.display_name}
+                        </span>
+                        <Tag variant="gold">{tCommon("pending")}</Tag>
+                      </div>
+                      {cp && (
+                        <p className={styles.checkpointDescription}>
+                          {cpOrder !== null && (
+                            <span className={styles.checkpointOrder}>
+                              {cpOrder}.{" "}
+                            </span>
+                          )}
+                          <strong>{cp.title}</strong>
+                        </p>
+                      )}
+                      {sub.content && (
+                        <p className={styles.completionContent}>{sub.content}</p>
+                      )}
+                      {sub.proof_event_id && (
+                        <p className={styles.completionContent}>
+                          <a
+                            href={`https://njump.me/${sub.proof_event_id}`}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                          >
+                            {t("proofFound")}: {sub.proof_event_id.slice(0, 16)}…
+                          </a>
+                        </p>
+                      )}
+                      <div className={styles.verifyActions}>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            handleVerifyCheckpoint(sub.id, "approved")
+                          }
+                          disabled={actionLoading === loadingKey}
+                        >
+                          {actionLoading === loadingKey
+                            ? t("approving")
+                            : tCommon("approve")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            handleVerifyCheckpoint(sub.id, "rejected")
+                          }
+                          disabled={actionLoading === loadingKey}
+                        >
+                          {tCommon("reject")}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
         {/* Checkpoints */}
         {challenge.checkpoint_mode !== "none" && challenge.checkpoints.length > 0 && (
           <div className={styles.section}>
@@ -1073,6 +1189,8 @@ export default function ChallengeClient() {
                   (c) => c.checkpoint_id === cp.id
                 );
                 const isDone = completion?.status === "approved";
+                const isAwaitingReview = completion?.status === "pending";
+                const isRejected = completion?.status === "rejected";
                 const priorIncomplete =
                   challenge.checkpoint_mode === "sequential" &&
                   challenge.checkpoints
@@ -1089,7 +1207,17 @@ export default function ChallengeClient() {
                   <div key={cp.id} className={styles.checkpointItem}>
                     <Block
                       size="small"
-                      color={isDone ? "green" : priorIncomplete ? "red" : "purple"}
+                      color={
+                        isDone
+                          ? "green"
+                          : isAwaitingReview
+                            ? "gold"
+                            : isRejected
+                              ? "red"
+                              : priorIncomplete
+                                ? "red"
+                                : "purple"
+                      }
                     />
                     <div className={styles.checkpointBody}>
                       <div className={styles.checkpointTitleRow}>
@@ -1100,13 +1228,39 @@ export default function ChallengeClient() {
                         {isDone && (
                           <Tag variant="green">{tCommon("completed")}</Tag>
                         )}
+                        {isAwaitingReview && (
+                          <Tag variant="gold">
+                            {t("checkpointAwaitingReview")}
+                          </Tag>
+                        )}
+                        {isRejected && (
+                          <Tag variant="red">{tCommon("rejected")}</Tag>
+                        )}
                       </div>
                       {cp.description && (
                         <p className={styles.checkpointDescription}>
                           {cp.description}
                         </p>
                       )}
-                      {isParticipant && !isDone && !priorIncomplete && (
+                      {isAwaitingReview && completion?.content && (
+                        <p className={styles.completionContent}>
+                          {completion.content}
+                        </p>
+                      )}
+                      {isAwaitingReview && (
+                        <p className={styles.checkpointLocked}>
+                          {t("checkpointPendingReviewHint")}
+                        </p>
+                      )}
+                      {isRejected && (
+                        <p className={styles.checkpointLocked}>
+                          {t("checkpointResubmitHint")}
+                        </p>
+                      )}
+                      {isParticipant &&
+                        !isDone &&
+                        !isAwaitingReview &&
+                        !priorIncomplete && (
                         <div className={styles.checkpointActions}>
                           {cp.verification_methods?.[0] === "nostr_action" ? (
                             <>

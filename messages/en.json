@@ -64,6 +64,18 @@
         "title": "Proof rejected",
         "body": "Your proof on \"{challenge}\" was rejected."
       },
+      "checkpoint_submitted": {
+        "title": "Checkpoint proof to review",
+        "body": "Someone submitted a proof for checkpoint \"{checkpoint}\" on \"{challenge}\"."
+      },
+      "checkpoint_verified_approved": {
+        "title": "Checkpoint approved!",
+        "body": "Your proof for checkpoint \"{checkpoint}\" on \"{challenge}\" was approved."
+      },
+      "checkpoint_verified_rejected": {
+        "title": "Checkpoint rejected",
+        "body": "Your proof for checkpoint \"{checkpoint}\" on \"{challenge}\" was rejected."
+      },
       "prize_awarded": {
         "title": "You won sats!",
         "body": "You received the prize for \"{challenge}\"."
@@ -463,6 +475,11 @@
     "checkpointLocked": "Complete the previous checkpoint first.",
     "checkpointError": "Could not complete the checkpoint. Try again.",
     "checkpointProofLabel": "Checkpoint {index} proof",
+    "checkpointAwaitingReview": "In review",
+    "checkpointPendingReviewHint": "You submitted your proof. Wait for the creator to review it.",
+    "checkpointResubmitHint": "Your previous proof was rejected. Edit your response and submit again.",
+    "reviewCheckpointsTitle": "Checkpoint proofs to review",
+    "checkpointReviewError": "Could not record the review. Try again.",
     "proofTooShort": "Proof must be at least 5 characters.",
     "rewardDisplayTitle": "Reward",
     "badgeAwarded": "Badge you earn",
@@ -683,6 +700,8 @@
         "challenge_joined": "Someone joins your challenge",
         "completion_submitted": "A new proof needs review",
         "completion_verified": "Your proof gets a verdict",
+        "checkpoint_submitted": "A new checkpoint proof needs review",
+        "checkpoint_verified": "Your checkpoint proof gets a verdict",
         "prize_awarded": "You receive a sats prize",
         "badge_earned": "You earn a badge"
       }

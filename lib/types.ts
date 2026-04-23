@@ -20,6 +20,8 @@ export const NOTIFICATION_TYPES: NotificationType[] = [
   "challenge_joined",
   "completion_submitted",
   "completion_verified",
+  "checkpoint_submitted",
+  "checkpoint_verified",
   "prize_awarded",
   "badge_earned",
 ];
@@ -126,6 +128,26 @@ export interface CheckpointCompletion {
   completed_at: string | null;
 }
 
+// Payload returned by GET /api/challenges/[id] to the creator so the
+// review UI can render pending rows without a second round-trip.
+export interface PendingCheckpointSubmission {
+  id: string;
+  checkpoint_id: string;
+  participant_id: string;
+  content: string | null;
+  proof_event_id: string | null;
+  created_at: string;
+  participant: {
+    user: {
+      id: string;
+      username: string;
+      display_name: string;
+      avatar_url: string | null;
+      nostr_pubkey: string;
+    };
+  };
+}
+
 export interface Participant {
   id: string;
   challenge_id: string;
@@ -149,6 +171,8 @@ export type NotificationType =
   | "challenge_joined"
   | "completion_submitted"
   | "completion_verified"
+  | "checkpoint_submitted"
+  | "checkpoint_verified"
   | "prize_awarded"
   | "badge_earned";
 

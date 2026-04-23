@@ -12,14 +12,13 @@ const POLL_MS = 30_000;
 
 // The DB row stores English fallbacks, but each notification also carries
 // `type` + `metadata` so the client can render in the viewer's locale.
-// `completion_verified` flips between two keys based on metadata.status
-// (approved vs rejected). Everything else is a 1:1 key lookup.
+// Verified-type notifications flip between _approved / _rejected keys
+// based on metadata.status. Everything else is a 1:1 key lookup.
 function resolveKey(n: Notification): string {
-  if (n.type === "completion_verified") {
+  if (n.type === "completion_verified" || n.type === "checkpoint_verified") {
     const status = (n.metadata as { status?: string } | null)?.status;
-    return status === "rejected"
-      ? "completion_verified_rejected"
-      : "completion_verified_approved";
+    const suffix = status === "rejected" ? "rejected" : "approved";
+    return `${n.type}_${suffix}`;
   }
   return n.type;
 }
@@ -32,11 +31,18 @@ function extractVars(
   const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 
   const name = str(metadata.name);
-  const challenge = str(metadata.challenge);
+  // The older completion notifications wrote `metadata.challenge` as the
+  // title; the newer checkpoint ones use `challenge_title`. Accept either
+  // so we don't have to migrate old rows.
+  const challenge =
+    str(metadata.challenge) ?? str(metadata.challenge_title);
+  const checkpoint =
+    str(metadata.checkpoint) ?? str(metadata.checkpoint_title);
   const badge = str(metadata.badge);
 
   if (name !== undefined) vars.name = name;
   if (challenge !== undefined) vars.challenge = challenge;
+  if (checkpoint !== undefined) vars.checkpoint = checkpoint;
   if (badge !== undefined) vars.badge = badge;
 
   return vars;
