@@ -10,6 +10,8 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { Tag } from "@/components/ui/tag";
 import { BoltIcon } from "@/components/icons";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
+import { ZapGoalBar } from "@/components/challenges/ZapGoalBar";
+import type { ZapGoalProgressData } from "@/app/api/challenges/[id]/zap-goal-progress/route";
 import { useRouter } from "@/i18n/routing";
 import { useSignerContext } from "@/lib/signer-context";
 import { useFollowList } from "@/lib/hooks/useFollowList";
@@ -27,6 +29,7 @@ interface ChallengeItem {
   ends_at: string | null;
   created_at: string;
   prize_amount_sats: number;
+  zap_goal_event_id: string | null;
   badge_name: string | null;
   badge_image_url: string | null;
   creator: {
@@ -431,9 +434,59 @@ function ChallengeCard({
               </span>
             )}
           </div>
+          {hasPrize && challenge.zap_goal_event_id && (
+            <CardZapGoalBar
+              challengeId={challenge.id}
+              goalSats={challenge.prize_amount_sats}
+            />
+          )}
         </div>
       )}
     </Link>
+  );
+}
+
+interface CardZapGoalBarProps {
+  challengeId: string;
+  goalSats: number;
+}
+
+/**
+ * Lazy-fetches the NIP-75 funding progress for a single Explore card.
+ * Each mount hits `/api/challenges/[id]/zap-goal-progress`, which is
+ * TTL-cached server-side, so the relay work is amortized across the
+ * whole viewer base. Renders nothing while the request is in flight to
+ * avoid a layout flash; errors are silently hidden — the card still
+ * shows the prize amount in the reward row, the bar is optional polish.
+ */
+function CardZapGoalBar({ challengeId, goalSats }: CardZapGoalBarProps) {
+  const [progress, setProgress] = useState<ZapGoalProgressData | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/challenges/${challengeId}/zap-goal-progress`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (cancelled) return;
+        if (json?.success && json.data) setProgress(json.data);
+      })
+      .catch(() => {
+        /* ignore — bar is optional */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [challengeId]);
+
+  if (!progress) return null;
+
+  return (
+    <ZapGoalBar
+      raisedSats={progress.raised_sats}
+      goalSats={goalSats}
+      zapperCount={progress.zapper_count}
+      compact
+    />
   );
 }
 

@@ -128,6 +128,17 @@
   }
 }
 
+.zapGoalNote {
+  margin: 0;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  line-height: 1.5;
+  padding: $spacing-8 $spacing-12;
+  background: $color-bg;
+  border-left: 2px solid $color-secondary;
+  border-radius: $border-radius-sm;
+}
+
 .error {
   padding: $spacing-12;
   background: color-mix(in srgb, $color-accent 12%, transparent);

@@ -20,10 +20,12 @@ import {
   buildBadgeAwardEvent,
   buildBadgeDefinitionEvent,
   buildChallengeResultEvent,
+  buildZapGoalEvent,
   buildZapRequestEvent,
   placeLabel,
   type ChallengeResultWinner,
 } from "@/lib/nostr/events";
+import { ZapGoalProgress } from "@/components/challenges/ZapGoalProgress";
 import type { BlossomDescriptor } from "@/lib/nostr/blossom";
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
@@ -705,6 +707,46 @@ export default function ChallengeClient() {
     }
   };
 
+  // Recovery path: challenge has a prize but no `zap_goal_event_id`
+  // on file. Covers two cases: creation-time publish failed (relay
+  // flake, signer rejected) and legacy challenges from before we made
+  // zap-goal publishing mandatory. Idempotent — re-publishing produces
+  // a new kind 9041 event; we simply overwrite the id on the DB row.
+  const handleRepublishZapGoal = async () => {
+    if (!challenge) return;
+    if (challenge.prize_amount_sats <= 0) return;
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return;
+      }
+    }
+    setActionLoading("republishZapGoal");
+    try {
+      const unsigned = buildZapGoalEvent({
+        challengeSlug: challenge.slug,
+        creatorPubkey: challenge.creator.nostr_pubkey,
+        amountSats: challenge.prize_amount_sats,
+        title: `Prize pot: ${challenge.title}`,
+        relays: DEFAULT_RELAYS,
+        closedAt: challenge.ends_at ?? undefined,
+      });
+      const signed = await signWithPrompt(unsigned);
+      await publishSignedEvent(signed);
+      await fetch(`/api/challenges/${challengeId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ zap_goal_event_id: signed.id }),
+      });
+      await fetchAll();
+    } catch {
+      /* surfaced as the panel's error hint on next render */
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleCompleteCheckpoint = async (checkpoint: CheckpointItem) => {
     setCheckpointErrors((prev) => {
       const next = { ...prev };
@@ -990,6 +1032,26 @@ export default function ChallengeClient() {
               )}
             </div>
           </div>
+        )}
+
+        {/* NIP-75 zap goal — funding progress + "Fund this pot" CTA.
+            Hidden when the challenge has no prize; shows a creator-only
+            "Republish zap goal" recovery button when the row has a
+            prize but no `zap_goal_event_id` on file. */}
+        {challenge.prize_amount_sats > 0 && (
+          <ZapGoalProgress
+            goalEventId={challenge.zap_goal_event_id}
+            goalSats={challenge.prize_amount_sats}
+            challengeTitle={challenge.title}
+            creatorPubkey={challenge.creator.nostr_pubkey}
+            creatorLightningAddress={
+              challenge.creator.lightning_address ?? null
+            }
+            rewardsPaid={!!challenge.rewards_paid_at}
+            creatorCanRepublish={isCreator && !challenge.zap_goal_event_id}
+            onRepublish={handleRepublishZapGoal}
+            republishLoading={actionLoading === "republishZapGoal"}
+          />
         )}
 
         {/* Checkpoints */}

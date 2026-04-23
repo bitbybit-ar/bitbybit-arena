@@ -116,7 +116,6 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
   const [prizeAmountSats, setPrizeAmountSats] = useState("");
   const [rewardZapMode, setRewardZapMode] =
     useState<RewardZapMode>("first_to_complete");
-  const [publishZapGoal, setPublishZapGoal] = useState(false);
 
   const [badgeName, setBadgeName] = useState("");
   const [badgeImage, setBadgeImage] = useState<BlossomDescriptor | null>(null);
@@ -308,7 +307,12 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
         }
       }
 
-      if (publishZapGoal && prizeAmountSats && Number(prizeAmountSats) > 0) {
+      // Auto-publish the NIP-75 zap goal whenever a prize is set.
+      // Supporters need this event on-relay to zap the pot — without
+      // it the prize exists in DB but is invisible to Nostr clients.
+      // Publish is best-effort; if it fails the creator sees a
+      // "Republish zap goal" button on the detail page.
+      if (prizeAmountSats && Number(prizeAmountSats) > 0) {
         if (!signer?.pubkey) {
           setWarning(t("zapGoalSkippedNoSigner"));
         } else {
@@ -712,14 +716,7 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
               )}
             </OptionCardGroup>
           </div>
-          <label className={styles.checkboxRow}>
-            <input
-              type="checkbox"
-              checked={publishZapGoal}
-              onChange={(e) => setPublishZapGoal(e.target.checked)}
-            />
-            <span>{t("publishZapGoalLabel")}</span>
-          </label>
+          <p className={styles.zapGoalNote}>{t("zapGoalAutoNote")}</p>
         </>
       )}
 
