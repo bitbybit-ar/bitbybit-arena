@@ -34,7 +34,15 @@
   padding: $spacing-12 $spacing-16;
   border-radius: $border-radius-md;
   border: 1px solid $color-border;
-  background: alpha($color-text-primary, 4%);
+  background-color: $color-surface;
+  background-image: linear-gradient(
+    180deg,
+    $ceramic-highlight-soft 0%,
+    transparent 60%
+  );
+  box-shadow:
+    inset 0 1px 0 $ceramic-highlight,
+    inset 0 -2px 4px $ceramic-inner-shadow;
   color: $color-text-primary;
   font-size: $font-size-base;
   font-family: $font-body;
@@ -48,7 +56,10 @@
 
   &:focus {
     border-color: $color-primary;
-    box-shadow: 0 0 0 2px alpha($color-primary, 15%);
+    box-shadow:
+      inset 0 1px 0 $ceramic-highlight,
+      inset 0 -2px 4px $ceramic-inner-shadow,
+      0 0 0 2px alpha($color-primary, 15%);
   }
 }
 
@@ -91,41 +102,61 @@
   gap: $spacing-8;
 }
 
+// Base chip styles that every variant shares. Color-specific rules
+// (background tint, border, text color, active fill) live on the
+// `.tagChip-<color>` modifiers below so each tag keeps its palette
+// color even when selected — just with stronger fill.
 .tagChip {
   display: inline-flex;
   align-items: center;
   gap: $spacing-8;
   padding: $spacing-8 $spacing-12;
   border-radius: $border-radius-full;
-  border: 1px solid $color-border;
-  background: $color-surface;
-  color: $color-text-primary;
+  border: 1px solid;
   font-family: $font-body;
   font-size: $font-size-sm;
   font-weight: $font-weight-medium;
   cursor: pointer;
   @include transition;
 
-  &:hover {
-    border-color: $color-primary;
-    color: $color-primary;
-  }
-
   &:focus-visible {
-    outline: 2px solid $color-primary;
     outline-offset: 2px;
   }
 }
 
-.tagChipActive {
-  background: $color-primary;
-  border-color: $color-primary;
-  color: $static-white;
+@mixin tag-chip-variant($color) {
+  background: alpha($color, 10%);
+  border-color: alpha($color, 40%);
+  color: $color;
 
   &:hover {
-    color: $static-white;
-    border-color: $color-primary;
+    background: alpha($color, 18%);
+    border-color: $color;
   }
+
+  &:focus-visible {
+    outline: 2px solid $color;
+  }
+
+  &.tagChipActive {
+    background: $color;
+    border-color: $color;
+    color: $static-white;
+
+    &:hover {
+      background: $color;
+      color: $static-white;
+    }
+  }
+}
+
+.tagChip-purple { @include tag-chip-variant($color-primary); }
+.tagChip-gold   { @include tag-chip-variant($color-secondary); }
+.tagChip-red    { @include tag-chip-variant($color-accent); }
+.tagChip-green  { @include tag-chip-variant($color-accent-alt); }
+
+.tagChipActive {
+  // Modifier flag only — variant mixins above apply the filled look.
 }
 
 .tagChipLabel {
@@ -349,31 +380,6 @@
   border-radius: $border-radius-full;
   font-size: $font-size-sm;
   font-weight: $font-weight-semibold;
-}
-
-.followToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: $spacing-8;
-  margin-bottom: $spacing-16;
-  padding: $spacing-8 $spacing-12;
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-full;
-  font-size: $font-size-sm;
-  color: $color-text-primary;
-  cursor: pointer;
-  user-select: none;
-  @include transition;
-
-  input[type="checkbox"] {
-    accent-color: $color-primary;
-    cursor: pointer;
-  }
-
-  &:hover {
-    border-color: $color-primary;
-  }
 }
 
 .scrollSentinel {

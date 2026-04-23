@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/common/Tooltip";
 import { BoltIcon } from "@/components/icons";
 import {
   type SignerHandle,
@@ -46,13 +47,17 @@ export function ExtensionSignerButton({
 }: ExtensionSignerButtonProps) {
   const t = useTranslations("login");
   const [hasExtension, setHasExtension] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const check = () =>
       setHasExtension(typeof window !== "undefined" && !!window.nostr);
     check();
-    const timer = setTimeout(check, 500);
+    const timer = setTimeout(() => {
+      check();
+      setChecking(false);
+    }, 500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -83,7 +88,7 @@ export function ExtensionSignerButton({
     }
   };
 
-  return (
+  const button = (
     <Button
       type="button"
       variant="primary"
@@ -99,4 +104,14 @@ export function ExtensionSignerButton({
       </div>
     </Button>
   );
+
+  if (!checking && !hasExtension) {
+    return (
+      <Tooltip text={t("no_extension")} block focusableWrapper>
+        {button}
+      </Tooltip>
+    );
+  }
+
+  return button;
 }

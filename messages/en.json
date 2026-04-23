@@ -166,7 +166,7 @@
     "nsecTitle": "Secret key (not recommended)",
     "nsecDescription": "Paste your nsec directly",
     "error": "Error connecting with Nostr",
-    "no_extension": "No Nostr extension detected in this browser.",
+    "no_extension": "Install a Nostr extension (Alby, nos2x, Nostr WoT) to enable this option.",
     "nostr_signing_rejected": "Nostr signing was rejected.",
     "rate_limited": "Too many attempts. Wait a minute and try again.",
     "comingSoon": "Coming soon",
@@ -282,7 +282,9 @@
     "toggleTagFilter": "Filter by {tag}",
     "by": "by",
     "rewardLabel": "Reward",
-    "onlyFollowing": "Only from people I follow"
+    "source": "Source",
+    "sourceEveryone": "Everyone",
+    "sourceFollowing": "People I follow"
   },
   "createChallenge": {
     "title": "Create Challenge",

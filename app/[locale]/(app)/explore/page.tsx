@@ -57,7 +57,7 @@ export default function ExplorePage() {
   const [sort, setSort] = useState("newest");
   const [popularTags, setPopularTags] = useState<{ tag: string; count: number }[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [onlyFollowing, setOnlyFollowing] = useState(false);
+  const [source, setSource] = useState<"everyone" | "following">("everyone");
 
   // Tracks the request id for the most recent first-page fetch so an
   // older request that resolves late (slow relay, slow DB) can't clobber
@@ -82,12 +82,12 @@ export default function ExplorePage() {
       if (followBoostActive) {
         params.set("follow_pubkeys", followPubkeys.join(","));
       }
-      if (onlyFollowing && followBoostActive) {
+      if (source === "following" && followBoostActive) {
         params.set("only_following", "true");
       }
       return params;
     },
-    [search, types, selectedTags, sort, followPubkeys, followBoostActive, onlyFollowing]
+    [search, types, selectedTags, sort, followPubkeys, followBoostActive, source]
   );
 
   const fetchPage = useCallback(async () => {
@@ -195,6 +195,11 @@ export default function ExplorePage() {
     { value: "most_active", label: t("mostActive") },
   ];
 
+  const sourceDropdownOptions = [
+    { value: "everyone", label: t("sourceEveryone") },
+    { value: "following", label: t("sourceFollowing") },
+  ];
+
   return (
     <div className={styles.page}>
       <AppPageHeader
@@ -224,6 +229,16 @@ export default function ExplorePage() {
         />
         <div className={styles.filters}>
           <Dropdown
+            options={sourceDropdownOptions}
+            value={source}
+            onChange={(value) =>
+              setSource(value as "everyone" | "following")
+            }
+            aria-label={t("source")}
+            disabled={!followBoostActive}
+            className={styles.filterDropdown}
+          />
+          <Dropdown
             multiple
             options={typeDropdownOptions}
             value={types}
@@ -244,17 +259,6 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      {followBoostActive && (
-        <label className={styles.followToggle}>
-          <input
-            type="checkbox"
-            checked={onlyFollowing}
-            onChange={(e) => setOnlyFollowing(e.target.checked)}
-          />
-          <span>{t("onlyFollowing")}</span>
-        </label>
-      )}
-
       {popularTags.length > 0 && (
         <div className={styles.tagSection}>
           <span id="popular-tags-label" className={styles.tagSectionLabel}>
@@ -267,11 +271,16 @@ export default function ExplorePage() {
           >
             {popularTags.map(({ tag, count }) => {
               const isActive = selectedTags.includes(tag);
+              const color = tagColor(tag);
               return (
                 <button
                   key={tag}
                   type="button"
-                  className={cn(styles.tagChip, isActive && styles.tagChipActive)}
+                  className={cn(
+                    styles.tagChip,
+                    styles[`tagChip-${color}`],
+                    isActive && styles.tagChipActive
+                  )}
                   aria-pressed={isActive}
                   aria-label={t("toggleTagFilter", { tag })}
                   onClick={() => toggleTag(tag)}
@@ -331,7 +340,7 @@ export default function ExplorePage() {
             {search ||
             types.length > 0 ||
             selectedTags.length > 0 ||
-            onlyFollowing
+            source === "following"
               ? t("emptyFiltered")
               : t("empty")}
           </p>
@@ -497,6 +506,21 @@ function typeVariant(type: string): "purple" | "gold" | "green" | "red" {
     case "creative": return "green";
     default: return "purple";
   }
+}
+
+// Stable hash so the same tag always renders with the same palette
+// color (no jitter across re-renders). Four-color cycle maps to the
+// four brand tokens: purple / gold / red / green.
+const TAG_COLOR_CYCLE = ["purple", "gold", "red", "green"] as const;
+type TagColor = (typeof TAG_COLOR_CYCLE)[number];
+
+function tagColor(tag: string): TagColor {
+  let hash = 0;
+  for (let i = 0; i < tag.length; i++) {
+    hash = (hash * 31 + tag.charCodeAt(i)) | 0;
+  }
+  const idx = Math.abs(hash) % TAG_COLOR_CYCLE.length;
+  return TAG_COLOR_CYCLE[idx];
 }
 
 function formatDate(iso: string): string {

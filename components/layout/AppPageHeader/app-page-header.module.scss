@@ -17,6 +17,20 @@
   }
 }
 
+// Opt-in via the `sticky` prop — pins the header below the navbar
+// while the page scrolls so the primary action (Save) stays reachable
+// on long forms. Solid background prevents form content from showing
+// through.
+.headerSticky {
+  position: sticky;
+  top: $navbar-height;
+  z-index: 5;
+  background: $color-bg;
+  padding: $spacing-12 0;
+  margin-bottom: $spacing-16;
+  border-bottom: 1px solid $color-border;
+}
+
 .left {
   display: flex;
   align-items: center;
@@ -47,7 +61,7 @@
 
 .title {
   font-family: $font-display;
-  font-size: $font-size-2xl;
+  font-size: $font-size-display;
   font-weight: $font-weight-extrabold;
   margin: 0;
   min-width: 0;

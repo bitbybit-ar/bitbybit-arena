@@ -2,6 +2,7 @@ import createMiddleware from "next-intl/middleware";
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { routing } from "./i18n/routing";
+import { SESSION_COOKIE_NAME } from "./lib/auth-constants";
 
 const intlMiddleware = createMiddleware(routing);
 
@@ -33,7 +34,7 @@ export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isProtectedPath(pathname)) {
-    const sessionCookie = request.cookies.get("session")?.value;
+    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 
     if (!sessionCookie) {
       return NextResponse.redirect(getLoginUrl(request));
