@@ -9,8 +9,20 @@ export interface User {
   about: string | null;
   lightning_address: string | null;
   locale: string;
+  notification_prefs: NotificationPrefs;
   created_at: string;
 }
+
+// Partial map — missing or `true` keys mean enabled, `false` means muted.
+export type NotificationPrefs = Partial<Record<NotificationType, boolean>>;
+
+export const NOTIFICATION_TYPES: NotificationType[] = [
+  "challenge_joined",
+  "completion_submitted",
+  "completion_verified",
+  "prize_awarded",
+  "badge_earned",
+];
 
 export type ChallengeType =
   | "one_time"

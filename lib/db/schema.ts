@@ -27,6 +27,14 @@ export const users = pgTable(
     nostr_metadata: jsonb("nostr_metadata"),
     nostr_metadata_updated_at: timestamp("nostr_metadata_updated_at"),
     locale: varchar("locale", { length: 5 }).notNull().default("es"),
+    // Per-type opt-out map. `{}` means "everything enabled" (default).
+    // An explicit `false` disables emission for that type; unknown or
+    // missing keys are treated as enabled — so adding a new notification
+    // type ships enabled without a backfill.
+    notification_prefs: jsonb("notification_prefs")
+      .$type<Record<string, boolean>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     deleted_at: timestamp("deleted_at"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),

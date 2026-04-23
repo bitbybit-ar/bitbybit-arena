@@ -635,6 +635,18 @@
     "publishSuccess": "Profile published to Nostr",
     "publishFailed": "Could not publish to Nostr",
     "preferences": "Preferences",
+    "notifications": {
+      "sectionTitle": "Notifications",
+      "sectionHint": "Choose which events ring the bell. Changes save instantly.",
+      "saveFailed": "Couldn't save the preference. Try again.",
+      "labels": {
+        "challenge_joined": "Someone joins your challenge",
+        "completion_submitted": "A new proof needs review",
+        "completion_verified": "Your proof gets a verdict",
+        "prize_awarded": "You receive a sats prize",
+        "badge_earned": "You earn a badge"
+      }
+    },
     "theme": "Theme",
     "themeSystem": "System",
     "themeLight": "Light",

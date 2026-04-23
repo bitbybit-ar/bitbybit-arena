@@ -153,6 +153,41 @@ describe("Integration: Profile API", () => {
       expect(status).toBe(400);
       expect(body.error).toContain("avatar_url");
     });
+
+    it("merges notification_prefs partially instead of replacing", async () => {
+      // Seed a user that already has a pref set, so we can check that a
+      // subsequent PUT with a single-key patch leaves the other alone.
+      await testDb
+        .update(users)
+        .set({
+          notification_prefs: {
+            challenge_joined: false,
+            prize_awarded: true,
+          },
+        })
+        .where(eq(users.id, user.id));
+
+      const res = await profileRoute.PUT(
+        buildRequest("PUT", "/api/profile", {
+          notification_prefs: { prize_awarded: false },
+        })
+      );
+      const { status, body } = await parseResponse(res);
+      expect(status).toBe(200);
+      expect(body.data.notification_prefs).toEqual({
+        challenge_joined: false,
+        prize_awarded: false,
+      });
+    });
+
+    it("rejects notification_prefs with an unknown type", async () => {
+      const res = await profileRoute.PUT(
+        buildRequest("PUT", "/api/profile", {
+          notification_prefs: { not_a_real_type: false },
+        })
+      );
+      expect(res.status).toBe(400);
+    });
   });
 
   describe("DELETE /api/profile (soft delete)", () => {

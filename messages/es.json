@@ -635,6 +635,18 @@
     "publishSuccess": "Perfil publicado en Nostr",
     "publishFailed": "No se pudo publicar en Nostr",
     "preferences": "Preferencias",
+    "notifications": {
+      "sectionTitle": "Notificaciones",
+      "sectionHint": "Elegí qué eventos te avisan en la campanita. Los cambios se guardan al instante.",
+      "saveFailed": "No se pudo guardar la preferencia. Intentá de nuevo.",
+      "labels": {
+        "challenge_joined": "Alguien se une a tu desafío",
+        "completion_submitted": "Nueva prueba para revisar",
+        "completion_verified": "Tu prueba fue revisada",
+        "prize_awarded": "Recibiste un premio en sats",
+        "badge_earned": "Ganaste un badge"
+      }
+    },
     "theme": "Tema",
     "themeSystem": "Sistema",
     "themeLight": "Claro",

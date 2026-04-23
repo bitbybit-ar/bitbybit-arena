@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { eq } from "drizzle-orm";
 import { cleanDb, testDb } from "./setup";
-import { notifications, participants } from "@/lib/db/schema";
+import { notifications, participants, users } from "@/lib/db/schema";
 import {
   setSession,
   makeSession,
@@ -185,6 +185,46 @@ describe("Notification emission at domain events", () => {
       challenge: "Emit Test",
       receipt_event_id: RECEIPT_ID,
     });
+  });
+
+  it("skips the insert when the recipient has muted that type", async () => {
+    // Creator opts out of challenge_joined notifications. When somebody
+    // joins, nothing should land in their bell.
+    await testDb
+      .update(users)
+      .set({ notification_prefs: { challenge_joined: false } })
+      .where(eq(users.id, creator.id));
+
+    setSession(makeSession(participant.id, { display_name: "Player One" }));
+    await joinRoute.POST(
+      buildRequest("POST", `/api/challenges/${challenge.id}/join`),
+      { params: Promise.resolve({ id: challenge.id }) }
+    );
+
+    const creatorNotifs = await getNotificationsFor(creator.id);
+    expect(creatorNotifs).toHaveLength(0);
+  });
+
+  it("still emits other types when only one type is muted", async () => {
+    // Creator mutes prize_awarded but leaves completion_submitted alone.
+    // The proof-submission ping should still land.
+    await testDb
+      .update(users)
+      .set({ notification_prefs: { prize_awarded: false } })
+      .where(eq(users.id, creator.id));
+    await seedParticipant(challenge.id, participant.id, { status: "active" });
+
+    setSession(makeSession(participant.id, { display_name: "Player One" }));
+    await completionsRoute.POST(
+      buildRequest("POST", `/api/challenges/${challenge.id}/completions`, {
+        content: "Here is my proof of completion",
+      }),
+      { params: Promise.resolve({ id: challenge.id }) }
+    );
+
+    const creatorNotifs = await getNotificationsFor(creator.id);
+    expect(creatorNotifs).toHaveLength(1);
+    expect(creatorNotifs[0].type).toBe("completion_submitted");
   });
 
   it("does not emit completion_submitted when the proof is auto-approved", async () => {
