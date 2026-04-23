@@ -3,42 +3,44 @@
 import { useTranslations } from "next-intl";
 import styles from "./checkpoint-progress.module.scss";
 
-interface CheckpointProgressProps {
-  approved: number;
-  pending: number;
-  total: number;
-  /**
-   * `full` = dots + "X/Y checkpoints · N in review" (used on my-challenges
-   * cards). `compact` = just "X/Y" (used next to the section title on the
-   * challenge detail page, where dots would double up with the Block
-   * icons on each row).
-   */
-  variant?: "full" | "compact";
-}
+/**
+ * Discriminated on `variant`. The compact variant only needs the
+ * approved/total split (dots would double up with the Block icons on
+ * each row of the detail page), so `pending` doesn't appear there.
+ */
+type CheckpointProgressProps =
+  | {
+      variant: "compact";
+      approved: number;
+      total: number;
+    }
+  | {
+      variant?: "full";
+      approved: number;
+      pending: number;
+      total: number;
+    };
 
 /**
- * Shared checkpoint-progress indicator. The dots double as a visual
- * summary for readers who scan the card without reading the label, and
- * the per-status split (approved / pending / todo) matches the Block
- * colors on the challenge detail page so the two surfaces stay
- * visually consistent.
+ * Shared checkpoint-progress indicator. The dot colors (approved =
+ * green, pending = gold, todo = muted) mirror the Block colors on the
+ * challenge detail page so the two surfaces stay visually consistent.
  */
-export function CheckpointProgress({
-  approved,
-  pending,
-  total,
-  variant = "full",
-}: CheckpointProgressProps) {
-  const t = useTranslations("myChallenges");
+export function CheckpointProgress(props: CheckpointProgressProps) {
+  const t = useTranslations("challenge");
 
-  if (variant === "compact") {
+  if (props.variant === "compact") {
     return (
       <span className={styles.compact}>
-        {t("checkpointProgress", { approved, total })}
+        {t("checkpointProgress", {
+          approved: props.approved,
+          total: props.total,
+        })}
       </span>
     );
   }
 
+  const { approved, pending, total } = props;
   return (
     <div className={styles.wrapper}>
       <div
@@ -65,7 +67,7 @@ export function CheckpointProgress({
           <>
             {" "}
             <span className={styles.pending}>
-              · {t("checkpointPending", { count: pending })}
+              · {t("checkpointPendingCount", { count: pending })}
             </span>
           </>
         )}

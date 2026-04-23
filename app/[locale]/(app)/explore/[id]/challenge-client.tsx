@@ -1284,14 +1284,13 @@ export default function ChallengeClient() {
             <div className={styles.checkpointsHeader}>
               <h2 className={styles.sectionTitle}>{t("checkpointsTitle")}</h2>
               <CheckpointProgress
+                variant="compact"
                 approved={
                   challenge.my_checkpoint_completions.filter(
                     (c) => c.status === "approved"
                   ).length
                 }
-                pending={0}
                 total={challenge.checkpoints.length}
-                variant="compact"
               />
             </div>
             <p className={styles.emptyText}>
@@ -1316,6 +1315,9 @@ export default function ChallengeClient() {
                             c.status === "approved"
                         )
                     );
+                // `locked` is only meaningful to someone who has joined —
+                // a non-participant can't act on a lock, so we render the
+                // row as a neutral todo until they join.
                 const status: CheckpointItemStatus =
                   completion?.status === "approved"
                     ? "done"
@@ -1323,7 +1325,7 @@ export default function ChallengeClient() {
                       ? "awaiting-review"
                       : completion?.status === "rejected"
                         ? "rejected"
-                        : priorIncomplete
+                        : isParticipant && priorIncomplete
                           ? "locked"
                           : "todo";
                 const canSubmit =
@@ -1342,34 +1344,44 @@ export default function ChallengeClient() {
                     submittedImageUrl={completion?.image_url ?? null}
                     formSlot={
                       canSubmit ? (
-                        <CheckpointSubmitForm
-                          checkpointIndex={idx + 1}
-                          verificationMethods={cp.verification_methods}
-                          nostrActionTargetEventId={
-                            cp.nostr_action_target_event_id
-                          }
-                          content={checkpointProofs[cp.id] ?? ""}
-                          image={checkpointImages[cp.id] ?? null}
-                          error={checkpointErrors[cp.id] ?? null}
-                          loading={actionLoading === `cp_${cp.id}`}
-                          onContentChange={(next) =>
-                            setCheckpointProofs((prev) => {
-                              const updated = { ...prev };
-                              if (next) updated[cp.id] = next;
-                              else delete updated[cp.id];
-                              return updated;
-                            })
-                          }
-                          onImageChange={(next) =>
-                            setCheckpointImages((prev) => {
-                              const updated = { ...prev };
-                              if (next) updated[cp.id] = next;
-                              else delete updated[cp.id];
-                              return updated;
-                            })
-                          }
-                          onSubmit={() => handleCompleteCheckpoint(cp)}
-                        />
+                        cp.verification_methods[0] === "nostr_action" ? (
+                          <CheckpointSubmitForm
+                            mode="nostr-action"
+                            checkpointIndex={idx + 1}
+                            nostrActionTargetEventId={
+                              cp.nostr_action_target_event_id
+                            }
+                            error={checkpointErrors[cp.id] ?? null}
+                            loading={actionLoading === `cp_${cp.id}`}
+                            onSubmit={() => handleCompleteCheckpoint(cp)}
+                          />
+                        ) : (
+                          <CheckpointSubmitForm
+                            mode="manual"
+                            checkpointIndex={idx + 1}
+                            content={checkpointProofs[cp.id] ?? ""}
+                            image={checkpointImages[cp.id] ?? null}
+                            error={checkpointErrors[cp.id] ?? null}
+                            loading={actionLoading === `cp_${cp.id}`}
+                            onContentChange={(next) =>
+                              setCheckpointProofs((prev) => {
+                                const updated = { ...prev };
+                                if (next) updated[cp.id] = next;
+                                else delete updated[cp.id];
+                                return updated;
+                              })
+                            }
+                            onImageChange={(next) =>
+                              setCheckpointImages((prev) => {
+                                const updated = { ...prev };
+                                if (next) updated[cp.id] = next;
+                                else delete updated[cp.id];
+                                return updated;
+                              })
+                            }
+                            onSubmit={() => handleCompleteCheckpoint(cp)}
+                          />
+                        )
                       ) : null
                     }
                   />
