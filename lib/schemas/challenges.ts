@@ -352,17 +352,27 @@ export const RecordBadgeAwardBodySchema = z.object({
 export type RecordBadgeAwardBody = z.infer<typeof RecordBadgeAwardBodySchema>;
 
 /**
- * PATCH /api/challenges/[id]/reward — record a NIP-57 zap receipt for
- * one winner, mark the challenge as paid, or both. Exactly one of the
- * two actions must be requested — an empty body is a 400, not a silent
- * "flip the flag". The explicit `all_winners_paid` bool is the only way
- * to stamp `rewards_paid_at`: without it, a buggy or malicious caller
- * can't mark a challenge as paid just by poking the route.
+ * PATCH /api/challenges/[id]/reward — per-winner payout tracking and
+ * "all done" stamp. Body must request at least one action — an empty
+ * body is a 400, not a silent flip.
  *
- * If `user_id` and `receipt_event_id` are provided together, they
- * record the kind:9735 zap receipt id on that winner's most recent
- * approved completion. One without the other is a 400 — keeping them
- * paired avoids a half-written record.
+ * Actions:
+ *  - `user_id` alone — marks that participant as rewarded
+ *    (`participants.rewarded_at = now()`). Used for the WebLN path
+ *    where the wallet doesn't return the kind:9735 event id to the
+ *    browser, so there's no receipt to record — we still want a
+ *    durable "I paid this one" marker so a retry skips them.
+ *  - `user_id` + `receipt_event_id` — same as above, and also records
+ *    the zap receipt id on that winner's most recent approved
+ *    completion (kind:9735 id).
+ *  - `all_winners_paid: true` — flips `challenges.rewards_paid_at`,
+ *    the only action that changes the challenge-level state. Without
+ *    this explicit flag, a poking caller can never mark a challenge
+ *    paid.
+ *  - Actions can be combined in a single request.
+ *
+ * `receipt_event_id` without `user_id` is a 400 — a receipt has to
+ * attach to a specific winner.
  */
 export const RecordRewardBodySchema = z
   .object({
@@ -371,36 +381,25 @@ export const RecordRewardBodySchema = z
     all_winners_paid: z.boolean().optional(),
   })
   .superRefine((b, ctx) => {
-    const recordingReceipt =
-      b.user_id !== undefined || b.receipt_event_id !== undefined;
-    const markingPaid = b.all_winners_paid === true;
+    const markingWinnerPaid = b.user_id !== undefined;
+    const markingChallengePaid = b.all_winners_paid === true;
 
-    if (!recordingReceipt && !markingPaid) {
+    if (!markingWinnerPaid && !markingChallengePaid) {
       ctx.addIssue({
         code: "custom",
         path: [],
         message:
-          "PATCH body must include either {user_id, receipt_event_id} or all_winners_paid: true",
+          "PATCH body must include user_id (mark a winner paid) or all_winners_paid: true (mark the challenge paid)",
       });
       return;
     }
 
-    if (recordingReceipt) {
-      if (typeof b.user_id !== "string") {
-        ctx.addIssue({
-          code: "custom",
-          path: ["user_id"],
-          message: "user_id must be provided alongside receipt_event_id",
-        });
-      }
-      if (b.receipt_event_id === undefined) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["receipt_event_id"],
-          message:
-            "receipt_event_id must be a 64-character hex event id when recording a receipt",
-        });
-      }
+    if (b.receipt_event_id !== undefined && b.user_id === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["user_id"],
+        message: "user_id is required when recording a receipt_event_id",
+      });
     }
   });
 

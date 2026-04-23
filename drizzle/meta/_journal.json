@@ -99,6 +99,13 @@
       "when": 1776913551004,
       "tag": "0013_broad_thundra",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1776964705438,
+      "tag": "0014_cute_magneto",
+      "breakpoints": true
     }
   ]
 }

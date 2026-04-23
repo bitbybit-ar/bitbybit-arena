@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { eq, and, asc, desc } from "drizzle-orm";
+import { eq, and, asc, desc, isNull } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
 import { parseBody } from "@/lib/api/parse";
 import {
@@ -75,13 +75,23 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
     );
   }
 
-  // Winners are participants with status='completed', ordered by earliest
-  // completion. For first_to_complete, we take the single earliest. For
-  // split, everyone. For tiered, the top 3.
-  const completers = await db
+  // Winners are participants with status='completed' who HAVE NOT
+  // already been rewarded, ordered by earliest completion. Excluding
+  // `rewarded_at IS NOT NULL` means a mid-loop crash (creator paid 2
+  // of 3 winners then closed the tab) leaves the two paid rows marked
+  // and a retry only surfaces the remaining unpaid winner. Without
+  // this filter, a retry would re-offer everyone and double-pay.
+  //
+  // Distribution math still runs against the *full* completer list
+  // below: the pot and the per-winner share are fixed at the moment
+  // the challenge is distributed, not recomputed around who's left.
+  // That way a second retry after a partial payout still pays the
+  // unpaid winner the same amount they were originally entitled to.
+  const allCompleters = await db
     .select({
       user_id: participants.user_id,
       completed_at: participants.completed_at,
+      rewarded_at: participants.rewarded_at,
       nostr_pubkey: users.nostr_pubkey,
       display_name: users.display_name,
       lightning_address: users.lightning_address,
@@ -96,36 +106,53 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
     )
     .orderBy(asc(participants.completed_at));
 
-  if (completers.length === 0) {
+  if (allCompleters.length === 0) {
     throw new BadRequestError("No completed participants to reward");
   }
 
-  let selected: typeof completers = [];
+  let selected: typeof allCompleters = [];
   let amounts: number[] = [];
 
   if (distribution === "first_to_complete") {
-    selected = completers.slice(0, 1);
+    selected = allCompleters.slice(0, 1);
     amounts = [challenge.prize_amount_sats];
   } else if (distribution === "split") {
-    selected = completers;
-    const per = Math.floor(challenge.prize_amount_sats / completers.length);
+    selected = allCompleters;
+    const per = Math.floor(challenge.prize_amount_sats / allCompleters.length);
     amounts = selected.map(() => per);
     // Push the rounding remainder onto the first-place winner.
     const remainder =
-      challenge.prize_amount_sats - per * completers.length;
+      challenge.prize_amount_sats - per * allCompleters.length;
     if (remainder > 0) amounts[0] += remainder;
   } else {
-    selected = completers.slice(0, 3);
+    selected = allCompleters.slice(0, 3);
     amounts = tieredSplit(challenge.prize_amount_sats, selected.length);
   }
 
+  // Filter already-paid winners out BEFORE the lud16 lookup so a
+  // retry after a mid-loop crash (a) doesn't re-offer paid winners
+  // and (b) doesn't re-validate their lud16 (an already-paid winner
+  // whose profile lud16 rotated would otherwise 400 the whole retry).
+  // Distribution math above runs on the full list so per-winner
+  // amounts stay fixed across retries — a 5000/3000/2000 split stays
+  // 5000/3000/2000 even if only 2000 is still unpaid.
+  const unpaid = selected
+    .map((row, i) => ({ row, amount: amounts[i] }))
+    .filter(({ row }) => !row.rewarded_at);
+
+  if (unpaid.length === 0) {
+    throw new BadRequestError(
+      "All winners already rewarded on this challenge"
+    );
+  }
+
   // Fill in missing lightning addresses from kind:0 metadata for every
-  // winner in parallel. Each relay fetch has an 8s timeout, so doing
-  // them sequentially would make split-mode rewards hang for 8s × N.
-  // Retained (creator) winners don't need a resolved address — they
-  // aren't paid, so we skip the lookup entirely.
+  // unpaid winner in parallel. Each relay fetch has an 8s timeout, so
+  // doing them sequentially would make split-mode rewards hang for
+  // 8s × N. Retained (creator) winners don't need a resolved address
+  // — they aren't paid, so we skip the lookup entirely.
   const resolvedLightningAddresses = await Promise.all(
-    selected.map(async (row) => {
+    unpaid.map(async ({ row }) => {
       if (row.user_id === challenge.creator_id) return null;
       if (row.lightning_address) return row.lightning_address;
       if (!row.nostr_pubkey) return null;
@@ -134,7 +161,7 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
     })
   );
 
-  const winners: WinnerPayload[] = selected.map((row, i) => {
+  const winners: WinnerPayload[] = unpaid.map(({ row, amount }, i) => {
     const retained = row.user_id === challenge.creator_id;
     if (!retained) {
       const ln = resolvedLightningAddresses[i];
@@ -148,7 +175,7 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
         nostr_pubkey: row.nostr_pubkey,
         display_name: row.display_name,
         lightning_address: ln,
-        amount_sats: amounts[i],
+        amount_sats: amount,
         retained: false,
       };
     }
@@ -157,7 +184,7 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
       nostr_pubkey: row.nostr_pubkey,
       display_name: row.display_name,
       lightning_address: null,
-      amount_sats: amounts[i],
+      amount_sats: amount,
       retained: true,
     };
   });
@@ -171,25 +198,19 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
 });
 
 // PATCH /api/challenges/[id]/reward — creator-only.
-// Body must explicitly request one of two actions (schema enforces; an
-// empty body is a 400):
-//   - `{user_id, receipt_event_id}` — record a kind:9735 zap receipt
-//     on that winner's most recent approved completion.
-//   - `{all_winners_paid: true}` — stamp `rewards_paid_at` so the UI
-//     stops showing the "Claim reward" button.
+// Body must request at least one action (empty body 400s):
+//   - `user_id` — stamp `participants.rewarded_at` for that winner so
+//     a retried POST /reward skips them. This is the mid-loop signal
+//     the client sends as each zap settles. `receipt_event_id` is
+//     optional (WebLN usually doesn't return one); when provided we
+//     also record the kind:9735 id on the winner's most recent
+//     approved completion.
+//   - `all_winners_paid: true` — stamp `challenges.rewards_paid_at`,
+//     the only way to flip the challenge-level "paid" state.
+//     Also catches any still-unmarked participants (retained creator
+//     winners that the client skipped) so a retry can't re-offer
+//     them.
 //   - Both — do both in one request.
-//
-// We used to flip `rewards_paid_at` on every PATCH regardless of body.
-// That meant a misbehaving caller could mark a challenge paid without
-// having sent any zaps. The explicit flag is the only way to stamp it
-// now, so the UI's "paid" state reflects actual creator intent.
-//
-// Known residual risk not addressed here: if the payout loop is
-// interrupted mid-way (tab crash, signer abort after paying N of M
-// winners), `rewards_paid_at` stays null and a retry will re-offer
-// every winner for payment — including the ones already paid. Closing
-// that gap needs per-winner bookkeeping on the participants row; out
-// of scope for this fix.
 export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }) => {
   const [challenge] = await db
     .select()
@@ -207,30 +228,58 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
     all_winners_paid: allWinnersPaid,
   } = await parseBody(req, RecordRewardBodySchema);
 
-  if (winnerUserId && receiptEventId) {
-    const [target] = await db
-      .select({ id: completions.id })
-      .from(completions)
+  if (winnerUserId) {
+    // Guard: the target user must actually be a completed participant
+    // on this challenge. Prevents stamping an unrelated row and also
+    // 404s if the caller sends a stale user id.
+    const [participantRow] = await db
+      .select({ id: participants.id })
+      .from(participants)
       .where(
         and(
-          eq(completions.challenge_id, params.id),
-          eq(completions.user_id, winnerUserId),
-          eq(completions.status, "approved")
+          eq(participants.challenge_id, params.id),
+          eq(participants.user_id, winnerUserId),
+          eq(participants.status, "completed")
         )
       )
-      .orderBy(desc(completions.submitted_at))
       .limit(1);
 
-    if (!target) {
+    if (!participantRow) {
       throw new BadRequestError(
-        "No approved completion found for that winner on this challenge"
+        "No completed participant found for that user on this challenge"
       );
     }
 
     await db
-      .update(completions)
-      .set({ reward_zap_receipt_id: receiptEventId })
-      .where(eq(completions.id, target.id));
+      .update(participants)
+      .set({ rewarded_at: new Date() })
+      .where(eq(participants.id, participantRow.id));
+
+    if (receiptEventId) {
+      const [target] = await db
+        .select({ id: completions.id })
+        .from(completions)
+        .where(
+          and(
+            eq(completions.challenge_id, params.id),
+            eq(completions.user_id, winnerUserId),
+            eq(completions.status, "approved")
+          )
+        )
+        .orderBy(desc(completions.submitted_at))
+        .limit(1);
+
+      if (target) {
+        await db
+          .update(completions)
+          .set({ reward_zap_receipt_id: receiptEventId })
+          .where(eq(completions.id, target.id));
+      }
+      // If there's no approved completion (edge case: a participant
+      // flipped to `completed` via checkpoints without an approved
+      // completion row), we still stamp `rewarded_at` above and swallow
+      // the receipt — no place to put it, not worth 400ing over.
+    }
 
     // Skip self-pay: creators who win their own challenge don't get a
     // prize (retained=true), so there's nothing to notify them about.
@@ -244,7 +293,7 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
           {
             challenge: challenge.title,
             challenge_id: challenge.id,
-            receipt_event_id: receiptEventId,
+            receipt_event_id: receiptEventId ?? null,
           }
         );
       } catch (err) {
@@ -254,10 +303,25 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
   }
 
   if (allWinnersPaid) {
+    // Stamp the challenge AND mop up any still-unmarked participants
+    // (typically the retained creator, which the client skips in the
+    // zap loop). Without this sweep, POST /reward on this challenge
+    // would still see them as "unpaid" and either 400 or re-offer.
     await db
       .update(challenges)
       .set({ rewards_paid_at: new Date() })
       .where(eq(challenges.id, params.id));
+
+    await db
+      .update(participants)
+      .set({ rewarded_at: new Date() })
+      .where(
+        and(
+          eq(participants.challenge_id, params.id),
+          eq(participants.status, "completed"),
+          isNull(participants.rewarded_at)
+        )
+      );
   }
 
   return { ok: true };

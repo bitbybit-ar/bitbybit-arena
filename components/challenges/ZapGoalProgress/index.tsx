@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BoltIcon } from "@/components/icons";
 import { useZapGoalProgress } from "@/lib/hooks/useZapGoalProgress";
+import { useZapperMetadata } from "@/lib/hooks/useZapperMetadata";
 import type { ZapGoalProgressData } from "@/app/api/challenges/[id]/zap-goal-progress/route";
 import { FundPotModal } from "@/components/challenges/FundPotModal";
 import styles from "./zap-goal-progress.module.scss";
@@ -59,6 +60,16 @@ export function ZapGoalProgress({
       initial,
       enabled: !!goalEventId,
     });
+
+  // Progressively upgrade the zapper rows from dicebear + short pubkey
+  // placeholders to real kind:0 avatars + display names as each lookup
+  // resolves. The hook caches per-instance so the same pubkey isn't
+  // refetched across re-renders.
+  const recentPubkeys = useMemo(
+    () => recentZappers.map((z) => z.pubkey),
+    [recentZappers]
+  );
+  const zapperProfiles = useZapperMetadata(recentPubkeys);
 
   const percent = useMemo(() => {
     if (goalSats <= 0) return 0;
@@ -144,31 +155,44 @@ export function ZapGoalProgress({
 
       {recentZappers.length > 0 && (
         <ul className={styles.zapperList}>
-          {recentZappers.map((z) => (
-            <li key={`${z.pubkey}-${z.received_at}`} className={styles.zapper}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                className={styles.avatar}
-                src={avatarUrl(z.pubkey)}
-                alt=""
-                aria-hidden="true"
-              />
-              <div className={styles.zapperBody}>
-                <div className={styles.zapperRow}>
-                  <span className={styles.zapperName}>
-                    {shortPubkey(z.pubkey)}
-                  </span>
-                  <span className={styles.zapperAmount}>
-                    <BoltIcon size={12} color="var(--color-secondary)" />
-                    {z.amount_sats.toLocaleString()}
-                  </span>
+          {recentZappers.map((z) => {
+            const profile = zapperProfiles.get(z.pubkey);
+            const displayName = profile?.display_name ?? shortPubkey(z.pubkey);
+            const avatar = profile?.picture ?? avatarUrl(z.pubkey);
+            return (
+              <li key={`${z.pubkey}-${z.received_at}`} className={styles.zapper}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className={styles.avatar}
+                  src={avatar}
+                  alt=""
+                  aria-hidden="true"
+                  onError={(e) => {
+                    // kind:0 `picture` URLs come from user profiles and
+                    // occasionally 404 (dead CDN, deleted file). Fall
+                    // back to the deterministic dicebear placeholder so
+                    // the row never shows a broken-image icon.
+                    const img = e.currentTarget;
+                    if (img.src !== avatarUrl(z.pubkey)) {
+                      img.src = avatarUrl(z.pubkey);
+                    }
+                  }}
+                />
+                <div className={styles.zapperBody}>
+                  <div className={styles.zapperRow}>
+                    <span className={styles.zapperName}>{displayName}</span>
+                    <span className={styles.zapperAmount}>
+                      <BoltIcon size={12} color="var(--color-secondary)" />
+                      {z.amount_sats.toLocaleString()}
+                    </span>
+                  </div>
+                  {z.message && (
+                    <p className={styles.zapperMessage}>{z.message}</p>
+                  )}
                 </div>
-                {z.message && (
-                  <p className={styles.zapperMessage}>{z.message}</p>
-                )}
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
 

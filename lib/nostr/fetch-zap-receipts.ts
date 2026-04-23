@@ -1,5 +1,6 @@
 import { DEFAULT_RELAYS } from "./relays";
 import type { NostrEvent } from "./types";
+import { verifyNostrEvent } from "./verify";
 
 export interface ParsedZapReceipt {
   /** Kind 9735 event id. Used for dedupe. */
@@ -31,11 +32,13 @@ export interface FetchZapReceiptsOptions {
  * in modern browsers and Node 20+. Server routes and client hooks can
  * both call this.
  *
- * We do NOT verify signatures here — goal-progress is a read-only,
- * visual-only feature, and the recipient's node (not the zapper) is
- * the party with skin in the game for receipt authenticity. If we ever
- * display zap receipts as attribution for on-chain state (e.g. "goal
- * funded → enable payout"), add `verifyNostrEvent` at that point.
+ * Signatures are verified on BOTH the outer kind:9735 receipt (the
+ * recipient's LNURL node asserting the zap really happened) and the
+ * embedded kind:9734 request (the original zapper asserting they
+ * authorised it). A crafted receipt with a faked embedded request
+ * would otherwise let an attacker impersonate another zapper in the
+ * "recent zappers" display. Both sig checks are cheap — nostr-tools'
+ * Schnorr verify is ~0.2ms per event on modern hardware.
  */
 export async function fetchZapReceipts(
   goalEventId: string,
@@ -64,11 +67,13 @@ export async function fetchZapReceipts(
 
 /**
  * Parse a single kind 9735 receipt into `ParsedZapReceipt`.
- * Returns null when the receipt lacks a valid embedded kind 9734 or
- * doesn't carry a numeric `amount` tag. Exported for unit tests.
+ * Returns null when the receipt (or its embedded kind:9734) fails
+ * signature verification, lacks a valid amount tag, or is otherwise
+ * malformed. Exported for unit tests.
  */
 export function parseZapReceipt(receipt: NostrEvent): ParsedZapReceipt | null {
   if (receipt.kind !== 9735) return null;
+  if (!verifyNostrEvent(receipt)) return null;
 
   const descTag = receipt.tags.find((t) => t[0] === "description");
   if (!descTag || !descTag[1]) return null;
@@ -81,6 +86,10 @@ export function parseZapReceipt(receipt: NostrEvent): ParsedZapReceipt | null {
   }
   if (!zapRequest || zapRequest.kind !== 9734) return null;
   if (typeof zapRequest.pubkey !== "string") return null;
+  // Verify the embedded request's own signature. Without this, the
+  // LNURL node could fabricate or substitute the `pubkey` / `content`
+  // fields and we'd credit the wrong zapper or show a forged message.
+  if (!verifyNostrEvent(zapRequest)) return null;
 
   const amountTag = zapRequest.tags.find((t) => t[0] === "amount");
   if (!amountTag || !amountTag[1]) return null;

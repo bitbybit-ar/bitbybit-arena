@@ -29,6 +29,7 @@ import { ZapGoalProgress } from "@/components/challenges/ZapGoalProgress";
 import type { BlossomDescriptor } from "@/lib/nostr/blossom";
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
+import { awaitZapReceipt } from "@/lib/nostr/await-zap-receipt";
 import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
@@ -506,21 +507,32 @@ export default function ChallengeClient() {
     }
   }, []);
 
-  // Clean up any pending poll if the user navigates away mid-payout.
+  // Shared AbortController for every receipt subscription started by
+  // `payWinner` during this component's lifetime. Aborting on unmount
+  // closes any post-payment kind:9735 watchers immediately instead of
+  // leaving them open for the full 10s timeout after the user
+  // navigates away.
+  const receiptAbortRef = useRef<AbortController | null>(null);
+
+  // Clean up any pending poll / open receipt subscriptions if the
+  // user navigates away mid-payout.
   useEffect(() => {
     return () => {
       if (rewardPollRef.current) clearInterval(rewardPollRef.current);
+      receiptAbortRef.current?.abort();
     };
   }, []);
 
-  // Pay a single winner: try WebLN first, fall back to a QR + invoice modal
-  // that polls /api/zap/status until settlement. Resolves when paid; rejects
-  // with `payout_cancelled` if the user dismisses the modal.
+  // Pay a single winner: try WebLN first, fall back to a QR + invoice
+  // modal that polls /api/zap/status until settlement. Resolves with
+  // the kind:9735 receipt event id (when we managed to capture it from
+  // relays) or `undefined` otherwise. Rejects with `payout_cancelled`
+  // if the user dismisses the modal.
   const payWinner = async (
     winner: PayableWinner,
     index: number,
     total: number
-  ): Promise<void> => {
+  ): Promise<string | undefined> => {
     if (!challenge) throw new Error("challenge_not_loaded");
     setRewardStatus(
       t("rewardPaying", {
@@ -551,43 +563,71 @@ export default function ChallengeClient() {
     // advance immediately. If the extension rejects or isn't installed we
     // fall through to the QR modal so the creator can pay from any
     // external Lightning wallet.
+    let paid = false;
     if (typeof window !== "undefined" && window.webln) {
       try {
         await window.webln.enable();
         await window.webln.sendPayment(invoice);
-        return;
+        paid = true;
       } catch {
         /* fall through to QR fallback */
       }
     }
 
-    // No WebLN — show the BOLT11 as a QR, poll /api/zap/status (NWC-backed)
-    // until the invoice settles, then resolve so the for-loop moves on.
-    await new Promise<void>((resolve, reject) => {
-      rewardPayResolverRef.current = { resolve, reject };
-      setRewardInvoice({
-        pr: invoice,
-        sats: winner.amount_sats,
-        name: winner.display_name,
-        index,
-        total,
-      });
+    if (!paid) {
+      // No WebLN — show the BOLT11 as a QR, poll /api/zap/status
+      // (NWC-backed) until the invoice settles, then resolve so the
+      // for-loop moves on. This can take minutes; we don't want the
+      // receipt subscription below to time out while the user is
+      // still scanning, so it starts AFTER this resolves.
+      await new Promise<void>((resolve, reject) => {
+        rewardPayResolverRef.current = { resolve, reject };
+        setRewardInvoice({
+          pr: invoice,
+          sats: winner.amount_sats,
+          name: winner.display_name,
+          index,
+          total,
+        });
 
-      rewardPollRef.current = setInterval(async () => {
-        try {
-          const res = await fetch("/api/zap/status", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ invoice }),
-          });
-          if (!res.ok) return;
-          const { paid } = await res.json();
-          if (paid) finishRewardPay("resolved");
-        } catch {
-          // Silently ignore polling errors — we'll try again next tick.
-        }
-      }, REWARD_POLL_INTERVAL_MS);
+        rewardPollRef.current = setInterval(async () => {
+          try {
+            const res = await fetch("/api/zap/status", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ invoice }),
+            });
+            if (!res.ok) return;
+            const { paid: isPaid } = await res.json();
+            if (isPaid) finishRewardPay("resolved");
+          } catch {
+            // Silently ignore polling errors — we'll try again next tick.
+          }
+        }, REWARD_POLL_INTERVAL_MS);
+      });
+    }
+
+    // Payment confirmed. Now fish the kind:9735 receipt out of relays.
+    // Running this AFTER settlement (not in parallel with it) is
+    // correct per NIP-01 — relays retain events so a REQ with `since`
+    // set to just before we signed the zap request returns the receipt
+    // during the initial EOSE flush even though it already landed.
+    // Timeboxed; the return value flows into the per-winner PATCH but
+    // the payout loop doesn't fail if the receipt never shows up.
+    // The signal aborts the subscription on component unmount so
+    // navigating away doesn't leave sockets open for up to 10s.
+    if (!receiptAbortRef.current) {
+      receiptAbortRef.current = new AbortController();
+    }
+    const receiptId = await awaitZapReceipt({
+      recipientPubkey: winner.nostr_pubkey,
+      signedZapRequestId: signedZap.id,
+      options: {
+        since: signedZap.created_at - 5,
+        signal: receiptAbortRef.current.signal,
+      },
     });
+    return receiptId ?? undefined;
   };
 
   const handleClaimReward = async () => {
@@ -646,7 +686,33 @@ export default function ChallengeClient() {
 
       for (let i = 0; i < payable.length; i++) {
         try {
-          await payWinner(payable[i], i + 1, payable.length);
+          const receiptEventId = await payWinner(
+            payable[i],
+            i + 1,
+            payable.length
+          );
+          // Per-winner PATCH right after the zap settles — server
+          // stamps `participants.rewarded_at` so a mid-loop crash
+          // leaves the paid row marked and a retried POST /reward
+          // skips it. Receipt id is optional (WebLN usually doesn't
+          // return one); when we manage to capture it via the
+          // post-payment relay subscription we pass it through here.
+          try {
+            await fetch(`/api/challenges/${challengeId}/reward`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                user_id: payable[i].user_id,
+                ...(receiptEventId
+                  ? { receipt_event_id: receiptEventId }
+                  : {}),
+              }),
+            });
+          } catch {
+            // Don't blow up the whole loop for a stamp failure — the
+            // zap already went through. Worst case: a retry re-offers
+            // this winner, which is a documented edge case.
+          }
         } catch (err) {
           if (err instanceof Error && err.message === "payout_cancelled") {
             setRewardError(t("rewardCancelled"));
