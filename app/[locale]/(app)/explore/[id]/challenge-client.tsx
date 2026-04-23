@@ -29,6 +29,7 @@ import { ZapGoalProgress } from "@/components/challenges/ZapGoalProgress";
 import type { BlossomDescriptor } from "@/lib/nostr/blossom";
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
+import { awaitZapReceipt } from "@/lib/nostr/await-zap-receipt";
 import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
@@ -507,14 +508,16 @@ export default function ChallengeClient() {
     };
   }, []);
 
-  // Pay a single winner: try WebLN first, fall back to a QR + invoice modal
-  // that polls /api/zap/status until settlement. Resolves when paid; rejects
-  // with `payout_cancelled` if the user dismisses the modal.
+  // Pay a single winner: try WebLN first, fall back to a QR + invoice
+  // modal that polls /api/zap/status until settlement. Resolves with
+  // the kind:9735 receipt event id (when we managed to capture it from
+  // relays) or `undefined` otherwise. Rejects with `payout_cancelled`
+  // if the user dismisses the modal.
   const payWinner = async (
     winner: PayableWinner,
     index: number,
     total: number
-  ): Promise<void> => {
+  ): Promise<string | undefined> => {
     if (!challenge) throw new Error("challenge_not_loaded");
     setRewardStatus(
       t("rewardPaying", {
@@ -533,6 +536,18 @@ export default function ChallengeClient() {
       comment: `BitByBit Arena reward: ${challenge.title}`,
     });
     const signedZap = await signWithPrompt(zapRequest);
+
+    // Start listening for the kind:9735 receipt BEFORE we pay. The
+    // recipient's LNURL node emits the receipt seconds after settlement
+    // — if we subscribed *after* the pay resolves, fast relays could
+    // have already delivered it to connected clients by then. The
+    // subscription is timeboxed (10s) and best-effort; the payout
+    // doesn't block on it.
+    const receiptPromise = awaitZapReceipt({
+      recipientPubkey: winner.nostr_pubkey,
+      signedZapRequestId: signedZap.id,
+    });
+
     const endpoint = await fetchLnurlPayEndpoint(winner.lightning_address);
     const invoice = await fetchInvoice(
       endpoint.callback,
@@ -549,7 +564,8 @@ export default function ChallengeClient() {
       try {
         await window.webln.enable();
         await window.webln.sendPayment(invoice);
-        return;
+        const receiptId = await receiptPromise;
+        return receiptId ?? undefined;
       } catch {
         /* fall through to QR fallback */
       }
@@ -582,6 +598,9 @@ export default function ChallengeClient() {
         }
       }, REWARD_POLL_INTERVAL_MS);
     });
+
+    const receiptId = await receiptPromise;
+    return receiptId ?? undefined;
   };
 
   const handleClaimReward = async () => {
@@ -640,7 +659,33 @@ export default function ChallengeClient() {
 
       for (let i = 0; i < payable.length; i++) {
         try {
-          await payWinner(payable[i], i + 1, payable.length);
+          const receiptEventId = await payWinner(
+            payable[i],
+            i + 1,
+            payable.length
+          );
+          // Per-winner PATCH right after the zap settles — server
+          // stamps `participants.rewarded_at` so a mid-loop crash
+          // leaves the paid row marked and a retried POST /reward
+          // skips it. Receipt id is optional (WebLN usually doesn't
+          // return one); when we manage to capture it via the
+          // post-payment relay subscription we pass it through here.
+          try {
+            await fetch(`/api/challenges/${challengeId}/reward`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                user_id: payable[i].user_id,
+                ...(receiptEventId
+                  ? { receipt_event_id: receiptEventId }
+                  : {}),
+              }),
+            });
+          } catch {
+            // Don't blow up the whole loop for a stamp failure — the
+            // zap already went through. Worst case: a retry re-offers
+            // this winner, which is a documented edge case.
+          }
         } catch (err) {
           if (err instanceof Error && err.message === "payout_cancelled") {
             setRewardError(t("rewardCancelled"));
