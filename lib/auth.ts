@@ -1,6 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { SignerType } from "@/lib/nostr/signers";
+import { SESSION_COOKIE_NAME } from "@/lib/auth-constants";
+
+export { SESSION_COOKIE_NAME };
 
 // Fail loudly when AUTH_SECRET is unset in production. A silent dev
 // fallback would let a misconfigured deploy issue forgeable JWTs —
@@ -23,22 +26,6 @@ function readAuthSecret(): Uint8Array {
 const AUTH_SECRET = readAuthSecret();
 
 const SESSION_DURATION = "7d";
-
-/**
- * Session cookie name. The `__Host-` prefix is enforced by the
- * browser: the cookie is rejected unless it's marked Secure, has
- * `Path=/`, and has no `Domain` attribute. That combo prevents
- * subdomain cookie injection from any future `*.bitbybit.com.ar`
- * sibling service. Renaming this constant invalidates every
- * outstanding session — that's an acceptable one-shot cost for the
- * security upgrade.
- *
- * In dev (`NODE_ENV !== "production"`), `__Host-` won't work because
- * the cookie can't be Secure over plain HTTP. Fall back to a plain
- * name so local dev keeps working.
- */
-export const SESSION_COOKIE_NAME =
-  process.env.NODE_ENV === "production" ? "__Host-session" : "session";
 
 const VALID_SIGNER_TYPES: SignerType[] = ["extension", "nsec", "nip46"];
 
