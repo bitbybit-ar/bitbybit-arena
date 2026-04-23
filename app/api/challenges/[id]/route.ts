@@ -12,6 +12,7 @@ import {
   checkpoint_completions,
 } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth";
+import type { PendingCheckpointSubmission } from "@/lib/types";
 
 // GET /api/challenges/[id] — get single challenge with creator and participant count
 export const GET = apiHandler(
@@ -74,25 +75,13 @@ export const GET = apiHandler(
 
     // Pending checkpoint submissions — only surfaced to the creator so
     // they can approve/reject. Join through participants → users to
-    // render who submitted what without a second round-trip.
-    type PendingSubmission = {
-      id: string;
-      checkpoint_id: string;
-      participant_id: string;
-      content: string | null;
-      proof_event_id: string | null;
+    // render who submitted what without a second round-trip. `created_at`
+    // is a Date here; apiHandler's JSON serialization turns it into the
+    // ISO string the shared `PendingCheckpointSubmission` type expects.
+    type PendingSubmissionRow = Omit<PendingCheckpointSubmission, "created_at"> & {
       created_at: Date;
-      participant: {
-        user: {
-          id: string;
-          username: string;
-          display_name: string;
-          avatar_url: string | null;
-          nostr_pubkey: string;
-        };
-      };
     };
-    let pendingCheckpointSubmissions: PendingSubmission[] = [];
+    let pendingCheckpointSubmissions: PendingSubmissionRow[] = [];
     if (
       session &&
       checkpoints.length > 0 &&

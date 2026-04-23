@@ -47,13 +47,16 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     .limit(1);
 
   if (!row) throw new NotFoundError("Checkpoint submission");
-  if (row.completion.status !== "pending") {
-    throw new BadRequestError("This submission has already been reviewed");
-  }
+  // Authz first — otherwise a non-creator probing a random submission id
+  // can tell whether it exists and whether it's been reviewed, which is
+  // information that shouldn't leak outside the creator.
   if (row.challenge.creator_id !== session!.user_id) {
     throw new ForbiddenError(
       "Only the challenge creator can review submissions"
     );
+  }
+  if (row.completion.status !== "pending") {
+    throw new BadRequestError("This submission has already been reviewed");
   }
 
   const [updated] = await db

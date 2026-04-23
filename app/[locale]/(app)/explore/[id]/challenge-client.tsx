@@ -33,7 +33,12 @@ import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
 import { useToast } from "@/components/ui/toast";
-import type { PrizeDistribution } from "@/lib/types";
+import type {
+  CompletionStatus,
+  PendingCheckpointSubmission,
+  PrizeDistribution,
+  VerificationMethod,
+} from "@/lib/types";
 import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
 import {
   ShareOnNostrModal,
@@ -51,7 +56,7 @@ interface CheckpointItem {
   order: number;
   title: string;
   description: string | null;
-  verification_methods: string[];
+  verification_methods: VerificationMethod[];
   nostr_action_target_event_id: string | null;
   nostr_hashtag: string | null;
 }
@@ -62,26 +67,8 @@ interface CheckpointCompletionItem {
   checkpoint_id: string;
   proof_event_id: string | null;
   content: string | null;
-  status: string;
+  status: CompletionStatus;
   completed_at: string | null;
-}
-
-interface PendingCheckpointSubmission {
-  id: string;
-  checkpoint_id: string;
-  participant_id: string;
-  content: string | null;
-  proof_event_id: string | null;
-  created_at: string;
-  participant: {
-    user: {
-      id: string;
-      username: string;
-      display_name: string;
-      avatar_url: string | null;
-      nostr_pubkey: string;
-    };
-  };
 }
 
 interface ChallengeDetail {
@@ -839,12 +826,25 @@ export default function ChallengeClient() {
   ) => {
     setActionLoading(`cpv_${submissionId}`);
     try {
-      await fetch(`/api/checkpoint-completions/${submissionId}/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
+      const res = await fetch(
+        `/api/checkpoint-completions/${submissionId}/verify`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        }
+      );
+      const json = await res.json().catch(() => ({ success: false }));
+      if (!json.success) {
+        showToast(
+          json.error || t("checkpointReviewError"),
+          "error"
+        );
+        return;
+      }
       await fetchAll();
+    } catch {
+      showToast(t("checkpointReviewError"), "error");
     } finally {
       setActionLoading(null);
     }
@@ -1254,13 +1254,12 @@ export default function ChallengeClient() {
                       )}
                       {isRejected && (
                         <p className={styles.checkpointLocked}>
-                          {t("checkpointRejectedHint")}
+                          {t("checkpointResubmitHint")}
                         </p>
                       )}
                       {isParticipant &&
                         !isDone &&
                         !isAwaitingReview &&
-                        !isRejected &&
                         !priorIncomplete && (
                         <div className={styles.checkpointActions}>
                           {cp.verification_methods?.[0] === "nostr_action" ? (

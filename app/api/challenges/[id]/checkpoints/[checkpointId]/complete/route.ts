@@ -160,24 +160,63 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     );
   }
 
+  // If a previous row exists for this (participant, checkpoint) we
+  // branch: approved is final, pending is under review (no double-
+  // submit), rejected is a retry → update in place so sequential mode
+  // can unlock downstream checkpoints once the creator re-approves.
+  const [existing] = await db
+    .select()
+    .from(checkpoint_completions)
+    .where(
+      and(
+        eq(checkpoint_completions.participant_id, participation.id),
+        eq(checkpoint_completions.checkpoint_id, checkpoint.id)
+      )
+    )
+    .limit(1);
+
   let completion: typeof checkpoint_completions.$inferSelect;
-  try {
+  if (existing) {
+    if (existing.status === "approved") {
+      throw new BadRequestError("This checkpoint is already completed");
+    }
+    if (existing.status === "pending") {
+      throw new BadRequestError(
+        "You already submitted this checkpoint — waiting for review"
+      );
+    }
+    // rejected — rewrite the row with the fresh proof.
     [completion] = await db
-      .insert(checkpoint_completions)
-      .values({
-        participant_id: participation.id,
-        checkpoint_id: checkpoint.id,
+      .update(checkpoint_completions)
+      .set({
         content: resolvedContent,
         proof_event_id: proofEventId,
         status: autoApprove ? "approved" : "pending",
         completed_at: autoApprove ? new Date() : null,
       })
+      .where(eq(checkpoint_completions.id, existing.id))
       .returning();
-  } catch (err) {
-    if (isUniqueViolation(err)) {
-      throw new BadRequestError("This checkpoint is already completed");
+  } else {
+    try {
+      [completion] = await db
+        .insert(checkpoint_completions)
+        .values({
+          participant_id: participation.id,
+          checkpoint_id: checkpoint.id,
+          content: resolvedContent,
+          proof_event_id: proofEventId,
+          status: autoApprove ? "approved" : "pending",
+          completed_at: autoApprove ? new Date() : null,
+        })
+        .returning();
+    } catch (err) {
+      // Concurrent submit from the same participant — the unique index
+      // protects us even though we checked for `existing` above.
+      if (isUniqueViolation(err)) {
+        throw new BadRequestError("This checkpoint is already completed");
+      }
+      throw err;
     }
-    throw err;
   }
 
   if (autoApprove) {

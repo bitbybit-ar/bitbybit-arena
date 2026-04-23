@@ -49,7 +49,17 @@ describe("POST /api/completions/[id]/verify", () => {
   });
 
   it("rejects verifying already-reviewed completion", async () => {
-    setDbRows([makeCompletion({ id: "completion-1", status: "approved" })]);
+    // The mock returns the same dbRows for every select — the route
+    // queries the completion and then the challenge, both resolving to
+    // this row. Supplying `creator_id` on the fake row lets the authz
+    // check pass so we actually exercise the status-guard below it.
+    setDbRows([
+      makeCompletion({
+        id: "completion-1",
+        status: "approved",
+        creator_id: "user-creator",
+      }),
+    ]);
     const res = await POST(
       buildRequest("POST", "/api/completions/completion-1/verify", { status: "approved" }),
       routeCtx

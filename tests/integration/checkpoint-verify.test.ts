@@ -283,6 +283,132 @@ describe("Integration: Checkpoint creator-approval verify flow", () => {
     expect(row.status).toBe("pending");
   });
 
+  it("participant can resubmit after rejection and be approved on the retry", async () => {
+    const { challenge, checkpoints } =
+      await seedChallengeWithCreatorApprovalCheckpoints(creator.id, ["Only"]);
+    const participation = await seedParticipant(challenge.id, participant.id, {
+      status: "active",
+    });
+
+    // First submission — pending, then rejected.
+    setSession(makeSession(participant.id, { nostr_pubkey: "doer_pubkey" }));
+    const first = await completeRoute.POST(
+      buildRequest(
+        "POST",
+        `/api/challenges/${challenge.id}/checkpoints/${checkpoints[0].id}/complete`,
+        { content: "First attempt — probably wrong" }
+      ),
+      {
+        params: Promise.resolve({
+          id: challenge.id,
+          checkpointId: checkpoints[0].id,
+        }),
+      }
+    );
+    const firstBody = await parseResponse(first);
+    expect(firstBody.status).toBe(201);
+    const submissionId = firstBody.body.data.id;
+
+    setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+    const reject = await verifyRoute.POST(
+      buildRequest(
+        "POST",
+        `/api/checkpoint-completions/${submissionId}/verify`,
+        { status: "rejected" }
+      ),
+      { params: Promise.resolve({ id: submissionId }) }
+    );
+    expect(reject.status).toBe(200);
+
+    // Second attempt from the participant — same (participant, checkpoint)
+    // pair but now rewrites the existing row instead of 400'ing on the
+    // unique index.
+    setSession(makeSession(participant.id, { nostr_pubkey: "doer_pubkey" }));
+    const retry = await completeRoute.POST(
+      buildRequest(
+        "POST",
+        `/api/challenges/${challenge.id}/checkpoints/${checkpoints[0].id}/complete`,
+        { content: "Second attempt — with the right proof" }
+      ),
+      {
+        params: Promise.resolve({
+          id: challenge.id,
+          checkpointId: checkpoints[0].id,
+        }),
+      }
+    );
+    const retryBody = await parseResponse(retry);
+    expect(retryBody.status).toBe(201);
+    expect(retryBody.body.data.id).toBe(submissionId); // same row, updated
+    expect(retryBody.body.data.status).toBe("pending");
+    expect(retryBody.body.data.content).toContain("Second attempt");
+
+    // Creator approves the retry — progress advances.
+    setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+    const approve = await verifyRoute.POST(
+      buildRequest(
+        "POST",
+        `/api/checkpoint-completions/${submissionId}/verify`,
+        { status: "approved" }
+      ),
+      { params: Promise.resolve({ id: submissionId }) }
+    );
+    expect(approve.status).toBe(200);
+
+    const [p] = await testDb
+      .select()
+      .from(participants)
+      .where(eq(participants.id, participation.id));
+    expect(p.progress).toBe(1);
+    expect(p.status).toBe("completed");
+
+    // Exactly one checkpoint_completions row exists — retry updated in
+    // place instead of inserting a second row.
+    const rows = await testDb
+      .select()
+      .from(checkpoint_completions)
+      .where(eq(checkpoint_completions.checkpoint_id, checkpoints[0].id));
+    expect(rows).toHaveLength(1);
+  });
+
+  it("blocks a resubmit while the first attempt is still pending", async () => {
+    const { challenge, checkpoints } =
+      await seedChallengeWithCreatorApprovalCheckpoints(creator.id, ["Only"]);
+    await seedParticipant(challenge.id, participant.id, { status: "active" });
+
+    setSession(makeSession(participant.id, { nostr_pubkey: "doer_pubkey" }));
+    const first = await completeRoute.POST(
+      buildRequest(
+        "POST",
+        `/api/challenges/${challenge.id}/checkpoints/${checkpoints[0].id}/complete`,
+        { content: "First attempt" }
+      ),
+      {
+        params: Promise.resolve({
+          id: challenge.id,
+          checkpointId: checkpoints[0].id,
+        }),
+      }
+    );
+    expect(first.status).toBe(201);
+
+    const second = await completeRoute.POST(
+      buildRequest(
+        "POST",
+        `/api/challenges/${challenge.id}/checkpoints/${checkpoints[0].id}/complete`,
+        { content: "Second attempt without waiting" }
+      ),
+      {
+        params: Promise.resolve({
+          id: challenge.id,
+          checkpointId: checkpoints[0].id,
+        }),
+      }
+    );
+    // Pending submission is not a retry target — 400.
+    expect(second.status).toBe(400);
+  });
+
   it("rejects re-verifying an already-reviewed submission", async () => {
     const { challenge, checkpoints } =
       await seedChallengeWithCreatorApprovalCheckpoints(creator.id, ["A", "B"]);
