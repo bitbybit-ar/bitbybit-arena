@@ -117,6 +117,10 @@ export const participants = pgTable(
     points: integer("points").notNull().default(0),
     status: varchar("status", { length: 20 }).notNull().default("active"), // active, completed, withdrawn
     completed_at: timestamp("completed_at"),
+    // Set when the creator records a zap payout to this participant.
+    // Used by POST /api/challenges/[id]/reward to skip already-paid
+    // winners on a retry so a mid-loop interruption can't double-pay.
+    rewarded_at: timestamp("rewarded_at"),
     joined_at: timestamp("joined_at").notNull().defaultNow(),
   },
   (table) => [

@@ -158,6 +158,7 @@ export interface Participant {
   points: number;
   status: "active" | "completed" | "withdrawn";
   completed_at: string | null;
+  rewarded_at: string | null;
   joined_at: string;
   // Computed
   user?: User;

@@ -63,3 +63,57 @@
   margin-left: auto;
   font-weight: $font-weight-medium;
 }
+
+// Skeleton state — rendered by the Explore card while the progress
+// endpoint is still loading. A subtle shimmer on the empty track +
+// a dim label placeholder keeps the card layout fixed so the real
+// bar doesn't pop into existence later.
+.loading {
+  opacity: 0.7;
+}
+
+.skeleton {
+  width: 30%;
+  height: 100%;
+  border-radius: $border-radius-full;
+  background: linear-gradient(
+    90deg,
+    alpha($color-text-secondary, 15%) 0%,
+    alpha($color-text-secondary, 30%) 50%,
+    alpha($color-text-secondary, 15%) 100%
+  );
+  background-size: 200% 100%;
+  animation: zap-bar-shimmer 1.2s ease-in-out infinite;
+}
+
+.skeletonText {
+  display: inline-block;
+  width: 80px;
+  height: $font-size-xs;
+  border-radius: $border-radius-sm;
+  background: alpha($color-text-secondary, 15%);
+  animation: zap-bar-shimmer 1.2s ease-in-out infinite;
+  background-size: 200% 100%;
+  background-image: linear-gradient(
+    90deg,
+    alpha($color-text-secondary, 15%) 0%,
+    alpha($color-text-secondary, 30%) 50%,
+    alpha($color-text-secondary, 15%) 100%
+  );
+}
+
+@keyframes zap-bar-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .skeletonText {
+    animation: none;
+  }
+}

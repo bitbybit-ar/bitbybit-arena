@@ -318,6 +318,85 @@ describe("Integration: Zap rewards", () => {
       expect(payableTotal).toBe(7000);
     });
 
+    it("skips already-rewarded winners on a retry, preserving original per-winner amounts", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 10000,
+        prize_distribution: "tiered",
+        status: "open",
+      });
+      const pA = await seedParticipant(challenge.id, winnerA.id, { status: "active" });
+      const pB = await seedParticipant(challenge.id, winnerB.id, { status: "active" });
+      const pC = await seedParticipant(challenge.id, winnerC.id, { status: "active" });
+      await markParticipantCompleted(pA.id, 30);
+      await markParticipantCompleted(pB.id, 20);
+      await markParticipantCompleted(pC.id, 10);
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+
+      // First POST — all three are unpaid.
+      const first = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { body: firstBody } = await parseResponse(first);
+      expect(firstBody.data.winners).toHaveLength(3);
+      const amountsByUser = new Map<string, number>(
+        firstBody.data.winners.map((w: { user_id: string; amount_sats: number }) => [
+          w.user_id,
+          w.amount_sats,
+        ])
+      );
+      expect(amountsByUser.get(winnerA.id)).toBe(5000);
+      expect(amountsByUser.get(winnerB.id)).toBe(3000);
+      expect(amountsByUser.get(winnerC.id)).toBe(2000);
+
+      // Simulate a partial payout: the creator paid winnerA and winnerB
+      // before the tab crashed. Mark both as rewarded.
+      await testDb
+        .update(participants)
+        .set({ rewarded_at: new Date() })
+        .where(eq(participants.id, pA.id));
+      await testDb
+        .update(participants)
+        .set({ rewarded_at: new Date() })
+        .where(eq(participants.id, pB.id));
+
+      // Retry POST — only winnerC should come back, with their
+      // original 2000 amount (NOT 10000 — the pot stays fixed).
+      const retry = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { body: retryBody } = await parseResponse(retry);
+      expect(retryBody.data.winners).toHaveLength(1);
+      expect(retryBody.data.winners[0].user_id).toBe(winnerC.id);
+      expect(retryBody.data.winners[0].amount_sats).toBe(2000);
+    });
+
+    it("400 when every completed participant has already been rewarded", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 5000,
+        prize_distribution: "first_to_complete",
+        status: "open",
+      });
+      const p = await seedParticipant(challenge.id, winnerA.id, { status: "active" });
+      await markParticipantCompleted(p.id);
+      // Pre-stamp rewarded_at to simulate already-paid state.
+      await testDb
+        .update(participants)
+        .set({ rewarded_at: new Date() })
+        .where(eq(participants.id, p.id));
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.POST(
+        buildRequest("POST", `/api/challenges/${challenge.id}/reward`),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      const { status, body } = await parseResponse(res);
+      expect(status).toBe(400);
+      expect(body.error).toContain("already rewarded");
+    });
+
     it("400 when prize_distribution is 'none'", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1000,
@@ -341,7 +420,7 @@ describe("Integration: Zap rewards", () => {
   });
 
   describe("PATCH /api/challenges/[id]/reward", () => {
-    it("sets rewards_paid_at without a body", async () => {
+    it("sets rewards_paid_at when all_winners_paid is true", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1000,
         prize_distribution: "first_to_complete",
@@ -350,7 +429,9 @@ describe("Integration: Zap rewards", () => {
       setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
 
       const res = await rewardRoute.PATCH(
-        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`),
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`, {
+          all_winners_paid: true,
+        }),
         { params: Promise.resolve({ id: challenge.id }) }
       );
       expect(res.status).toBe(200);
@@ -362,7 +443,63 @@ describe("Integration: Zap rewards", () => {
       expect(updated.rewards_paid_at).not.toBeNull();
     });
 
-    it("stores a receipt id on the winner's latest approved completion", async () => {
+    it("400 on empty body — caller must request an action explicitly", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        prize_distribution: "first_to_complete",
+        status: "open",
+      });
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+
+      const res = await rewardRoute.PATCH(
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`, {}),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(400);
+
+      // rewards_paid_at must stay null — the whole point of the fix.
+      const [updated] = await testDb
+        .select()
+        .from(challenges)
+        .where(eq(challenges.id, challenge.id));
+      expect(updated.rewards_paid_at).toBeNull();
+    });
+
+    it("stamps participants.rewarded_at when user_id is provided without a receipt", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        prize_distribution: "first_to_complete",
+        status: "open",
+      });
+      const p = await seedParticipant(challenge.id, winnerA.id, {
+        status: "active",
+      });
+      await markParticipantCompleted(p.id);
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.PATCH(
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`, {
+          user_id: winnerA.id,
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(200);
+
+      const [updatedParticipant] = await testDb
+        .select()
+        .from(participants)
+        .where(eq(participants.id, p.id));
+      expect(updatedParticipant.rewarded_at).not.toBeNull();
+
+      // No all_winners_paid → challenge stays unflipped.
+      const [updatedChallenge] = await testDb
+        .select()
+        .from(challenges)
+        .where(eq(challenges.id, challenge.id));
+      expect(updatedChallenge.rewards_paid_at).toBeNull();
+    });
+
+    it("stores a receipt AND stamps rewarded_at when user_id + receipt_event_id are provided", async () => {
       const challenge = await seedChallenge(creator.id, {
         prize_amount_sats: 1000,
         prize_distribution: "first_to_complete",
@@ -387,11 +524,99 @@ describe("Integration: Zap rewards", () => {
       );
       expect(res.status).toBe(200);
 
-      const [row] = await testDb
+      const [completion] = await testDb
         .select()
         .from(completions)
         .where(eq(completions.user_id, winnerA.id));
-      expect(row.reward_zap_receipt_id).toBe(REAL_RECEIPT_ID);
+      expect(completion.reward_zap_receipt_id).toBe(REAL_RECEIPT_ID);
+
+      const [updatedParticipant] = await testDb
+        .select()
+        .from(participants)
+        .where(eq(participants.id, p.id));
+      expect(updatedParticipant.rewarded_at).not.toBeNull();
+
+      // No all_winners_paid → challenge stays unflipped.
+      const [updated] = await testDb
+        .select()
+        .from(challenges)
+        .where(eq(challenges.id, challenge.id));
+      expect(updated.rewards_paid_at).toBeNull();
+    });
+
+    it("all_winners_paid sweeps unmarked participants (e.g. retained creator) in addition to flipping the challenge", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        prize_distribution: "split",
+        status: "open",
+      });
+      // Creator + winnerA both completed. The client-side loop would
+      // have stamped winnerA via PATCH {user_id}; creator stays
+      // untouched because they're retained (no zap). The final
+      // all_winners_paid sweep should catch the creator.
+      const pCreator = await seedParticipant(challenge.id, creator.id, {
+        status: "active",
+      });
+      const pA = await seedParticipant(challenge.id, winnerA.id, {
+        status: "active",
+      });
+      await markParticipantCompleted(pCreator.id, 30);
+      await markParticipantCompleted(pA.id, 10);
+
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+
+      // Simulate the client's mid-loop PATCH for the only payable winner.
+      await rewardRoute.PATCH(
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`, {
+          user_id: winnerA.id,
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+
+      // Then the end-of-loop "all done" signal.
+      const res = await rewardRoute.PATCH(
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`, {
+          all_winners_paid: true,
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(200);
+
+      const [creatorRow] = await testDb
+        .select()
+        .from(participants)
+        .where(eq(participants.id, pCreator.id));
+      expect(creatorRow.rewarded_at).not.toBeNull();
+
+      const [aRow] = await testDb
+        .select()
+        .from(participants)
+        .where(eq(participants.id, pA.id));
+      expect(aRow.rewarded_at).not.toBeNull();
+
+      const [updated] = await testDb
+        .select()
+        .from(challenges)
+        .where(eq(challenges.id, challenge.id));
+      expect(updated.rewards_paid_at).not.toBeNull();
+    });
+
+    it("400 when user_id refers to someone who isn't a completed participant", async () => {
+      const challenge = await seedChallenge(creator.id, {
+        prize_amount_sats: 1000,
+        prize_distribution: "first_to_complete",
+        status: "open",
+      });
+      // winnerA is in the DB as a user but has no participant row on
+      // this challenge — so trying to stamp them as rewarded must fail.
+      setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+      const res = await rewardRoute.PATCH(
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`, {
+          user_id: winnerA.id,
+        }),
+        { params: Promise.resolve({ id: challenge.id }) }
+      );
+      expect(res.status).toBe(400);
     });
 
     it("400 when receipt_event_id is not 64-hex", async () => {
@@ -419,7 +644,9 @@ describe("Integration: Zap rewards", () => {
       });
       setSession(makeSession(winnerA.id, { nostr_pubkey: winnerA.nostr_pubkey }));
       const res = await rewardRoute.PATCH(
-        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`),
+        buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`, {
+          all_winners_paid: true,
+        }),
         { params: Promise.resolve({ id: challenge.id }) }
       );
       expect(res.status).toBe(403);

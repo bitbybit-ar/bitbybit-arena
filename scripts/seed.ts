@@ -1,5 +1,6 @@
 import { config } from "dotenv";
 import { eq, inArray, like } from "drizzle-orm";
+import { decode as nip19Decode } from "nostr-tools/nip19";
 import { getDb } from "@/lib/db";
 import {
   users,
@@ -17,6 +18,17 @@ config({ path: ".env" });
 
 const MOCK_PREFIX = "mock-";
 
+// Every seeded mock gets this lud16 so the payout flow (POST /reward)
+// can resolve a Lightning address and the "Distribute rewards" loop
+// actually works against seed data. We reuse NEXT_PUBLIC_ZAP_LIGHTNING_
+// ADDRESS (already required by the landing "Zap the devs" flow) so there
+// is exactly one place to configure the project's receive address —
+// set it in `.env.local` to a real lud16 you control and any payout the
+// judges trigger against the seeded mocks lands in that wallet. Kept
+// identical across mocks because LNURL-pay doesn't support subaddressing
+// (`user+tag@domain`).
+const MOCK_LUD16 = process.env.NEXT_PUBLIC_ZAP_LIGHTNING_ADDRESS ?? null;
+
 type MockUser = {
   pubkey: string;
   username: string;
@@ -25,11 +37,43 @@ type MockUser = {
   avatar: string;
 };
 
-// Real account pubkey — hex-decoded from
-// npub12pluyzs2n3kxvx6t8fsqaa8j23f4n7syy45fny0cah46uaxqm5pqgfgy5m
-const REAL_USER_PUBKEY =
-  "507fc20a0a9c6c661b4b3a600ef4f2545359fa0425689991f8edebae74c0dd02";
+// The "owner" of the seeded demo challenges. Required — the seed
+// refuses to run without `SEED_OWNER_PUBKEY` set, because silently
+// falling back to a hardcoded pubkey would mean a judge who ran the
+// seed couldn't see themselves as creator of the demo challenge and
+// the creator payout flow would be ungated for the wrong identity.
+//
+// The env var accepts either a bech32 `npub1…` or a raw 64-character
+// hex pubkey. Whoever owns this pubkey should also be the identity
+// used to log in for testing — the server gates "Distribute rewards"
+// on `creator_id === session.user_id`.
 const REAL_USER_KEY = "__real__";
+
+function resolveOwnerPubkey(raw: string | undefined): string {
+  if (!raw || raw.trim().length === 0) {
+    throw new Error(
+      "SEED_OWNER_PUBKEY is required. Set it in .env.local to your own Nostr pubkey (bech32 npub1… or 64-character hex) before running `npm run db:seed`."
+    );
+  }
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("npub1")) {
+    try {
+      const decoded = nip19Decode(trimmed);
+      if (decoded.type !== "npub" || typeof decoded.data !== "string") {
+        throw new Error(`Expected npub, got ${decoded.type}`);
+      }
+      return decoded.data;
+    } catch (err) {
+      throw new Error(
+        `SEED_OWNER_PUBKEY is not a valid npub: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+  if (/^[0-9a-f]{64}$/i.test(trimmed)) return trimmed.toLowerCase();
+  throw new Error(
+    "SEED_OWNER_PUBKEY must be a bech32 npub1… or a 64-character hex pubkey"
+  );
+}
 
 const MOCK_USERS: MockUser[] = [
   {
@@ -107,7 +151,18 @@ type MockChallenge = {
   ends_in_days?: number;
   badge_name?: string;
   checkpoints?: { title: string; description: string }[];
-  participants: { username: string; progress: number; points: number; status?: "active" | "completed" | "withdrawn" }[];
+  participants: {
+    username: string;
+    progress: number;
+    points: number;
+    status?: "active" | "completed" | "withdrawn";
+    /**
+     * Offset applied to `completed_at` when `status === "completed"`.
+     * Lets us stagger finishers so the tiered-payout winner order is
+     * deterministic across seeds. Defaults to 0 (finished just now).
+     */
+    completed_seconds_ago?: number;
+  }[];
 };
 
 const MOCK_CHALLENGES: MockChallenge[] = [
@@ -329,6 +384,55 @@ const MOCK_CHALLENGES: MockChallenge[] = [
     ],
   },
   {
+    // Ready-to-payout demo for judges. Three participants are already
+    // `completed` with staggered `completed_at` timestamps (10 / 20 /
+    // 30 minutes ago), so the real user can log in, open this
+    // challenge, and click "Distribute rewards" immediately to see the
+    // full NIP-57 payout loop without walking through join + proof +
+    // approve for every participant first.
+    slug: `${MOCK_PREFIX}demo-tiered-payout`,
+    creator: REAL_USER_KEY,
+    title: "Demo: Tiered Prize Payout",
+    description:
+      "Demo challenge for judges. Three mock participants have already completed; open the detail page as the creator and click \"Distribute rewards\" to trigger the NIP-57 zap payout loop end to end (50% / 30% / 20% of a 10 000 sat pot).",
+    type: "competition",
+    tags: ["demo"],
+    verification_methods: ["automatic"],
+    checkpoint_mode: "none",
+    prize_amount_sats: 10_000,
+    prize_distribution: "tiered",
+    ends_in_days: 7,
+    badge_name: "Demo Champion",
+    participants: [
+      {
+        username: "mock-aria-storm",
+        progress: 1,
+        points: 100,
+        status: "completed",
+        completed_seconds_ago: 30 * 60, // 1st — earliest finisher
+      },
+      {
+        username: "mock-kaito-mori",
+        progress: 1,
+        points: 100,
+        status: "completed",
+        completed_seconds_ago: 20 * 60, // 2nd
+      },
+      {
+        username: "mock-luna-ibarra",
+        progress: 1,
+        points: 100,
+        status: "completed",
+        completed_seconds_ago: 10 * 60, // 3rd
+      },
+      {
+        username: "mock-nora-ocean",
+        progress: 0,
+        points: 0,
+      },
+    ],
+  },
+  {
     slug: `${MOCK_PREFIX}write-daily-journal`,
     creator: REAL_USER_KEY,
     title: "Daily Journal — 14 Days",
@@ -353,6 +457,20 @@ const MOCK_CHALLENGES: MockChallenge[] = [
 
 async function main() {
   const db = getDb();
+
+  // Resolve the owner pubkey inside `main` (not at module load) so
+  // the "env var required" error fires as a normal script error
+  // during `npm run db:seed` rather than at import time.
+  const ownerPubkey = resolveOwnerPubkey(process.env.SEED_OWNER_PUBKEY);
+  console.log(
+    `[seed] Demo challenges will be owned by ${ownerPubkey}. Log in with this pubkey to test the creator payout flow.`
+  );
+
+  if (!MOCK_LUD16) {
+    console.warn(
+      "[seed] NEXT_PUBLIC_ZAP_LIGHTNING_ADDRESS is unset — mock users will have no lightning_address, and POST /api/challenges/[id]/reward will 400 on the demo payout challenge. Set it in .env.local to a real lud16 you control."
+    );
+  }
 
   console.log("Wiping prior mock rows");
   const existingUsers = await db
@@ -408,26 +526,30 @@ async function main() {
         display_name: u.display_name,
         about: u.about,
         avatar_url: u.avatar,
+        lightning_address: MOCK_LUD16,
         locale: "es",
       })),
     )
     .returning();
 
-  // Find-or-create the real user (by pubkey, so if the account already exists
-  // from a prior login we reuse that row instead of conflicting).
+  // Find-or-create the owner user (by pubkey, so if the account
+  // already exists from a prior login we reuse that row instead of
+  // conflicting). A fresh account gets a neutral placeholder
+  // display_name + username that the owner replaces by editing their
+  // profile after their first login.
   const [existingReal] = await db
     .select()
     .from(users)
-    .where(eq(users.nostr_pubkey, REAL_USER_PUBKEY));
+    .where(eq(users.nostr_pubkey, ownerPubkey));
   const realUser =
     existingReal ??
     (
       await db
         .insert(users)
         .values({
-          nostr_pubkey: REAL_USER_PUBKEY,
-          username: `analia-${REAL_USER_PUBKEY.slice(0, 6)}`,
-          display_name: "Analia",
+          nostr_pubkey: ownerPubkey,
+          username: `owner-${ownerPubkey.slice(0, 6)}`,
+          display_name: "Demo Owner",
           locale: "es",
         })
         .returning()
@@ -486,13 +608,17 @@ async function main() {
         mc.participants.map((p) => {
           const user = userByUsername.get(p.username);
           if (!user) throw new Error(`Missing participant user ${p.username}`);
+          const completedAt =
+            p.status === "completed"
+              ? new Date(Date.now() - (p.completed_seconds_ago ?? 0) * 1000)
+              : null;
           return {
             challenge_id: challenge.id,
             user_id: user.id,
             progress: p.progress,
             points: p.points,
             status: p.status ?? "active",
-            completed_at: p.status === "completed" ? new Date() : null,
+            completed_at: completedAt,
           };
         }),
       );

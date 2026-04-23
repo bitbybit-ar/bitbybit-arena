@@ -27,7 +27,7 @@ We need custom event kinds for challenge-specific actions. These use kinds in th
 
 ### Challenge Definition (kind: 30100)
 
-Parameterized replaceable event. The `d` tag is the challenge unique identifier.
+Parameterized replaceable event. The `d` tag is the challenge unique identifier. Emitted by `buildChallengeEvent` in `lib/nostr/events.ts`.
 
 ```json
 {
@@ -36,8 +36,6 @@ Parameterized replaceable event. The `d` tag is the challenge unique identifier.
   "tags": [
     ["d", "<challenge-slug>"],
     ["title", "30-Day Cold Shower Challenge"],
-    ["summary", "Take a cold shower every day for 30 days"],
-    ["image", "<url-to-challenge-banner>"],
     ["t", "fitness"],
     ["t", "health"],
     ["type", "streak"],
@@ -46,20 +44,20 @@ Parameterized replaceable event. The `d` tag is the challenge unique identifier.
     ["goal", "30"],
     ["unit", "days"],
     ["verification", "creator_approval"],
-    ["prize", "10000", "sats", "first_to_complete"],
-    ["badge", "<kind:30009-event-id>"],
+    ["badge", "<badge-name>"],
+    ["badge_image", "<url-to-badge-image>"],
     ["status", "open"]
   ]
 }
 ```
 
 **Notes:**
-- `type`: one of `one_time`, `streak`, `competition`, `race`, `creative`
-- `verification`: one or more of `creator_approval`, `automatic`, `nostr_action`, `nostr_hashtag`
-- `prize` tag: amount, unit, distribution rule
-- `badge` tag: references a NIP-58 badge definition to award on completion
-- `status`: `open`, `in_progress`, `completed`, `cancelled`
-- Creator can update the event (same `d` tag) to change status
+- `type`: one of `one_time`, `streak`, `competition`, `race`, `creative`.
+- `verification`: one tag per enabled method. Values: `creator_approval`, `automatic`, `nostr_action`, `nostr_hashtag`.
+- `badge` and `badge_image`: name + optional image URL for the NIP-58 badge awarded on completion. The kind:30009 Badge Definition event is a **separate event** published by the creator with the same `d` tag as the challenge slug — see "Badge Definition" below. Strict NIP-58 clients resolve the badge via that 30009 event, not the `badge` tag here.
+- **Prize data is not emitted on kind:30100.** The prize amount, distribution rule, and zap-goal event id live on the DB row and are surfaced to Nostr via a separate NIP-75 Zap Goal (kind 9041) event — see the "Zap Goal" section.
+- `status`: `open`, `in_progress`, `completed`, `cancelled`.
+- Creator can update the event (same `d` tag) to change status.
 
 ### Challenge Join (kind: 7100)
 
@@ -198,23 +196,70 @@ Parameterized replaceable event with `d=<slug>:results`, so each challenge has e
 - `completer` tags list participants who completed the challenge but didn't make the winner cut (e.g. 4th place in a tiered challenge). Anyone already in `winner` is omitted from `completer` to avoid double-counting.
 - `total_sats` in the `stats` tag is the sum of paid winner amounts, which always equals `challenges.prize_amount_sats` for a successful payout.
 
+### Zap Goal (kind: 9041, NIP-75)
+
+**Status:** shipped. Auto-published by `CreateChallengeForm` right after `kind:30100` for any challenge with `prize_amount_sats > 0`. The signed event id is persisted on `challenges.zap_goal_event_id`. If the initial publish fails (relay flake, no active signer), the challenge detail page surfaces a creator-only "Republish zap goal" button that re-runs the same flow — see `handleRepublishZapGoal` in `challenge-client.tsx`.
+
+The goal event is what lets **other users fund the pot before the challenge ends**. Without it, the prize exists in the DB but is invisible to Nostr clients and can't receive zaps.
+
+```json
+{
+  "kind": 9041,
+  "content": "Prize pot: <challenge title>",
+  "tags": [
+    ["amount", "<millisats>"],
+    ["relays", "wss://relay.damus.io", "wss://relay.nostr.band", "..."],
+    ["a", "30100:<creator-pubkey>:<challenge-slug>"],
+    ["closed_at", "<unix-timestamp>"]
+  ]
+}
+```
+
+**Notes:**
+- `amount` is in **millisats** per NIP-75 (sats × 1000). The DB stores `prize_amount_sats` in sats and `buildZapGoalEvent` converts.
+- `a` tag links the goal to the Challenge Definition so third-party clients can navigate from "prize pot" to "challenge detail" with one lookup.
+- `closed_at` mirrors the challenge `ends_at` when set. Optional — omitted for open-ended challenges.
+
+#### Funding and aggregation
+
+Anyone can zap this event from any NIP-57 client. The LNURL provider emits a kind:9735 receipt that:
+- `e`-tags the goal event id.
+- Carries the signed kind:9734 zap request in its `description` tag (the embedded request's `amount` tag is the authoritative msats value).
+
+Arena aggregates those receipts in two places so the pot progress is visible without leaving the app:
+
+- **Server snapshot** — `GET /api/challenges/[id]/zap-goal-progress` fetches all kind:9735 events with `#e = zap_goal_event_id` from the default relay set, parses amounts out of the embedded requests, and caches the rollup (`raised_sats`, `zapper_count`, 8 most recent zappers with message) for 45s. Explore cards render a compact progress bar from this.
+- **Client live subscription** — `useZapGoalProgress` opens a long-lived `REQ` per relay on the challenge detail page. New zaps dedupe by receipt id and tick the `ZapGoalProgress` panel in real time without a page reload.
+
+### Zap Request / Receipt (kind: 9734 / 9735, NIP-57)
+
+NIP-57 as specified. Arena constructs kind:9734 zap requests in two places:
+
+1. **Creator → winner payout**, after `POST /api/challenges/[id]/reward`. The request `e`-tags the challenge DB id (no dedicated Nostr event id for the challenge in this context) and `p`-tags the winner. Signed by the creator, attached to the LNURL-pay callback via the `nostr` query param. The recipient's node emits the kind:9735 receipt.
+2. **Supporter → zap goal funding**, from the `FundPotModal` on the detail page. The request `e`-tags the `zap_goal_event_id` and `p`-tags the creator. Same LNURL-pay flow; the sats land in the creator's wallet and the receipt feeds the progress UI above.
+
+Both paths use the same WebLN-first / QR + NWC-polling fallback state machine (`payWinner` for payouts, `FundPotModal` for funding).
+
 ## Event Flow Diagram
 
 ```
-Creator                          Participants                    Nostr Network
-  |                                   |                              |
-  |-- kind:30009 (Badge Def) -------->|                              |
-  |-- kind:30100 (Challenge) -------->|----------------------------->|
-  |                                   |                              |
-  |                 kind:7100 (Join) <|----------------------------->|
-  |                                   |                              |
-  |           kind:7101 (Completion) <|----------------------------->|
-  |                                   |                              |
-  |-- (verify: DB-only, no event) -x  |                              |
-  |-- kind:8 (Badge Award) --------->|----------------------------->|
-  |-- kind:9734/9735 (Zap Prize) --->|----------------------------->|
-  |                                   |                              |
-  |-- kind:30101 (Results) --------->|----------------------------->|
+Creator                          Participants / Supporters              Nostr Network
+  |                                     |                                     |
+  |-- kind:30009 (Badge Def) ---------->|                                     |
+  |-- kind:30100 (Challenge) ---------->|------------------------------------>|
+  |-- kind:9041 (Zap Goal) ------------>|------------------------------------>|
+  |                                     |                                     |
+  |               kind:7100 (Join) <----|------------------------------------>|
+  |                                     |                                     |
+  |         kind:7101 (Completion) <----|------------------------------------>|
+  |                                     |                                     |
+  |                kind:9734/9735 <-----|- (Supporters zap the goal) -------->|
+  |                                     |                                     |
+  |-- (verify: DB-only, no event) -x    |                                     |
+  |-- kind:8 (Badge Award) ------------>|------------------------------------>|
+  |-- kind:9734/9735 (Zap Payout) ----->|------------------------------------>|
+  |                                     |                                     |
+  |-- kind:30101 (Results) ------------>|------------------------------------>|
 ```
 
 ## Relay Strategy
