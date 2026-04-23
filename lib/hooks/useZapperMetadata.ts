@@ -44,6 +44,22 @@ export function useZapperMetadata(pubkeys: string[]): Map<string, ZapperProfile>
     });
   }, []);
 
+  // Gate setState on whether the hook is still mounted. A per-effect
+  // `cancelled` flag was wrong here: the effect re-runs every time
+  // the pubkeys prop identity changes (which happens on every new
+  // live zap), so an in-flight fetch whose key is already in
+  // `fetchedRef` would see its cleanup fire, drop its result, and
+  // never retry — the zapper would stay on the dicebear placeholder
+  // forever. Using a mount-scoped ref keeps in-flight fetches alive
+  // across re-renders and only drops them on actual unmount.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -54,12 +70,11 @@ export function useZapperMetadata(pubkeys: string[]): Map<string, ZapperProfile>
     );
     if (newKeys.length === 0) return;
 
-    let cancelled = false;
     for (const pk of newKeys) {
       fetchedRef.current.add(pk);
       void fetchNostrMetadata(pk)
         .then((meta: NostrMetadata | null) => {
-          if (cancelled || !meta) return;
+          if (!mountedRef.current || !meta) return;
           const profile: ZapperProfile = {};
           if (typeof meta.display_name === "string" && meta.display_name) {
             profile.display_name = meta.display_name;
@@ -77,10 +92,6 @@ export function useZapperMetadata(pubkeys: string[]): Map<string, ZapperProfile>
           /* swallow — placeholder stays */
         });
     }
-
-    return () => {
-      cancelled = true;
-    };
   }, [pubkeys, upsert]);
 
   return profiles;

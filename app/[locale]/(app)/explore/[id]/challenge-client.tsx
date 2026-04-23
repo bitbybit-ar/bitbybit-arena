@@ -536,18 +536,6 @@ export default function ChallengeClient() {
       comment: `BitByBit Arena reward: ${challenge.title}`,
     });
     const signedZap = await signWithPrompt(zapRequest);
-
-    // Start listening for the kind:9735 receipt BEFORE we pay. The
-    // recipient's LNURL node emits the receipt seconds after settlement
-    // — if we subscribed *after* the pay resolves, fast relays could
-    // have already delivered it to connected clients by then. The
-    // subscription is timeboxed (10s) and best-effort; the payout
-    // doesn't block on it.
-    const receiptPromise = awaitZapReceipt({
-      recipientPubkey: winner.nostr_pubkey,
-      signedZapRequestId: signedZap.id,
-    });
-
     const endpoint = await fetchLnurlPayEndpoint(winner.lightning_address);
     const invoice = await fetchInvoice(
       endpoint.callback,
@@ -560,46 +548,64 @@ export default function ChallengeClient() {
     // advance immediately. If the extension rejects or isn't installed we
     // fall through to the QR modal so the creator can pay from any
     // external Lightning wallet.
+    let paid = false;
     if (typeof window !== "undefined" && window.webln) {
       try {
         await window.webln.enable();
         await window.webln.sendPayment(invoice);
-        const receiptId = await receiptPromise;
-        return receiptId ?? undefined;
+        paid = true;
       } catch {
         /* fall through to QR fallback */
       }
     }
 
-    // No WebLN — show the BOLT11 as a QR, poll /api/zap/status (NWC-backed)
-    // until the invoice settles, then resolve so the for-loop moves on.
-    await new Promise<void>((resolve, reject) => {
-      rewardPayResolverRef.current = { resolve, reject };
-      setRewardInvoice({
-        pr: invoice,
-        sats: winner.amount_sats,
-        name: winner.display_name,
-        index,
-        total,
+    if (!paid) {
+      // No WebLN — show the BOLT11 as a QR, poll /api/zap/status
+      // (NWC-backed) until the invoice settles, then resolve so the
+      // for-loop moves on. This can take minutes; we don't want the
+      // receipt subscription below to time out while the user is
+      // still scanning, so it starts AFTER this resolves.
+      await new Promise<void>((resolve, reject) => {
+        rewardPayResolverRef.current = { resolve, reject };
+        setRewardInvoice({
+          pr: invoice,
+          sats: winner.amount_sats,
+          name: winner.display_name,
+          index,
+          total,
+        });
+
+        rewardPollRef.current = setInterval(async () => {
+          try {
+            const res = await fetch("/api/zap/status", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ invoice }),
+            });
+            if (!res.ok) return;
+            const { paid: isPaid } = await res.json();
+            if (isPaid) finishRewardPay("resolved");
+          } catch {
+            // Silently ignore polling errors — we'll try again next tick.
+          }
+        }, REWARD_POLL_INTERVAL_MS);
       });
+    }
 
-      rewardPollRef.current = setInterval(async () => {
-        try {
-          const res = await fetch("/api/zap/status", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ invoice }),
-          });
-          if (!res.ok) return;
-          const { paid } = await res.json();
-          if (paid) finishRewardPay("resolved");
-        } catch {
-          // Silently ignore polling errors — we'll try again next tick.
-        }
-      }, REWARD_POLL_INTERVAL_MS);
+    // Payment confirmed. Now fish the kind:9735 receipt out of relays.
+    // Running this AFTER settlement (not in parallel with it) is
+    // correct per NIP-01 — relays retain events so a REQ with `since`
+    // set to just before we signed the zap request returns the receipt
+    // during the initial EOSE flush even though it already landed.
+    // Timeboxed; the return value flows into the per-winner PATCH but
+    // the payout loop doesn't fail if the receipt never shows up.
+    const receiptId = await awaitZapReceipt({
+      recipientPubkey: winner.nostr_pubkey,
+      signedZapRequestId: signedZap.id,
+      options: {
+        since: signedZap.created_at - 5,
+      },
     });
-
-    const receiptId = await receiptPromise;
     return receiptId ?? undefined;
   };
 
