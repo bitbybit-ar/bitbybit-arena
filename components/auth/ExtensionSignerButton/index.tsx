@@ -35,7 +35,7 @@ interface ExtensionSignerButtonProps {
 /**
  * NIP-07 "Sign in with browser extension" button.
  * Produces a SignerHandle; the parent decides what to do with it
- * (login flow posts the NIP-42 challenge, re-attach flow just stores it).
+ * (login flow signs the NIP-98 auth event, re-attach flow just stores it).
  */
 export function ExtensionSignerButton({
   onSigner,

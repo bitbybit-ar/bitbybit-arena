@@ -9,12 +9,17 @@ BitByBit Arena uses standard Nostr NIPs where possible and defines custom event 
 | NIP | Purpose | How we use it |
 |-----|---------|---------------|
 | **NIP-01** | Basic protocol | Event structure, relay communication |
-| **NIP-07** | Browser extension | Login with Nostr identity (nos2x, Alby, etc.) |
-| **NIP-57** | Lightning Zaps | Community zaps on completions (client-side only) |
-| **NIP-58** | Badges | Achievement badges tied to Nostr identity |
-| **NIP-75** | Zap Goals | Prize pool funding for challenges |
-| **NIP-25** | Reactions | Likes/reactions on challenges and completions |
-| **NIP-10** | Reply threading | Comments on challenges |
+| **NIP-02** | Follow list (kind 3) | Boost challenges from followed creators/joiners in Explore |
+| **NIP-07** | Browser extension | One of three sign-in methods on `/signin` |
+| **NIP-19** | bech32 encoding | Decode pasted `nsec1...` for the local signer |
+| **NIP-25** | Reactions (kind 7) | `nostr_action` verification path: a like on a pinned note auto-approves the completion |
+| **NIP-46** | Nostr Connect / bunker | Remote signing from mobile Nostr apps (Amber, nsec.app, Damus) |
+| **NIP-57** | Lightning Zaps | Community zaps (kind 9734 request, 9735 receipt). Prize payouts use the same flow with a WebLN or QR fallback. |
+| **NIP-58** | Badges | Kind 30009 definition, kind 8 award, kind 30008 profile badges (merge-preserve) |
+| **NIP-75** | Zap Goals (kind 9041) | Prize pool funding for challenges |
+| **NIP-92** | File metadata | `imeta` tags on completion + badge events to attach Blossom uploads |
+| **NIP-98** | HTTP Auth (kind 27235) | `POST /api/auth/nostr` login — signed event in the Authorization header |
+| **Blossom BUD-01/02** | Content-addressed media | Image uploads for completion proofs and badge artwork |
 
 ## Custom Event Kinds
 
@@ -50,7 +55,7 @@ Parameterized replaceable event. The `d` tag is the challenge unique identifier.
 
 **Notes:**
 - `type`: one of `one_time`, `streak`, `competition`, `race`, `creative`
-- `verification`: one of `creator_approval`, `community_vote`, `automatic` (honor system)
+- `verification`: one or more of `creator_approval`, `automatic`, `nostr_action`, `nostr_hashtag`
 - `prize` tag: amount, unit, distribution rule
 - `badge` tag: references a NIP-58 badge definition to award on completion
 - `status`: `open`, `in_progress`, `completed`, `cancelled`
@@ -89,32 +94,9 @@ Regular event. User submits proof of completing a challenge (or a step in a stre
 ```
 
 **Notes:**
-- `content`: text description of the completion (text-only for MVP)
+- `content`: text description of the completion. Completions can also carry an image — when one is attached the client uploads it to a Blossom server and mirrors the URL into the event with a sibling NIP-92 `imeta` tag (`["imeta", "url <url>", "m <mime>", "x <sha256>", "size <bytes>"]`) so the blob is content-addressable from the event alone.
 - `progress` tag: current/total for streak/competition challenges
 - `step` tag: which step number this submission is for
-
-### Completion Verification (kind: 7102) — post-MVP, not yet published
-
-**Status:** not published by the MVP. Verification state lives inline on the `completions` row (`status`, `reviewed_by`, `reviewed_at`) and is set via `POST /api/completions/[id]/verify`. See [proof-of-completion.md — Verification architecture](./proof-of-completion.md#verification-architecture-mvp) for the rationale.
-
-The schema below is the planned shape of the event for a follow-up release, which will mirror DB decisions to relays so that verifications become publicly auditable and `community_vote` tallies become possible.
-
-```json
-{
-  "kind": 7102,
-  "content": "Verified! Great job.",
-  "tags": [
-    ["e", "<completion-event-id>"],
-    ["a", "30100:<creator-pubkey>:<challenge-d-tag>"],
-    ["p", "<submitter-pubkey>"],
-    ["status", "approved"]
-  ]
-}
-```
-
-**Notes:**
-- `status`: `approved` or `rejected`
-- Once shipped, `community_vote` verification will tally multiple kind:7102 events from distinct participants; that verification method is currently rejected by the API validators.
 
 ### Badge Definition (kind: 30009, NIP-58)
 
@@ -228,8 +210,7 @@ Creator                          Participants                    Nostr Network
   |                                   |                              |
   |           kind:7101 (Completion) <|----------------------------->|
   |                                   |                              |
-  |-- (verify: DB-only in MVP) ---x   |                              |
-  |-- kind:7102 (Verify, post-MVP) ->|----------------------------->|
+  |-- (verify: DB-only, no event) -x  |                              |
   |-- kind:8 (Badge Award) --------->|----------------------------->|
   |-- kind:9734/9735 (Zap Prize) --->|----------------------------->|
   |                                   |                              |
@@ -249,4 +230,4 @@ Before launch, verify chosen kind numbers don't conflict with other proposals. C
 - https://github.com/nostr-protocol/nips (merged NIPs)
 - https://nostrbook.dev/kinds/ (known kinds in use)
 
-**Note**: kinds 30100 (Challenge Definition), 7100 (Challenge Join), 7101 (Completion Submission), and 30101 (Challenge Result) are custom BitByBit kinds. NIP-113 (Activity Events, not yet merged) also proposes kind 30100, so we may need to migrate before any conflicting standard lands. kind:7102 (Completion Verification) is documented above as a post-MVP extension and is not yet emitted.
+**Note**: kinds 30100 (Challenge Definition), 7100 (Challenge Join), 7101 (Completion Submission), and 30101 (Challenge Result) are custom BitByBit kinds. [NIP-113](https://github.com/nostr-protocol/nips/pull/1508) (Activity Events, not yet merged) also proposes kind 30100; if it merges we'll migrate. Verification state is DB-only by design — there is no kind:7102 event, and there is no `community_vote` path (the API rejects that value).

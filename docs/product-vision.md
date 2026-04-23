@@ -29,7 +29,7 @@ BitByBit Arena is a Nostr-native app that makes challenges social, verifiable, a
 
 ### As a Challenge Creator
 - I can create a challenge with a title, description, rules, and duration
-- I can set a verification method (my approval, community vote, automatic)
+- I can set one or more verification methods (my approval, automatic, nostr_action like, nostr_hashtag post)
 - I can design a custom badge for completers
 - When I create a challenge, it's published to Nostr so my followers see it
 

@@ -89,13 +89,13 @@ bitbybit-arena/
 
 ## Auth Flow
 
-1. User clicks "Login with Nostr"
-2. App calls `window.nostr.getPublicKey()` (NIP-07)
-3. Server creates session linked to Nostr pubkey
-4. User profile fetched from relays (NIP-01 kind:0 metadata)
-5. Session stored as httpOnly cookie (same as habits)
+1. User picks a signer on `/signin`: NIP-07 extension, NIP-46 bunker, or paste-nsec local signer.
+2. Client builds an unsigned NIP-98 HTTP Auth event (kind 27235) bound to `POST /api/auth/nostr` via `u` and `method` tags, with `signer_type` embedded as a custom `["arena_signer", ...]` tag.
+3. Signer signs; client POSTs with `Authorization: Nostr <base64(event)>`.
+4. Server validates signature (Schnorr via `nostr-tools/pure.verifyEvent`), URL/method binding, and ±60 s `created_at` window. User record is upserted by pubkey; kind:0 profile is fetched from relays (NIP-01).
+5. Session is a JWT in `__Host-session` (prod) / `session` (dev) httpOnly cookie, 7-day expiry.
 
-No email/password. Nostr identity is the only auth method — keeps it simple and aligned with the hackathon theme.
+No email, no password, no challenge round-trip. Nostr identity is the only auth method — keeps it simple and aligned with the hackathon theme.
 
 ## Data Flow
 
@@ -122,5 +122,5 @@ The 2-tab layout (Explore + My Challenges) uses a bottom navigation bar on mobil
 ### Nostr-first, database-second
 Events are always published to Nostr relays first. The database indexes them for fast queries. If the database is empty, the app can rebuild state from relay events.
 
-### Text-only proofs for MVP
-Proofs are text descriptions submitted as Nostr events. Photo/video uploads (Blossom/NIP-B7) deferred to post-MVP to keep complexity low and the demo flow fast.
+### Proofs: text + image, via Blossom
+Proofs are text descriptions, image uploads, or both, submitted as Nostr events. Images are uploaded to a Blossom server (BUD-01/02) — the client hashes the file, signs a short-lived kind:24242 auth event, and PUTs the bytes; the returned URL is mirrored into the kind:7101 completion event alongside a NIP-92 `imeta` tag carrying the sha256, size, and mime type so recipients can verify the blob from the event alone.

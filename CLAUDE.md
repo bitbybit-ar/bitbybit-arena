@@ -20,7 +20,7 @@
 - **i18n**: next-intl con `[locale]` routing (espanol default, ingles segundo idioma)
 - **Base de datos**: Neon DB (PostgreSQL serverless) via `@neondatabase/serverless`
 - **ORM**: Drizzle ORM
-- **Auth**: Nostr solamente (NIP-07 browser extension, NIP-42 challenge-response)
+- **Auth**: Nostr solamente (NIP-07 extension, NIP-46 bunker, o nsec pegado; todos firman un evento NIP-98 HTTP Auth kind 27235)
 - **Zaps**: NIP-57 (client-side only, no server-side Lightning/invoices)
 - **Media**: Photo uploads via Blossom (BUD-01/BUD-02) — text + optional image proofs, badge images
 - **Badges**: NIP-58
@@ -39,7 +39,14 @@ bitbybit-arena/
       layout.tsx               <- Layout con providers
       page.tsx                 <- Landing page
     api/                       <- API routes (NO dentro de [locale])
-      auth/                    <- Nostr auth (challenge-response)
+      auth/                    <- Nostr auth (NIP-98 HTTP Auth)
+      challenges/              <- CRUD, join, completions, checkpoints, award, reward
+      completions/             <- Creator approve/reject
+      profile/                 <- Sync + publish kind:0 metadata
+      my-badges/               <- Badges earned by the logged-in user
+      my-challenges/           <- Challenges the logged-in user created
+      tags/                    <- Popular-tags discovery
+      zap/                     <- NWC invoice status polling
     layout.tsx                 <- Root layout
   components/
     common/                    <- Bubble, Block, BlockTower (design system)
@@ -141,27 +148,34 @@ bitbybit-arena/
 - Espanol es el idioma por defecto
 
 ### Auth
-- Nostr solamente (NIP-07 extension)
-- NIP-42 challenge-response flow
-- Sesion via cookie httpOnly (`session`)
-- JWT con jose (HS256, 7 dias)
+- Nostr solamente: NIP-07 extension, NIP-46 bunker, o nsec pegado (signer en memoria)
+- NIP-98 HTTP Auth (kind 27235). Evento firmado viaja en `Authorization: Nostr <base64(evento)>`; validacion en `lib/nostr/verify.ts:validateNip98AuthEvent`
+- signer_type viaja dentro del evento firmado como tag custom `["arena_signer", ...]` — MITM no puede reescribirlo
+- Replay window: ±60s sobre `created_at`; `u` tag matchea URL, `method` tag matchea POST
+- Cookie de sesion: `__Host-session` en produccion (Secure + Path=/ + sin Domain, enforced por el browser), `session` en dev. Constante: `SESSION_COOKIE_NAME` en `lib/auth.ts`
+- JWT con jose (HS256, 7 dias). `AUTH_SECRET` es REQUERIDO en produccion (el modulo tira al cargar si falta)
 - Auto-create user on first Nostr login
 
 ### Base de datos
 - Drizzle ORM con Neon DB
 - Conexion lazy via `getDb()` en `lib/db/index.ts`
 - Schema Drizzle en `lib/db/schema.ts` (source of truth)
-- 6 tablas: users, challenges, participants, completions, badges, notifications
+- 8 tablas: users, challenges, challenge_checkpoints, participants, completions, checkpoint_completions, badges, notifications
 - NO usar string interpolation en queries (SQL injection)
 
 ### Nostr NIPs usados
-- **NIP-01**: Protocolo basico
-- **NIP-07**: Login con extension del browser
-- **NIP-42**: Challenge-response auth
-- **NIP-57**: Zaps (client-side zap requests, read zap receipts from relays)
-- **NIP-58**: Badges (logros por completar desafios)
-- **NIP-75**: Zap Goals (funding de premio para desafios)
-- **Blossom (BUD-01/BUD-02)**: content-addressed image uploads for completion photos and badge images. Default server is `NEXT_PUBLIC_BLOSSOM_SERVER` (fallback `https://blossom.primal.net`). Upload auth is a short-lived kind 24242 event signed by the active signer.
+- **NIP-01**: Protocolo basico (estructura de eventos, relays)
+- **NIP-02**: Follow list (kind 3) — usado para boost de creadores/participantes seguidos en Explore (`lib/hooks/useFollowList.ts`)
+- **NIP-07**: Login con extension del browser (`window.nostr`)
+- **NIP-19**: nsec/hex decoding para el signer local
+- **NIP-25**: Reacciones (kind 7) — path de verificacion "nostr_action" (`lib/nostr/verify-like.ts`)
+- **NIP-46**: Nostr Connect / Bunker para firma remota desde mobile (`lib/nostr/nip46-login.ts`)
+- **NIP-57**: Zaps (kind 9734 zap request client-side, kind 9735 zap receipt leido desde relays). El payout a ganadores va por WebLN o QR con polling a `/api/zap/status`
+- **NIP-58**: Badges — kind 30009 (definition), kind 8 (award), kind 30008 (profile badges con merge)
+- **NIP-75**: Zap Goals (kind 9041) para funding del premio
+- **NIP-92**: `imeta` tags en eventos de completion y badge cuando la imagen viene de Blossom
+- **NIP-98**: HTTP Auth (kind 27235) para `POST /api/auth/nostr`. Binding por `u`/`method`/`created_at`
+- **Blossom (BUD-01/BUD-02)**: content-addressed image uploads. Default server `NEXT_PUBLIC_BLOSSOM_SERVER` (fallback `https://blossom.primal.net`). Upload auth es un evento kind 24242 corto firmado por el signer activo.
 
 ## Modelo de datos clave
 
