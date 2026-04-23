@@ -9,6 +9,13 @@ interface ZapGoalBarProps {
   goalSats: number;
   zapperCount: number;
   compact?: boolean;
+  /**
+   * Renders a shimmering zero-filled placeholder in place of the real
+   * bar + label. Used by the Explore card while the server-side
+   * progress snapshot is still loading so the card's layout doesn't
+   * shift when the real numbers arrive a beat later.
+   */
+  loading?: boolean;
 }
 
 /**
@@ -24,9 +31,26 @@ export function ZapGoalBar({
   goalSats,
   zapperCount,
   compact = false,
+  loading = false,
 }: ZapGoalBarProps) {
   const t = useTranslations("zapGoal");
   if (goalSats <= 0) return null;
+
+  if (loading) {
+    return (
+      <div
+        className={`${styles.wrapper} ${compact ? styles.compact : ""} ${styles.loading}`}
+        aria-busy="true"
+      >
+        <div className={styles.track}>
+          <div className={styles.skeleton} />
+        </div>
+        <div className={styles.label}>
+          <span className={styles.skeletonText} aria-hidden="true" />
+        </div>
+      </div>
+    );
+  }
 
   const percent = Math.min(100, Math.round((raisedSats / goalSats) * 100));
 

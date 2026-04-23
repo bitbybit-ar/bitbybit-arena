@@ -464,9 +464,10 @@ interface CardZapGoalBarProps {
  * Lazy-fetches the NIP-75 funding progress for a single Explore card.
  * Each mount hits `/api/challenges/[id]/zap-goal-progress`, which is
  * TTL-cached server-side, so the relay work is amortized across the
- * whole viewer base. Renders nothing while the request is in flight to
- * avoid a layout flash; errors are silently hidden — the card still
- * shows the prize amount in the reward row, the bar is optional polish.
+ * whole viewer base. Renders a zero-filled skeleton bar while the
+ * request is in flight so the card's layout doesn't shift when the
+ * real numbers arrive. Errors stay silent — the card still shows the
+ * prize amount in the reward row, the bar is optional polish.
  */
 function CardZapGoalBar({ challengeId, goalSats }: CardZapGoalBarProps) {
   const [progress, setProgress] = useState<ZapGoalProgressData | null>(null);
@@ -487,7 +488,17 @@ function CardZapGoalBar({ challengeId, goalSats }: CardZapGoalBarProps) {
     };
   }, [challengeId]);
 
-  if (!progress) return null;
+  if (!progress) {
+    return (
+      <ZapGoalBar
+        raisedSats={0}
+        goalSats={goalSats}
+        zapperCount={0}
+        compact
+        loading
+      />
+    );
+  }
 
   return (
     <ZapGoalBar
