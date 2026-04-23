@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { eq } from "drizzle-orm";
 import { cleanDb, testDb } from "./setup";
-import { notifications } from "@/lib/db/schema";
+import { notifications, participants } from "@/lib/db/schema";
 import {
   setSession,
   makeSession,
@@ -37,6 +37,9 @@ const completionsRoute = await import(
 );
 const verifyRoute = await import("@/app/api/completions/[id]/verify/route");
 const awardRoute = await import("@/app/api/challenges/[id]/award/route");
+const rewardRoute = await import("@/app/api/challenges/[id]/reward/route");
+
+const RECEIPT_ID = "a".repeat(64);
 
 async function getNotificationsFor(userId: string) {
   return testDb
@@ -148,5 +151,66 @@ describe("Notification emission at domain events", () => {
       badge: "Test Badge",
       challenge: "Emit Test",
     });
+  });
+
+  it("emits prize_awarded when the creator records a receipt for a winner", async () => {
+    // Winner must have an approved completion — the PATCH looks one up
+    // before writing the receipt id back, and rejects with 400 otherwise.
+    const p = await seedParticipant(challenge.id, participant.id, {
+      status: "active",
+    });
+    await testDb
+      .update(participants)
+      .set({ status: "completed", completed_at: new Date() })
+      .where(eq(participants.id, p.id));
+    await seedCompletion(challenge.id, participant.id, {
+      status: "approved",
+      content: "Done",
+    });
+
+    setSession(makeSession(creator.id));
+    const res = await rewardRoute.PATCH(
+      buildRequest("PATCH", `/api/challenges/${challenge.id}/reward`, {
+        user_id: participant.id,
+        receipt_event_id: RECEIPT_ID,
+      }),
+      { params: Promise.resolve({ id: challenge.id }) }
+    );
+    expect(res.status).toBe(200);
+
+    const winnerNotifs = await getNotificationsFor(participant.id);
+    expect(winnerNotifs).toHaveLength(1);
+    expect(winnerNotifs[0].type).toBe("prize_awarded");
+    expect(winnerNotifs[0].metadata).toMatchObject({
+      challenge: "Emit Test",
+      receipt_event_id: RECEIPT_ID,
+    });
+  });
+
+  it("does not emit completion_submitted when the proof is auto-approved", async () => {
+    // `automatic` verification (honor-system) flips the new completion to
+    // status=approved server-side. The creator has nothing to review, so
+    // we shouldn't notify them — that'd be pure noise.
+    const autoChallenge = await seedChallenge(creator.id, {
+      title: "Auto Challenge",
+      slug: "auto-challenge",
+      status: "open",
+      verification_methods: ["automatic"],
+      goal: 1,
+    });
+    await seedParticipant(autoChallenge.id, participant.id, { status: "active" });
+
+    setSession(makeSession(participant.id, { display_name: "Player One" }));
+    const res = await completionsRoute.POST(
+      buildRequest("POST", `/api/challenges/${autoChallenge.id}/completions`, {
+        content: "I did it on my honor",
+        method: "automatic",
+      }),
+      { params: Promise.resolve({ id: autoChallenge.id }) }
+    );
+    expect(res.status).toBe(201);
+
+    const creatorNotifs = await getNotificationsFor(creator.id);
+    expect(creatorNotifs).toHaveLength(0);
   });
 });

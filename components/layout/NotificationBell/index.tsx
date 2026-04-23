@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/routing";
 import { BellIcon } from "@/components/icons";
 import { useClickOutside } from "@/lib/hooks/useClickOutside";
 import type { Notification } from "@/lib/types";
@@ -39,6 +40,15 @@ function extractVars(
   if (badge !== undefined) vars.badge = badge;
 
   return vars;
+}
+
+function challengeHref(
+  metadata: Record<string, unknown> | null
+): string | null {
+  const id = metadata && typeof metadata.challenge_id === "string"
+    ? metadata.challenge_id
+    : null;
+  return id ? `/explore/${id}` : null;
 }
 
 export function NotificationBell() {
@@ -152,20 +162,41 @@ export function NotificationBell() {
                   body = n.body ?? "";
                 }
 
+                const href = challengeHref(n.metadata);
+                const itemClass = `${styles.itemButton} ${n.read ? styles.read : styles.unread}`;
+                const onActivate = () => {
+                  if (!n.read) markAsRead(n.id);
+                  setOpen(false);
+                };
+                const content = (
+                  <>
+                    <strong className={styles.title}>{title}</strong>
+                    {body && <p className={styles.body}>{body}</p>}
+                    <time className={styles.time} dateTime={n.created_at}>
+                      {new Date(n.created_at).toLocaleString()}
+                    </time>
+                  </>
+                );
+
                 return (
                   <li key={n.id} className={styles.item}>
-                    <button
-                      type="button"
-                      className={`${styles.itemButton} ${n.read ? styles.read : styles.unread}`}
-                      onClick={() => !n.read && markAsRead(n.id)}
-                      aria-disabled={n.read}
-                    >
-                      <strong className={styles.title}>{title}</strong>
-                      {body && <p className={styles.body}>{body}</p>}
-                      <time className={styles.time} dateTime={n.created_at}>
-                        {new Date(n.created_at).toLocaleString()}
-                      </time>
-                    </button>
+                    {href ? (
+                      <Link
+                        href={href}
+                        className={itemClass}
+                        onClick={onActivate}
+                      >
+                        {content}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        className={itemClass}
+                        onClick={onActivate}
+                      >
+                        {content}
+                      </button>
+                    )}
                   </li>
                 );
               })}

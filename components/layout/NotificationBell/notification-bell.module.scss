@@ -144,24 +144,18 @@
   border-radius: $border-radius-sm;
   font-family: inherit;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
   transition: background 0.15s ease;
 
   &:hover {
     background: alpha($color-primary, 8%);
+    text-decoration: none;
   }
 
   &:focus-visible {
     outline: 2px solid $color-primary;
     outline-offset: -2px;
-  }
-
-  &[aria-disabled="true"] {
-    cursor: default;
-
-    &:hover {
-      background: transparent;
-    }
   }
 }
 
