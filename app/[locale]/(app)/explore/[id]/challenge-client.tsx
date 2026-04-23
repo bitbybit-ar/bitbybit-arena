@@ -501,10 +501,19 @@ export default function ChallengeClient() {
     }
   }, []);
 
-  // Clean up any pending poll if the user navigates away mid-payout.
+  // Shared AbortController for every receipt subscription started by
+  // `payWinner` during this component's lifetime. Aborting on unmount
+  // closes any post-payment kind:9735 watchers immediately instead of
+  // leaving them open for the full 10s timeout after the user
+  // navigates away.
+  const receiptAbortRef = useRef<AbortController | null>(null);
+
+  // Clean up any pending poll / open receipt subscriptions if the
+  // user navigates away mid-payout.
   useEffect(() => {
     return () => {
       if (rewardPollRef.current) clearInterval(rewardPollRef.current);
+      receiptAbortRef.current?.abort();
     };
   }, []);
 
@@ -599,11 +608,17 @@ export default function ChallengeClient() {
     // during the initial EOSE flush even though it already landed.
     // Timeboxed; the return value flows into the per-winner PATCH but
     // the payout loop doesn't fail if the receipt never shows up.
+    // The signal aborts the subscription on component unmount so
+    // navigating away doesn't leave sockets open for up to 10s.
+    if (!receiptAbortRef.current) {
+      receiptAbortRef.current = new AbortController();
+    }
     const receiptId = await awaitZapReceipt({
       recipientPubkey: winner.nostr_pubkey,
       signedZapRequestId: signedZap.id,
       options: {
         since: signedZap.created_at - 5,
+        signal: receiptAbortRef.current.signal,
       },
     });
     return receiptId ?? undefined;

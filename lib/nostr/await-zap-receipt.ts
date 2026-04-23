@@ -2,6 +2,7 @@
 
 import { DEFAULT_RELAYS } from "./relays";
 import type { NostrEvent } from "./types";
+import { verifyNostrEvent } from "./verify";
 
 export interface AwaitZapReceiptOptions {
   relays?: string[];
@@ -14,6 +15,13 @@ export interface AwaitZapReceiptOptions {
    * to the same recipient don't match.
    */
   since?: number;
+  /**
+   * Abort the subscription early. Closes all relay sockets and
+   * resolves the promise to `null`. Wire this to component unmount
+   * so a subscription that started mid-payout doesn't keep sockets
+   * open for the full timeout after the user navigates away.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -45,8 +53,10 @@ export async function awaitZapReceipt(params: {
   const timeoutMs = options.timeoutMs ?? 10_000;
   const since =
     options.since ?? Math.floor(Date.now() / 1000) - 60;
+  const signal = options.signal;
 
   if (urls.length === 0 || typeof window === "undefined") return null;
+  if (signal?.aborted) return null;
 
   return new Promise<string | null>((resolve) => {
     const sockets: WebSocket[] = [];
@@ -62,8 +72,12 @@ export async function awaitZapReceipt(params: {
           /* ignore */
         }
       }
+      if (signal) signal.removeEventListener("abort", onAbort);
       resolve(result);
     };
+
+    const onAbort = () => finish(null);
+    if (signal) signal.addEventListener("abort", onAbort);
 
     const timer = setTimeout(() => finish(null), timeoutMs);
 
@@ -99,10 +113,17 @@ export async function awaitZapReceipt(params: {
             if (!desc || !desc[1]) return;
             try {
               const request = JSON.parse(desc[1]) as { id?: string };
-              if (request.id === signedZapRequestId) {
-                clearTimeout(timer);
-                finish(receipt.id);
-              }
+              if (request.id !== signedZapRequestId) return;
+              // We only verify once we have a candidate match — a
+              // relay delivering lots of unrelated receipts for the
+              // same recipient shouldn't pay the Schnorr cost for
+              // each one. A receipt with our request's id but an
+              // invalid signature is almost certainly a forgery
+              // attempt to poison `completions.reward_zap_receipt_id`;
+              // refuse it and keep listening for the real one.
+              if (!verifyNostrEvent(receipt)) return;
+              clearTimeout(timer);
+              finish(receipt.id);
             } catch {
               /* malformed description — skip */
             }

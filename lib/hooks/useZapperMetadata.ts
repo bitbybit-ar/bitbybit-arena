@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchNostrMetadata } from "@/lib/nostr/metadata";
-import type { NostrMetadata } from "@/lib/nostr/types";
+import { fetchNostrMetadataBatch } from "@/lib/nostr/metadata";
 
 export interface ZapperProfile {
   display_name?: string;
@@ -70,11 +69,16 @@ export function useZapperMetadata(pubkeys: string[]): Map<string, ZapperProfile>
     );
     if (newKeys.length === 0) return;
 
-    for (const pk of newKeys) {
-      fetchedRef.current.add(pk);
-      void fetchNostrMetadata(pk)
-        .then((meta: NostrMetadata | null) => {
-          if (!mountedRef.current || !meta) return;
+    // Mark everything in flight up-front so a re-render mid-fetch
+    // doesn't re-enqueue the same pubkeys. The batch helper opens one
+    // socket per relay instead of one per pubkey, so the whole recent-
+    // zappers list resolves in a single round-trip.
+    for (const pk of newKeys) fetchedRef.current.add(pk);
+
+    void fetchNostrMetadataBatch(newKeys)
+      .then((metaByPubkey) => {
+        if (!mountedRef.current) return;
+        for (const [pk, meta] of metaByPubkey) {
           const profile: ZapperProfile = {};
           if (typeof meta.display_name === "string" && meta.display_name) {
             profile.display_name = meta.display_name;
@@ -87,11 +91,11 @@ export function useZapperMetadata(pubkeys: string[]): Map<string, ZapperProfile>
           if (profile.display_name || profile.picture) {
             upsert(pk, profile);
           }
-        })
-        .catch(() => {
-          /* swallow — placeholder stays */
-        });
-    }
+        }
+      })
+      .catch(() => {
+        /* swallow — placeholder stays */
+      });
   }, [pubkeys, upsert]);
 
   return profiles;

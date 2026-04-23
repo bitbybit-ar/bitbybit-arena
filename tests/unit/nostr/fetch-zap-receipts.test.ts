@@ -1,6 +1,18 @@
-import { describe, it, expect } from "vitest";
-import { parseZapReceipt } from "@/lib/nostr/fetch-zap-receipts";
+import { describe, it, expect, vi } from "vitest";
 import type { NostrEvent } from "@/lib/nostr/types";
+
+// parseZapReceipt verifies Schnorr signatures on both the outer
+// kind:9735 and the embedded kind:9734. This suite is about the
+// parsing/guard logic, not crypto — generating real signed events
+// for every fixture would add a keypair + sign step per test without
+// exercising anything the pure Schnorr module hasn't already been
+// audited for. Stubbing `verifyNostrEvent` to accept everything lets
+// each case test exactly its own branch.
+vi.mock("@/lib/nostr/verify", () => ({
+  verifyNostrEvent: vi.fn(() => true),
+}));
+
+const { parseZapReceipt } = await import("@/lib/nostr/fetch-zap-receipts");
 
 const GOAL_ID = "goal".padEnd(64, "0");
 const ZAPPER_PUBKEY = "abc".padEnd(64, "0");
@@ -156,5 +168,27 @@ describe("parseZapReceipt", () => {
     const receipt = buildReceipt({});
     const parsed = parseZapReceipt(receipt);
     expect(parsed?.message).toBe("");
+  });
+
+  it("rejects receipts whose outer kind:9735 signature doesn't verify", async () => {
+    // First call = outer receipt verify. Fail it, and the rest of the
+    // parse (including the embedded request) must be short-circuited.
+    const verifyModule = await import("@/lib/nostr/verify");
+    const mock = vi.mocked(verifyModule.verifyNostrEvent);
+    mock.mockImplementationOnce(() => false); // outer receipt
+
+    const receipt = buildReceipt({});
+    expect(parseZapReceipt(receipt)).toBeNull();
+  });
+
+  it("rejects receipts whose embedded kind:9734 signature doesn't verify", async () => {
+    // First call (outer) passes, second call (embedded) fails.
+    const verifyModule = await import("@/lib/nostr/verify");
+    const mock = vi.mocked(verifyModule.verifyNostrEvent);
+    mock.mockImplementationOnce(() => true); // outer
+    mock.mockImplementationOnce(() => false); // embedded
+
+    const receipt = buildReceipt({});
+    expect(parseZapReceipt(receipt)).toBeNull();
   });
 });
