@@ -153,18 +153,17 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     proofEventId = result.proofEventId;
     autoApprove = true;
   } else {
-    // Manual proof: either a non-empty text (>= 5 chars) or an image —
-    // or both. Empty/whitespace content alongside no image is rejected.
-    const trimmed = content?.trim() ?? "";
-    if (!trimmed && !image_url) {
+    // Manual proof: either a ≥ 5-char text, an image, or both. Short
+    // text alongside an image is silently dropped (the image itself is
+    // evidence) — same rule as /api/challenges/[id]/completions so the
+    // two submission surfaces behave identically.
+    const textOk = !!content && content.trim().length >= 5;
+    if (!textOk && !image_url) {
       throw new BadRequestError(
-        "Provide a text proof or attach an image"
+        "Provide at least a 5-character description or an image proof"
       );
     }
-    if (trimmed && trimmed.length < 5) {
-      throw new BadRequestError("Proof content must be at least 5 characters");
-    }
-    resolvedContent = trimmed || null;
+    resolvedContent = textOk ? content!.trim() : null;
     resolvedImageUrl = image_url ?? null;
     autoApprove = shouldAutoApprove(
       selectedMethod,

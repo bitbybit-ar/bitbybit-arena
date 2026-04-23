@@ -162,7 +162,7 @@ export default function ChallengeClient() {
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [checkpointProofs, setCheckpointProofs] = useState<Record<string, string>>({});
   const [checkpointImages, setCheckpointImages] = useState<
-    Record<string, BlossomDescriptor | null>
+    Record<string, BlossomDescriptor>
   >({});
   const [checkpointErrors, setCheckpointErrors] = useState<Record<string, string>>({});
   const [rewardError, setRewardError] = useState<string | null>(null);
@@ -1327,10 +1327,15 @@ export default function ChallengeClient() {
                                 aria-label={t("checkpointProofLabel", { index: idx + 1 })}
                                 value={checkpointProofs[cp.id] ?? ""}
                                 onChange={(e) =>
-                                  setCheckpointProofs((prev) => ({
-                                    ...prev,
-                                    [cp.id]: e.target.value,
-                                  }))
+                                  setCheckpointProofs((prev) => {
+                                    const next = { ...prev };
+                                    if (e.target.value) {
+                                      next[cp.id] = e.target.value;
+                                    } else {
+                                      delete next[cp.id];
+                                    }
+                                    return next;
+                                  })
                                 }
                                 rows={2}
                               />
@@ -1338,11 +1343,16 @@ export default function ChallengeClient() {
                                 <div className={styles.proofActionsUpload}>
                                   <ImageUpload
                                     value={checkpointImages[cp.id] ?? null}
-                                    onChange={(next) =>
-                                      setCheckpointImages((prev) => ({
-                                        ...prev,
-                                        [cp.id]: next,
-                                      }))
+                                    onChange={(descriptor) =>
+                                      setCheckpointImages((prev) => {
+                                        const next = { ...prev };
+                                        if (descriptor) {
+                                          next[cp.id] = descriptor;
+                                        } else {
+                                          delete next[cp.id];
+                                        }
+                                        return next;
+                                      })
                                     }
                                     alt={t("checkpointProofImageAlt", { index: idx + 1 })}
                                     maxSizeMB={5}

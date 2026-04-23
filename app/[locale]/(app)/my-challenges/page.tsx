@@ -32,11 +32,11 @@ interface MyChallengeItem {
   title: string;
   type: string;
   status: string;
-  checkpoint_mode?: "none" | "sequential" | "parallel";
+  checkpoint_mode: "none" | "sequential" | "parallel";
   participant_count: number;
-  checkpoints_total?: number;
-  checkpoints_approved?: number;
-  checkpoints_pending?: number;
+  checkpoints_total: number;
+  checkpoints_approved: number;
+  checkpoints_pending: number;
   participation?: { progress: number; status: string } | null;
 }
 
@@ -75,7 +75,12 @@ export default function MyChallengesPage() {
   const { showToast } = useToast();
   const router = useRouter();
   const [accepting, setAccepting] = useState<string | null>(null);
-  const [data, setData] = useState<{ created: MyChallengeItem[]; joined: MyChallengeItem[] } | null>(null);
+  const [createdItems, setCreatedItems] = useState<MyChallengeItem[]>([]);
+  const [joinedItems, setJoinedItems] = useState<MyChallengeItem[]>([]);
+  const [createdCursor, setCreatedCursor] = useState<string | null>(null);
+  const [joinedCursor, setJoinedCursor] = useState<string | null>(null);
+  const [loadingMoreCreated, setLoadingMoreCreated] = useState(false);
+  const [loadingMoreJoined, setLoadingMoreJoined] = useState(false);
   const [achievements, setAchievements] = useState<AchievementItem[] | null>(null);
   const [achievementsCursor, setAchievementsCursor] = useState<string | null>(null);
   const [loadingMoreAchievements, setLoadingMoreAchievements] = useState(false);
@@ -90,7 +95,12 @@ export default function MyChallengesPage() {
       fetch("/api/my-badges").then((r) => r.json()),
     ])
       .then(([challengesJson, badgesJson]) => {
-        if (challengesJson.success) setData(challengesJson.data);
+        if (challengesJson.success) {
+          setCreatedItems(challengesJson.data.created.items);
+          setCreatedCursor(challengesJson.data.created.nextCursor);
+          setJoinedItems(challengesJson.data.joined.items);
+          setJoinedCursor(challengesJson.data.joined.nextCursor);
+        }
         if (badgesJson.success) {
           setAchievements(badgesJson.data.items);
           setAchievementsCursor(badgesJson.data.nextCursor);
@@ -99,6 +109,44 @@ export default function MyChallengesPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const loadMoreCreated = useCallback(async () => {
+    if (!createdCursor || loadingMoreCreated) return;
+    setLoadingMoreCreated(true);
+    try {
+      const res = await fetch(
+        `/api/my-challenges?scope=created&cursor=${encodeURIComponent(createdCursor)}`
+      );
+      const json = await res.json();
+      if (json.success) {
+        setCreatedItems((prev) => [...prev, ...json.data.created.items]);
+        setCreatedCursor(json.data.created.nextCursor);
+      }
+    } catch {
+      /* ignore — user can retry */
+    } finally {
+      setLoadingMoreCreated(false);
+    }
+  }, [createdCursor, loadingMoreCreated]);
+
+  const loadMoreJoined = useCallback(async () => {
+    if (!joinedCursor || loadingMoreJoined) return;
+    setLoadingMoreJoined(true);
+    try {
+      const res = await fetch(
+        `/api/my-challenges?scope=joined&cursor=${encodeURIComponent(joinedCursor)}`
+      );
+      const json = await res.json();
+      if (json.success) {
+        setJoinedItems((prev) => [...prev, ...json.data.joined.items]);
+        setJoinedCursor(json.data.joined.nextCursor);
+      }
+    } catch {
+      /* ignore — user can retry */
+    } finally {
+      setLoadingMoreJoined(false);
+    }
+  }, [joinedCursor, loadingMoreJoined]);
 
   const loadMoreAchievements = useCallback(async () => {
     if (!achievementsCursor || loadingMoreAchievements) return;
@@ -222,13 +270,24 @@ export default function MyChallengesPage() {
 
   if (loading) return <div className={styles.loadingState}><BlockLoader label={tCommon("loading")} /></div>;
 
-  const items = tab === "created" ? data?.created : tab === "joined" ? data?.joined : undefined;
+  const items =
+    tab === "created"
+      ? createdItems
+      : tab === "joined"
+        ? joinedItems
+        : undefined;
   const showAchievements = tab === "achievements";
   const badgeCount = achievements?.length ?? 0;
 
+  // "20+" when the server says there's another page — we can't show
+  // a true total without a COUNT(*) round-trip and the number is only
+  // used on a tab label.
+  const joinedLabelCount = `${joinedItems.length}${joinedCursor ? "+" : ""}`;
+  const createdLabelCount = `${createdItems.length}${createdCursor ? "+" : ""}`;
+
   const tabItems = [
-    { value: "joined" as const, label: `${t("joined")} (${data?.joined.length ?? 0})` },
-    { value: "created" as const, label: `${t("created")} (${data?.created.length ?? 0})` },
+    { value: "joined" as const, label: `${t("joined")} (${joinedLabelCount})` },
+    { value: "created" as const, label: `${t("created")} (${createdLabelCount})` },
     { value: "achievements" as const, label: `${t("achievements")} (${badgeCount})` },
   ];
 
@@ -338,14 +397,13 @@ export default function MyChallengesPage() {
         ) : (
           <div className={styles.list}>
             {items.map((item) => {
-              const total = item.checkpoints_total ?? 0;
+              const total = item.checkpoints_total;
               const hasCheckpoints =
                 tab === "joined" &&
-                item.checkpoint_mode &&
                 item.checkpoint_mode !== "none" &&
                 total > 0;
-              const approved = item.checkpoints_approved ?? 0;
-              const pending = item.checkpoints_pending ?? 0;
+              const approved = item.checkpoints_approved;
+              const pending = item.checkpoints_pending;
               return (
                 <Link
                   key={item.id}
@@ -400,6 +458,30 @@ export default function MyChallengesPage() {
                 </Link>
               );
             })}
+            {tab === "joined" && joinedCursor && (
+              <div className={styles.loadMoreRow}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={loadMoreJoined}
+                  disabled={loadingMoreJoined}
+                >
+                  {loadingMoreJoined ? tCommon("loading") : t("loadMore")}
+                </Button>
+              </div>
+            )}
+            {tab === "created" && createdCursor && (
+              <div className={styles.loadMoreRow}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={loadMoreCreated}
+                  disabled={loadingMoreCreated}
+                >
+                  {loadingMoreCreated ? tCommon("loading") : t("loadMore")}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

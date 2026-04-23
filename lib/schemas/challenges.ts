@@ -28,6 +28,7 @@ import {
   SlugSchema,
   TagsSchema,
 } from "./primitives";
+import { IsoCursorSchema, LimitSchema } from "./pagination";
 
 const MAX_CHECKPOINTS = 20;
 const MAX_BADGE_NAME_LEN = 100;
@@ -385,10 +386,23 @@ export const RecordRewardBodySchema = z
 
 export type RecordRewardBody = z.infer<typeof RecordRewardBodySchema>;
 
-/** GET /api/my-challenges — `?scope=created|joined`. */
-export const MyChallengesQuerySchema = z.object({
-  scope: z.enum(["created", "joined"]).optional(),
-});
+/**
+ * GET /api/my-challenges — `?scope=created|joined` (omit for both
+ * tabs), `?cursor=<ISO>` + `?limit=`. When `cursor` is supplied you
+ * must also set `scope` — otherwise the route can't tell which list
+ * to continue. Limit is clamped to 50 and defaults to 20 to match
+ * /api/my-badges.
+ */
+export const MyChallengesQuerySchema = z
+  .object({
+    scope: z.enum(["created", "joined"]).optional(),
+    cursor: IsoCursorSchema,
+    limit: LimitSchema(1, 50, 20),
+  })
+  .refine((v) => !v.cursor || !!v.scope, {
+    message: "cursor requires scope=created or scope=joined",
+    path: ["cursor"],
+  });
 
 // Re-export so route files only have to import from one place.
 export { NostrPubkeySchema };
