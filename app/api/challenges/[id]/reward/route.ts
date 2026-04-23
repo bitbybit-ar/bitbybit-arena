@@ -17,6 +17,7 @@ import {
 } from "@/lib/db/schema";
 import { fetchNostrMetadataServer } from "@/lib/nostr/server-metadata";
 import type { PrizeDistribution } from "@/lib/types";
+import { createNotification } from "@/lib/notifications";
 
 interface WinnerPayload {
   user_id: string;
@@ -217,6 +218,26 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
       .update(completions)
       .set({ reward_zap_receipt_id: receiptEventId })
       .where(eq(completions.id, target.id));
+
+    // Skip self-pay: creators who win their own challenge don't get a
+    // prize (retained=true), so there's nothing to notify them about.
+    if (winnerUserId !== challenge.creator_id) {
+      try {
+        await createNotification(
+          winnerUserId,
+          "prize_awarded",
+          "You won sats!",
+          `You received the prize for "${challenge.title}".`,
+          {
+            challenge: challenge.title,
+            challenge_id: challenge.id,
+            receipt_event_id: receiptEventId,
+          }
+        );
+      } catch (err) {
+        console.error("notification:prize_awarded failed", err);
+      }
+    }
   }
 
   await db

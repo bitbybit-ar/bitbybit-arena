@@ -132,3 +132,21 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
 }
+
+export type NotificationType =
+  | "challenge_joined"
+  | "completion_submitted"
+  | "completion_verified"
+  | "prize_awarded"
+  | "badge_earned";
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  read: boolean;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Link, useRouter, usePathname } from "@/i18n/routing";
 import { Block } from "@/components/common/Block";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { LogoutIcon, MoonIcon, SunIcon, SettingsIcon, UserIcon } from "@/components/icons";
 import { useTheme } from "@/lib/contexts/theme-context";
 import { useSession } from "@/lib/contexts/session-context";
@@ -105,6 +106,7 @@ export function Navbar() {
               >
                 {t("explore") || "Explore"}
               </Button>
+              <NotificationBell />
               <div className={styles.avatarWrapper} ref={menuRef}>
                 <button
                   className={styles.avatar}

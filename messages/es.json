@@ -42,6 +42,38 @@
     "active": "Activo",
     "withdrawn": "Retirado"
   },
+  "notifications": {
+    "ariaLabel": "Notificaciones",
+    "empty": "No tenés notificaciones todavía.",
+    "markAllRead": "Marcar todo como leído",
+    "unreadCount": "{count, plural, =0 {Sin nuevas} one {# nueva} other {# nuevas}}",
+    "types": {
+      "challenge_joined": {
+        "title": "Nuevo participante",
+        "body": "{name} se unió a tu desafío \"{challenge}\"."
+      },
+      "completion_submitted": {
+        "title": "Nueva prueba para revisar",
+        "body": "{name} envió una prueba en \"{challenge}\"."
+      },
+      "completion_verified_approved": {
+        "title": "¡Prueba aprobada!",
+        "body": "Tu prueba en \"{challenge}\" fue aprobada."
+      },
+      "completion_verified_rejected": {
+        "title": "Prueba rechazada",
+        "body": "Tu prueba en \"{challenge}\" fue rechazada."
+      },
+      "prize_awarded": {
+        "title": "¡Ganaste sats!",
+        "body": "Recibiste el premio por \"{challenge}\"."
+      },
+      "badge_earned": {
+        "title": "¡Nuevo badge!",
+        "body": "Ganaste el badge \"{badge}\" de \"{challenge}\"."
+      }
+    }
+  },
   "imageUpload": {
     "chooseFile": "Elegí una imagen",
     "hint": "PNG, JPG, WEBP o GIF hasta {max}MB",
