@@ -14,9 +14,11 @@ import {
   checkpoint_completions,
   participants,
 } from "@/lib/db/schema";
+import { recomputeCheckpointProgress } from "@/lib/db/checkpoints";
 import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
 import { verifyHashtagPost } from "@/lib/nostr/verify-hashtag-post";
 import { pickVerificationMethod, shouldAutoApprove } from "@/lib/api/verification-methods";
+import { createNotification } from "@/lib/notifications";
 import type { VerificationMethod } from "@/lib/types";
 
 function isUniqueViolation(err: unknown): boolean {
@@ -179,33 +181,30 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
   }
 
   if (autoApprove) {
-    // Count this participant's approved checkpoints and bump progress.
-    const approved = await db
-      .select({ id: checkpoint_completions.id })
-      .from(checkpoint_completions)
-      .where(
-        and(
-          eq(checkpoint_completions.participant_id, participation.id),
-          eq(checkpoint_completions.status, "approved")
-        )
-      );
-    const totalCheckpoints = await db
-      .select({ id: challenge_checkpoints.id })
-      .from(challenge_checkpoints)
-      .where(eq(challenge_checkpoints.challenge_id, params.id));
-
-    const newProgress = approved.length;
-    const isComplete = newProgress >= totalCheckpoints.length;
-
-    await db
-      .update(participants)
-      .set({
-        progress: newProgress,
-        ...(isComplete
-          ? { status: "completed" as const, completed_at: new Date() }
-          : {}),
-      })
-      .where(eq(participants.id, participation.id));
+    await recomputeCheckpointProgress(db, participation.id, params.id);
+  } else {
+    // Pending creator review: ping the creator so they know there's a
+    // submission waiting. Notification failures must not roll back the
+    // insert — bell is cosmetic.
+    if (challenge.creator_id !== session!.user_id) {
+      try {
+        await createNotification(
+          challenge.creator_id,
+          "checkpoint_submitted",
+          "New checkpoint proof to review",
+          `A participant submitted proof for "${checkpoint.title}" on "${challenge.title}".`,
+          {
+            challenge_id: challenge.id,
+            challenge_title: challenge.title,
+            checkpoint_id: checkpoint.id,
+            checkpoint_title: checkpoint.title,
+            checkpoint_completion_id: completion.id,
+          }
+        );
+      } catch (err) {
+        console.error("notification:checkpoint_submitted failed", err);
+      }
+    }
   }
 
   return new CreatedResponse(completion);

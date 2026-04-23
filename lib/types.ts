@@ -20,6 +20,8 @@ export const NOTIFICATION_TYPES: NotificationType[] = [
   "challenge_joined",
   "completion_submitted",
   "completion_verified",
+  "checkpoint_submitted",
+  "checkpoint_verified",
   "prize_awarded",
   "badge_earned",
 ];
@@ -149,6 +151,8 @@ export type NotificationType =
   | "challenge_joined"
   | "completion_submitted"
   | "completion_verified"
+  | "checkpoint_submitted"
+  | "checkpoint_verified"
   | "prize_awarded"
   | "badge_earned";
 

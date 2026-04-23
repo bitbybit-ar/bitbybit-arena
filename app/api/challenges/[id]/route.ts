@@ -72,6 +72,82 @@ export const GET = apiHandler(
       }
     }
 
+    // Pending checkpoint submissions — only surfaced to the creator so
+    // they can approve/reject. Join through participants → users to
+    // render who submitted what without a second round-trip.
+    type PendingSubmission = {
+      id: string;
+      checkpoint_id: string;
+      participant_id: string;
+      content: string | null;
+      proof_event_id: string | null;
+      created_at: Date;
+      participant: {
+        user: {
+          id: string;
+          username: string;
+          display_name: string;
+          avatar_url: string | null;
+          nostr_pubkey: string;
+        };
+      };
+    };
+    let pendingCheckpointSubmissions: PendingSubmission[] = [];
+    if (
+      session &&
+      checkpoints.length > 0 &&
+      rows[0].challenge.creator_id === session.user_id
+    ) {
+      const pending = await db
+        .select({
+          id: checkpoint_completions.id,
+          checkpoint_id: checkpoint_completions.checkpoint_id,
+          participant_id: checkpoint_completions.participant_id,
+          content: checkpoint_completions.content,
+          proof_event_id: checkpoint_completions.proof_event_id,
+          created_at: checkpoint_completions.created_at,
+          user_id: users.id,
+          username: users.username,
+          display_name: users.display_name,
+          avatar_url: users.avatar_url,
+          nostr_pubkey: users.nostr_pubkey,
+        })
+        .from(checkpoint_completions)
+        .innerJoin(
+          challenge_checkpoints,
+          eq(checkpoint_completions.checkpoint_id, challenge_checkpoints.id)
+        )
+        .innerJoin(
+          participants,
+          eq(checkpoint_completions.participant_id, participants.id)
+        )
+        .innerJoin(users, eq(participants.user_id, users.id))
+        .where(
+          and(
+            eq(challenge_checkpoints.challenge_id, params.id),
+            eq(checkpoint_completions.status, "pending")
+          )
+        )
+        .orderBy(asc(checkpoint_completions.created_at));
+      pendingCheckpointSubmissions = pending.map((p) => ({
+        id: p.id,
+        checkpoint_id: p.checkpoint_id,
+        participant_id: p.participant_id,
+        content: p.content,
+        proof_event_id: p.proof_event_id,
+        created_at: p.created_at,
+        participant: {
+          user: {
+            id: p.user_id,
+            username: p.username,
+            display_name: p.display_name,
+            avatar_url: p.avatar_url,
+            nostr_pubkey: p.nostr_pubkey,
+          },
+        },
+      }));
+    }
+
     return {
       ...rows[0].challenge,
       participant_count: rows[0].participant_count,
@@ -79,6 +155,7 @@ export const GET = apiHandler(
       creator: rows[0].creator,
       checkpoints,
       my_checkpoint_completions: myCheckpointCompletions,
+      pending_checkpoint_submissions: pendingCheckpointSubmissions,
     };
   },
   { requireAuth: false }

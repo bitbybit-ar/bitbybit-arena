@@ -64,6 +64,18 @@
         "title": "Prueba rechazada",
         "body": "Tu prueba en \"{challenge}\" fue rechazada."
       },
+      "checkpoint_submitted": {
+        "title": "Prueba de checkpoint para revisar",
+        "body": "Alguien envió una prueba para el checkpoint \"{checkpoint}\" en \"{challenge}\"."
+      },
+      "checkpoint_verified_approved": {
+        "title": "¡Checkpoint aprobado!",
+        "body": "Tu prueba del checkpoint \"{checkpoint}\" en \"{challenge}\" fue aprobada."
+      },
+      "checkpoint_verified_rejected": {
+        "title": "Checkpoint rechazado",
+        "body": "Tu prueba del checkpoint \"{checkpoint}\" en \"{challenge}\" fue rechazada."
+      },
       "prize_awarded": {
         "title": "¡Ganaste sats!",
         "body": "Recibiste el premio por \"{challenge}\"."
@@ -463,6 +475,10 @@
     "checkpointLocked": "Primero completá el checkpoint anterior.",
     "checkpointError": "No se pudo completar el checkpoint. Intentá de nuevo.",
     "checkpointProofLabel": "Prueba del checkpoint {index}",
+    "checkpointAwaitingReview": "En revisión",
+    "checkpointPendingReviewHint": "Enviaste tu prueba. Esperá a que el creador la revise.",
+    "checkpointRejectedHint": "Tu prueba fue rechazada. Contactá al creador si pensás que hubo un error.",
+    "reviewCheckpointsTitle": "Pruebas de checkpoint para revisar",
     "proofTooShort": "La prueba debe tener al menos 5 caracteres.",
     "rewardDisplayTitle": "Recompensa",
     "badgeAwarded": "Badge que ganás",
@@ -683,6 +699,8 @@
         "challenge_joined": "Alguien se une a tu desafío",
         "completion_submitted": "Nueva prueba para revisar",
         "completion_verified": "Tu prueba fue revisada",
+        "checkpoint_submitted": "Nueva prueba de checkpoint para revisar",
+        "checkpoint_verified": "Tu prueba de checkpoint fue revisada",
         "prize_awarded": "Recibiste un premio en sats",
         "badge_earned": "Ganaste un badge"
       }
