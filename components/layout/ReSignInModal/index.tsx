@@ -57,10 +57,10 @@ function methodsForSigner(signerType: SignerType | null | undefined): SignerType
  *  - **Reattach mode** — user already has a valid session cookie but lost
  *    their in-memory signer (reload after nsec / NIP-46 login). We verify
  *    the new signer's pubkey matches `session.nostr_pubkey` and attach it.
- *    No NIP-42 round trip.
+ *    No server round trip.
  *
  *  - **Login mode** — user has no session at all (anonymous). We run the
- *    full NIP-42 challenge/response via `completeLoginWithSigner` to set
+ *    full NIP-98 HTTP Auth flow via `completeLoginWithSigner` to set
  *    the cookie AND the signer in one shot.
  *
  * The mode is decided by reading `session` from SignerContext when the

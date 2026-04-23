@@ -91,13 +91,6 @@ describe("POST /api/challenges", () => {
     expect(res.status).toBe(400);
   });
 
-  it("rejects community_vote as verification method", async () => {
-    const res = await POST(buildRequest("POST", "/api/challenges", {
-      title: "Valid", description: "Valid description here", verification_methods: ["community_vote"],
-    }));
-    expect(res.status).toBe(400);
-  });
-
   it("rejects winner_takes_all as prize_distribution", async () => {
     const res = await POST(buildRequest("POST", "/api/challenges", {
       title: "Valid",

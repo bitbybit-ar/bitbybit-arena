@@ -1,205 +1,132 @@
-# Nostr Login Methods
+# Nostr Login
 
 ## Overview
 
-Users have three ways to log in, covering different use cases and devices. The login modal presents all three as tabs or options, ordered by security.
+The app has three sign-in methods, all of which land on the same server endpoint (`POST /api/auth/nostr`) and produce the same artifact: a **NIP-98 HTTP Auth event** (kind 27235) bound to the login URL, signed by the user's Nostr key.
 
-## Methods
+- **Browser extension** (NIP-07) — the extension holds the key and signs.
+- **Remote signer / bunker** (NIP-46) — a mobile app (Amber, nsec.app, Damus) holds the key and signs via a relay.
+- **Paste nsec** — the browser decodes the nsec and signs locally; the key is held in memory for the duration of the session and never sent to the server.
 
-### 1. Browser Extension (Recommended)
+All three are shipped today and live behind a single tab picker on `/signin`.
 
-**How it works:** NIP-07 challenge-response. The extension (Alby, nos2x, Nostr Connect, etc.) holds the private key and signs events on behalf of the user. The app never sees the nsec.
+---
+
+## How auth works (NIP-98)
+
+On submit, the client builds an unsigned event that looks like:
+
+```json
+{
+  "kind": 27235,
+  "created_at": <now_unix>,
+  "content": "",
+  "tags": [
+    ["u", "https://arena.bitbybit.com.ar/api/auth/nostr"],
+    ["method", "POST"],
+    ["arena_signer", "extension" | "nip46" | "nsec"]
+  ]
+}
+```
+
+The active signer signs it, and the client POSTs the request to `/api/auth/nostr` with:
+
+```
+Authorization: Nostr <base64(JSON.stringify(signedEvent))>
+```
+
+Server-side, `validateNip98AuthEvent` in `lib/nostr/verify.ts` checks:
+
+- The base64 decodes to a well-formed event with a valid Schnorr signature (`nostr-tools/pure` `verifyEvent`).
+- `kind === 27235`.
+- The `u` tag matches the exact request URL (`req.nextUrl.toString()`).
+- The `method` tag matches the HTTP method (`POST`).
+- `created_at` is within ±60 s of server time (NIP-98 replay window).
+- An `["arena_signer", ...]` tag is present with one of `"extension" | "nip46" | "nsec"`. Because this tag is inside the signed event, a MITM can't rewrite it on the wire — the signer_type is tamper-evident.
+
+On success, the route `upsert`s the `users` row (keyed by pubkey) and issues a session cookie signed with `AUTH_SECRET` (JWT via `jose`, 7-day expiry).
+
+### Session cookie
+
+- Production: **`__Host-session`**. The `__Host-` prefix is enforced by the browser — the cookie is rejected unless it's `Secure`, has `Path=/`, and has no `Domain` attribute. This blocks subdomain cookie injection from any future `*.bitbybit.com.ar` sibling service.
+- Dev / local: plain `session`. `__Host-` requires HTTPS, which local dev doesn't have.
+
+The cookie name is exported as `SESSION_COOKIE_NAME` from `lib/auth.ts` so routes and tests never hardcode it.
+
+### Why NIP-98 and not NIP-42?
+
+NIP-42 is the spec for client → relay authentication (`["AUTH", ...]` frames over a websocket). We aren't authenticating to a relay — we're authenticating to our own HTTP API. NIP-98 is the spec that covers that case: it binds the signed event to an HTTP verb and URL, gives you a `created_at` replay window out of the box, and doesn't require a challenge cookie round-trip. An earlier version of the app used a kind-22242 flow; PR #59 migrated everything to NIP-98.
+
+---
+
+## Method 1 — Browser extension (NIP-07)
+
+**Entry point**: `components/auth/ExtensionSignerButton/index.tsx`.
 
 **Flow:**
-1. App calls `window.nostr.getPublicKey()`
-2. Server issues a random challenge (stored in httpOnly cookie, 5 min expiry)
-3. App asks extension to sign a kind:22242 event with the challenge as content
-4. Server verifies signature → session created
 
-**UX:**
-- Big purple button: "Sign in with Extension"
-- If no extension detected: show message "No extension detected" with links to install Alby / nos2x / Nostr Connect
-- Re-detect on interval (extension may load late)
+1. The button checks for `window.nostr`. If absent, it falls back to `components/auth/ExtensionUpsell` with links to Alby, nos2x, and Nostr Connect.
+2. Click → `window.nostr.getPublicKey()` to confirm consent.
+3. Build the unsigned NIP-98 event (see above).
+4. `window.nostr.signEvent(event)` → signed event.
+5. POST to `/api/auth/nostr` with the `Authorization: Nostr <base64>` header.
+6. On 200, the client redirects to the post-login destination (defaults to `/explore`).
 
-**Security:** Best. Private key never leaves the extension.
-
-**Already implemented** — this is what we have today.
+**Security**: strongest of the three. The private key never enters the app's JS context.
 
 ---
 
-### 2. QR Code / Nostr Connect (NIP-46)
+## Method 2 — Remote signer / bunker (NIP-46)
 
-**How it works:** Remote signing via NIP-46 (Nostr Connect / Bunker). The user scans a QR code from a mobile Nostr app (Amber on Android, Damus on iOS, nsec.app) that acts as a remote signer. The app sends signing requests via Nostr relays, the mobile app approves them.
+**Entry point**: `components/auth/NostrConnectPanel/index.tsx`. The relay coordination lives in `lib/nostr/nip46-login.ts`.
 
 **Flow:**
-1. App generates a NIP-46 connection request with a random session key
-2. App displays QR code encoding `nostrconnect://` URI
-3. User scans QR with their Nostr app (Amber, etc.)
-4. Mobile app connects via relay and approves the signing request
-5. App receives the signed event → server verifies → session created
 
-**QR URI format:**
-```
-nostrconnect://<app-pubkey>?relay=wss://relay.example.com&metadata={"name":"BitByBit Arena"}
-```
+1. The panel generates an ephemeral client keypair and opens a relay connection (defaults to `wss://relay.nsec.app`).
+2. It renders either a QR (`nostrconnect://` URI) or a text field for a bunker URL the user can paste.
+3. The user's mobile signer (Amber, nsec.app, Damus) scans / connects and approves the session.
+4. The remote signer returns a `connect` response; the app then asks it to sign the NIP-98 event via NIP-46's `sign_event` RPC.
+5. The signed event is sent to `/api/auth/nostr`.
 
-**UX:**
-- Tab label: "Scan QR"
-- Show QR code prominently with "Scan with your Nostr app" instruction
-- List compatible apps: Amber (Android), nsec.app (Web), Damus (iOS)
-- Show loading spinner while waiting for remote approval
-- Timeout after 2 minutes with "Try again" option
-- QR auto-refreshes if expired
+**Timeout**: 60 s for connection, separate timeouts per RPC call. The panel retries once before failing.
 
-**Security:** Good. Private key stays on the mobile device. Communication is encrypted via NIP-04/NIP-44.
-
-**When to use:** Mobile-first users, users who keep their key in a mobile app, users without browser extensions.
+**Security**: strong. The private key stays on the mobile device; the app only sees signed events.
 
 ---
 
-### 3. Paste nsec (Not Recommended)
+## Method 3 — Paste nsec
 
-**How it works:** User pastes their Nostr private key (nsec/hex) directly into the app. The app uses it to sign the challenge event client-side, then discards it. The key is **never sent to the server** — signing happens entirely in the browser.
+**Entry point**: `components/auth/NsecSignerForm/index.tsx`. The signer implementation lives in `lib/signer-context.tsx` (`makeNsecSigner`).
 
 **Flow:**
-1. User pastes nsec (bech32) or hex private key
-2. Client-side: decode nsec → derive pubkey → sign kind:22242 challenge event
-3. Key is immediately discarded from memory (not stored anywhere)
-4. Signed event sent to server → verified → session created
 
-**UX:**
-- Tab label: "Paste nsec"
-- **Prominent warning banner** (red/orange) before the input:
-  - "Pasting your private key in any website is risky. Your key will only be used to sign a login event and will NOT be stored or sent to any server. For better security, use a browser extension or Nostr Connect."
-- Input field with type `password` (dots, not visible text)
-- "Show" toggle to reveal the key
-- Checkbox: "I understand the risks" (required to enable the Sign In button)
-- After successful login, show confirmation: "Signed in. Your key was not stored."
+1. User pastes a bech32 `nsec1...` or hex private key.
+2. `nostr-tools/nip19.decode()` extracts the 32-byte secret.
+3. A local signer is created that calls `nostr-tools/pure.finalizeEvent()` on each unsigned event.
+4. The signer is held in the in-memory `SignerContext` for the life of the tab. It's never written to `localStorage`, `sessionStorage`, or a cookie.
+5. The NIP-98 event is signed locally and sent like the other methods.
 
-**Security:** Lowest. The key is exposed to the browser's JavaScript context. Vulnerable to:
-- Malicious browser extensions reading the DOM
-- XSS attacks (if any exist) could capture the key
-- User might accidentally paste in the wrong field
-
-The key is never sent to the server or stored in cookies/localStorage/sessionStorage — it's used only for the in-memory signing operation and then dereferenced.
-
-**When to use:** Users without extension or mobile app, testing, quick access from a device where they can't install anything. Common in the Nostr ecosystem despite the risks.
-
-**Dependencies:** Need a library for nsec decoding and Schnorr signing client-side. Options:
-- `@noble/secp256k1` — Lightweight, already standard in Nostr ecosystem
-- `nostr-tools` — Has `nip19.decode()` for nsec and `finalizeEvent()` for signing
+**Security**: the weakest of the three — the key is in the page's JS context, so a malicious extension or an XSS bug would expose it. The UI makes the risk explicit before the user can proceed (password input, reveal toggle, acknowledgement checkbox).
 
 ---
 
-## Login Modal Layout
+## Signin page layout
 
-```
-┌────────────────────────────────────────┐
-│              Sign in with Nostr        │
-│                                        │
-│  ┌──────────┬──────────┬────────────┐  │
-│  │Extension │ Scan QR  │ Paste nsec │  │
-│  └──────────┴──────────┴────────────┘  │
-│                                        │
-│  ┌──────────────────────────────────┐  │
-│  │                                  │  │
-│  │  (Content changes per tab)       │  │
-│  │                                  │  │
-│  └──────────────────────────────────┘  │
-│                                        │
-│  Don't have a Nostr account?           │
-│  Learn more about Nostr →              │
-│                                        │
-└────────────────────────────────────────┘
-```
-
-### Tab: Extension
-```
-┌──────────────────────────────────┐
-│                                  │
-│       ⚡ (bolt icon)             │
-│                                  │
-│  Use your Nostr browser          │
-│  extension to sign in.           │
-│                                  │
-│  [  Sign in with Extension  ]    │
-│                                  │
-│  ── or install one ──            │
-│  Alby · nos2x · Nostr Connect   │
-│                                  │
-└──────────────────────────────────┘
-```
-
-### Tab: Scan QR
-```
-┌──────────────────────────────────┐
-│                                  │
-│  Scan with your Nostr app:       │
-│                                  │
-│  ┌────────────────────────────┐  │
-│  │                            │  │
-│  │      ██████████████        │  │
-│  │      ██  QR CODE  ██       │  │
-│  │      ██████████████        │  │
-│  │                            │  │
-│  └────────────────────────────┘  │
-│                                  │
-│  Compatible: Amber · nsec.app   │
-│              Damus              │
-│                                  │
-│  Waiting for approval...         │
-│                                  │
-└──────────────────────────────────┘
-```
-
-### Tab: Paste nsec
-```
-┌──────────────────────────────────┐
-│                                  │
-│  ⚠ Not recommended              │
-│  Your private key will be used   │
-│  to sign a login event only.     │
-│  It will NOT be stored or sent   │
-│  to any server.                  │
-│                                  │
-│  nsec or hex private key:        │
-│  [••••••••••••••••••••••] 👁    │
-│                                  │
-│  ☐ I understand the risks        │
-│                                  │
-│  [       Sign in       ]         │
-│                                  │
-└──────────────────────────────────┘
-```
+`app/[locale]/(auth)/signin/signin-client.tsx` renders a single picker with three tabs (Extension / Bunker / Paste nsec) via `components/auth/SignerMethodButtons`. All three paths converge on `completeLoginWithSigner` in `lib/signer-context.tsx`, which handles the NIP-98 build + sign + POST.
 
 ---
 
-## Server-Side — No Changes Needed
+## Server-side code
 
-All three methods produce the same output: a **signed kind:22242 event**. The server doesn't know or care which method was used. The existing `POST /api/auth/nostr` endpoint works for all three.
-
-The difference is purely client-side:
-- Extension: `window.nostr.signEvent()`
-- NIP-46: Remote signer via relay
-- nsec: Local signing with `@noble/secp256k1` or `nostr-tools`
+- **Route**: `app/api/auth/nostr/route.ts` — POST only. There is **no GET round-trip** any more; the challenge cookie was deleted in PR #59.
+- **Validator**: `lib/nostr/verify.ts:validateNip98AuthEvent` — handles base64 decode, schema, signature, clock skew, and tag binding.
+- **Rate limit**: `lib/api/handler.ts` uses `lib/api/rate-limit.ts` to bound requests per IP (in-memory by default; swap for Upstash/KV in prod via the `RateLimitStore` interface).
+- **Session**: `lib/auth.ts:createSession` signs the JWT and sets the cookie via `next/headers`.
 
 ---
 
-## Dependencies to Add
+## Dependencies
 
-| Method | Library | Why |
-|--------|---------|-----|
-| Extension | (none, already works) | Uses `window.nostr` NIP-07 |
-| QR / NIP-46 | `nostr-tools` | NIP-46 remote signer protocol, relay communication |
-| Paste nsec | `nostr-tools` | `nip19.decode()` for nsec, `finalizeEvent()` for signing |
-| QR display | `qrcode.react` or similar | Render the nostrconnect:// URI as QR |
-
-`nostr-tools` covers both NIP-46 and nsec signing, so it's the only essential addition.
-
----
-
-## Implementation Priority
-
-1. **Extension** — Already done
-2. **Paste nsec** — Simpler to implement (client-side only, no relay coordination)
-3. **QR / NIP-46** — More complex (needs relay connection, polling, timeout handling), but best mobile UX
+- `nostr-tools` — `nip19`, `pure.finalizeEvent`, `pure.verifyEvent`, NIP-46 helpers.
+- `qrcode.react` — renders the `nostrconnect://` QR and is also used by the landing ZapModal for invoice fallback.
+- `jose` — HS256 JWT signing / verification.

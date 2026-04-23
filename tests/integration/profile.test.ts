@@ -2,6 +2,7 @@
  * @vitest-environment node
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { cleanDb, testDb } from "./setup";
 import { users } from "@/lib/db/schema";
@@ -27,8 +28,10 @@ vi.mock("@/lib/nostr/server-metadata", () => ({
   fetchNostrMetadataServer: (...args: unknown[]) => metadataMock(...args),
 }));
 
-// Shared cookie store mock — configurable per test (for reactivation flow
-// we need cookies().get("nostr_challenge") to return a value).
+// Shared cookie store mock — post-NIP-98 the reactivation flow
+// doesn't need a challenge cookie, but DELETE /api/profile still
+// calls `cookieStore.delete(SESSION_COOKIE_NAME)` so the mock has
+// to exist.
 const cookieStore = {
   _values: new Map<string, string>(),
   get: vi.fn((name: string) => {
@@ -46,18 +49,31 @@ vi.mock("next/headers", () => ({
   cookies: () => Promise.resolve(cookieStore),
 }));
 
-// Reactivation test needs validateAuthEvent to succeed without crypto.
+// Reactivation test needs the NIP-98 validator to succeed without
+// crypto. The route handler downstream reads `event.pubkey` and
+// `event.tags`, so the mock returns a minimal shape that satisfies
+// both reads.
 vi.mock("@/lib/nostr/verify", () => ({
-  validateAuthEvent: vi.fn(() => ({ ok: true, event: {} })),
+  validateNip98AuthEvent: vi.fn((input: unknown) => ({
+    ok: true,
+    event: {
+      pubkey: (input as { pubkey?: string })?.pubkey ?? "a".repeat(64),
+      tags: [],
+    },
+  })),
 }));
 
-// Reactivation test uses a stubbed createSession.
+// Reactivation test uses a stubbed createSession. We also re-export
+// SESSION_COOKIE_NAME: routes read it from this module to name the
+// session cookie, so omitting it here makes `cookieStore.delete`
+// get called with `undefined` and the profile DELETE path 500s.
 vi.mock("@/lib/auth", async () => {
   const { sessionRef } = await import("./helpers");
   return {
     getSession: vi.fn(() => Promise.resolve(sessionRef.current)),
     createSession: vi.fn(() => Promise.resolve("stub-token")),
     AuthSession: {},
+    SESSION_COOKIE_NAME: "session",
   };
 });
 
@@ -286,19 +302,28 @@ describe("Integration: Profile API", () => {
       expect(deleted.deleted_at).not.toBeNull();
       expect(deleted.display_name).toBe("[deleted]");
 
-      // 2. Simulate re-auth: challenge cookie + signed event.
-      cookieStore._values.set("nostr_challenge", "test-challenge");
-      // Background resync fires fire-and-forget inside the handler; it
-      // needs a resolved Promise even though the test doesn't assert on
-      // the eventual fields.
+      // 2. Simulate NIP-98 re-auth: signed event in the Authorization
+      // header (base64-encoded JSON). The validator is mocked to
+      // always return `{ ok: true, event: { pubkey, tags: [] } }`, so
+      // the payload only needs to carry the same pubkey — the
+      // reactivation path downstream reads `event.pubkey`.
+      // Resolve the relay metadata fetch to null so the awaited
+      // hydrate step short-circuits without stalling the test.
       metadataMock.mockResolvedValue(null);
-      // validateAuthEvent is mocked to always return true, so the event
-      // payload just needs to carry the same pubkey.
       const signedEvent = { pubkey: user.nostr_pubkey };
+      const authHeader = `Nostr ${Buffer.from(
+        JSON.stringify(signedEvent)
+      ).toString("base64")}`;
 
-      const res = await authRoute.POST(
-        buildRequest("POST", "/api/auth/nostr", { signedEvent })
-      );
+      const authUrl = new URL("/api/auth/nostr", "http://localhost:3000");
+      const authReq = new NextRequest(authUrl, {
+        method: "POST",
+        headers: {
+          Authorization: authHeader,
+          "x-forwarded-for": "127.0.0.1",
+        },
+      });
+      const res = await authRoute.POST(authReq);
       const { status, body } = await parseResponse(res);
 
       expect(status).toBe(200);

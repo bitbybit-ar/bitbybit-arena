@@ -186,8 +186,10 @@ export default function ExplorePage() {
 
   const sortDropdownOptions = [
     { value: "newest", label: t("newest") },
+    { value: "trending", label: t("trending") },
     { value: "ending_soon", label: t("endingSoon") },
     { value: "most_participants", label: t("mostParticipants") },
+    { value: "most_active", label: t("mostActive") },
   ];
 
   return (

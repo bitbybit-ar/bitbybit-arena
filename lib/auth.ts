@@ -2,11 +2,43 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { SignerType } from "@/lib/nostr/signers";
 
-const AUTH_SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-change-in-production"
-);
+// Fail loudly when AUTH_SECRET is unset in production. A silent dev
+// fallback would let a misconfigured deploy issue forgeable JWTs —
+// every visitor could craft a session for any user. In dev/test we
+// keep a deterministic fallback so contributors don't need to set
+// the env var to run the app or the test suite locally.
+function readAuthSecret(): Uint8Array {
+  const raw = process.env.AUTH_SECRET;
+  if (raw && raw.length > 0) {
+    return new TextEncoder().encode(raw);
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "AUTH_SECRET environment variable is required in production"
+    );
+  }
+  return new TextEncoder().encode("dev-secret-change-in-production");
+}
+
+const AUTH_SECRET = readAuthSecret();
 
 const SESSION_DURATION = "7d";
+
+/**
+ * Session cookie name. The `__Host-` prefix is enforced by the
+ * browser: the cookie is rejected unless it's marked Secure, has
+ * `Path=/`, and has no `Domain` attribute. That combo prevents
+ * subdomain cookie injection from any future `*.bitbybit.com.ar`
+ * sibling service. Renaming this constant invalidates every
+ * outstanding session — that's an acceptable one-shot cost for the
+ * security upgrade.
+ *
+ * In dev (`NODE_ENV !== "production"`), `__Host-` won't work because
+ * the cookie can't be Secure over plain HTTP. Fall back to a plain
+ * name so local dev keeps working.
+ */
+export const SESSION_COOKIE_NAME =
+  process.env.NODE_ENV === "production" ? "__Host-session" : "session";
 
 const VALID_SIGNER_TYPES: SignerType[] = ["extension", "nsec", "nip46"];
 
@@ -44,7 +76,7 @@ export async function createSession(session: SessionPayload): Promise<string> {
 
 export async function getSession(): Promise<AuthSession | null> {
   const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!token) return null;
 
   try {

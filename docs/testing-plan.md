@@ -1,41 +1,142 @@
-#2
----
+# Judge walkthrough
 
-## Part 11 — Walk around in both languages
+This is the hands-on guide for evaluating BitByBit Arena. Ten numbered steps, in order; each one is self-contained, names a visible button label, and — where relevant — tells you which Nostr event kind the app emits, so you can cross-check it on a relay explorer.
 
-Quick final pass: switch the language between Spanish and English and scan these pages for anything that looks broken (text not translated, buttons cut off, overlapping layouts):
+## Before you start
 
-- The landing page
-- The sign-in page (all three sign-in options)
-- The Explore page (with a filter active)
-- The Create Challenge form (all the fields)
-- One challenge detail page, signed in as the Creator
-- The same challenge detail page, signed in as the Participant
-- My Challenges (all three tabs)
-- Settings
+You need a Nostr identity. Any of the following works on `/signin`:
 
-Also check on a couple of challenge cards: dates and numbers should be formatted the way you'd expect for the current language (Spanish uses commas for decimals, dot for thousands; English is the opposite).
+- **Browser extension** — Alby, nos2x, Nostr Connect. Fastest if you already have one.
+- **Paste nsec** — a pasted `nsec1...` or hex private key. The key stays in the browser tab and is never sent to the server or stored in any cookie / localStorage.
+- **NIP-46 bunker** — scan the QR from Amber / nsec.app / Damus, or paste a `bunker://...` URL. The key stays on your mobile device.
+
+**WebLN is optional.** The landing "Zap the devs" flow and the challenge reward payout both accept a QR + invoice fallback (with NWC invoice polling) if `window.webln` isn't present. A judge without an extension can still complete the Lightning steps.
+
+**Locale.** The landing page is Spanish by default. To test in English, use the locale toggle in the navbar or visit `/en/...` directly. All screens are translated.
 
 ---
+
+## Step 1 — Sign in
+
+1. Go to `/signin` (or click **Sign in** from the navbar on `/`).
+2. Pick one of the three tabs: **Extension**, **Bunker**, **Paste nsec**.
+3. Sign the login event. Under the hood we build an unsigned **NIP-98 HTTP Auth** event (kind 27235) bound to `POST /api/auth/nostr`, the signer signs it, and it travels in `Authorization: Nostr <base64(event)>`. No challenge cookie, no password.
+4. You're redirected to `/explore` and a `__Host-session` cookie is set (plain `session` in dev).
+
+On first login the app creates a `users` row keyed by your Nostr pubkey and kicks off an async fetch for your kind:0 profile metadata.
+
+## Step 2 — Edit your profile
+
+1. Open **Settings** from the navbar.
+2. Click **Sync from relays** — the app fetches your kind:0 metadata from `relay.damus.io`, `relay.nostr.band`, `nos.lol`, `relay.primal.net` and pre-fills the form.
+3. Change a field (e.g. About) and click **Publish to Nostr** — a fresh signed kind:0 event ships to relays, preserving any fields Arena doesn't manage (`nip05`, `website`, `banner`, …).
+4. Toggle theme (light / dark) and language (ES / EN). Both persist.
+
+## Step 3 — Create a challenge
+
+1. From Explore click **Create challenge** → lands on `/create`.
+2. Fill title, description, start/end dates, and pick a **type**. The five types are: `one_time`, `streak`, `competition`, `race`, `creative`.
+3. Pick one or more **verification methods**:
+   - `creator_approval` — you review each submission manually.
+   - `automatic` — honour system, auto-approves on submit.
+   - `nostr_action` — participants prove by publishing a kind:7 reaction (like) to a note id you pin. Server auto-approves when it sees the like on relays.
+   - `nostr_hashtag` — participants prove by posting a kind:1 note with a `#t` hashtag you specify.
+4. Optional: set a prize (sats), a distribution rule (`first_to_complete` / `split` / `tiered` / `none`), a custom badge image (uploaded via Blossom), tags.
+5. Submit. The server writes the `challenges` row; the client signs and publishes a **kind:30100** challenge definition event. If you enabled a zap goal and a prize, a **kind:9041** NIP-75 event is published too.
+
+## Step 4 — Checkpointed challenge
+
+Repeat step 3 but toggle checkpoints on. Add 2–3 checkpoints, each with its own verification method.
+
+- **Sequential mode** — checkpoint N+1 is locked until N is approved. Try to complete #3 before #2 — the server should 409.
+- **Parallel mode** — any order.
+
+Completing every checkpoint flips the participant's status to `completed` even if the challenge has no `goal` / `unit`.
+
+## Step 5 — Explore
+
+1. Return to Explore. Search, filter by type, click a popular tag chip.
+2. Open the **Sort** dropdown. You should see five options: **Newest**, **Trending**, **Ending soon**, **Most participants**, **Most active**.
+   - *Trending* is `joins + 2 × completions` over the last 7 days. Completions weigh double because actually doing the thing is a stronger signal than joining.
+3. If you follow other Nostr users (kind:3), their challenges float to the top automatically. Toggle **Only following** to filter to just them.
+
+## Step 6 — Join a challenge
+
+1. Open any challenge detail page.
+2. Click **Join**. The server inserts a `participants` row; the client publishes a **kind:7100** challenge-join event with an `a`-tag referencing the challenge's 30100 event.
+3. Verify you can **Leave** and re-join without data loss.
+
+## Step 7 — Submit a proof
+
+Two paths, depending on the challenge's verification method:
+
+**Text / image path** (for `creator_approval` or `automatic`):
+1. On the challenge detail page, click **Submit proof**.
+2. Type a description; optionally attach an image. Images upload via Blossom (content-addressed, BUD-01/02) — the client hashes the file, signs a short-lived kind:24242 auth event, and `PUT`s to `NEXT_PUBLIC_BLOSSOM_SERVER` (defaults to `https://blossom.primal.net`).
+3. Submit. The client publishes a **kind:7101** completion event with a NIP-92 `imeta` tag carrying the sha256 if an image was attached.
+
+**Nostr-action path** (for `nostr_action`):
+1. Don't submit in the app. Open your preferred Nostr client (Damus, Primal, iris, …) and **like the target note** the creator pinned.
+2. Come back to Arena and click **Verify my like on Nostr**.
+3. The server fetches kind:7 reactions from your pubkey pointing at the target event id, verifies the signature, and auto-approves the completion. No creator review needed.
+
+**Hashtag path** (for `nostr_hashtag`):
+1. Publish a kind:1 note from any Nostr client with the challenge's `#t` hashtag.
+2. Submit in the app; the server finds the note on relays and auto-approves.
+
+## Step 8 — Creator approval + badges
+
+As the challenge creator:
+
+1. Go to **My Challenges → Created**, open the challenge.
+2. Approve or reject pending completions. Approval bumps `participants.progress`; if progress hits the goal, status flips to `completed`.
+3. Click **Award badges**, pick the winners. The client publishes:
+   - **kind:30009** (NIP-58 badge definition), lazy-published on first award if it wasn't emitted at challenge creation.
+   - One **kind:8** (badge award) per recipient, `a`-tagging the 30009 event.
+4. The server records the `kind:8` event ids on the `badges` rows via `PATCH /api/challenges/[id]/award`.
+
+As a recipient:
+
+1. Go to **My Challenges → Achievements**. You'll see the new badge.
+2. Click **Accept on Nostr**. The client builds a **kind:30008** profile-badges event that merges the new `(a, e)` tag pair with whatever was already on your profile, so older badges from other apps aren't clobbered.
+
+## Step 9 — Lightning rewards
+
+As the creator of a challenge with `prize_amount_sats > 0`:
+
+1. Once there's ≥1 completed participant, click **Distribute rewards**.
+2. The server (`POST /api/challenges/[id]/reward`) computes the winners list per the challenge's `prize_distribution` rule:
+   - `first_to_complete` — earliest completer gets 100%.
+   - `split` — equal split; remainder to the first completer.
+   - `tiered` — top 3 get 50 / 30 / 20 %, renormalised if fewer than 3.
+   - If the creator themselves would win a share, it's marked `retained` and not paid out (the creator keeps their own sats).
+3. For each payable winner the client builds a **kind:9734** NIP-57 zap request, signs it, resolves the recipient's `lud16`, fetches a BOLT11 invoice via LNURL-pay, and pays it:
+   - If `window.webln` is present → `webln.sendPayment(invoice)` — silent.
+   - Otherwise → a modal renders a QR of the invoice, a "Copy invoice" button, and polls `/api/zap/status` (which uses NWC) until the invoice settles, then advances to the next winner.
+4. After the last winner, the server PATCH flips `rewards_paid_at` and the client publishes a **kind:30101** challenge result event with winner / completer / stats tags.
+
+Verify the kind:30101 event on a relay explorer (e.g. `https://njump.me/<event-id>`) — it's the public record of who won.
+
+## Step 10 — My Challenges
+
+1. Visit `/my-challenges`. Three tabs: **Joined**, **Created**, **Achievements**.
+2. Create a second account (another browser, a different nsec), join the same challenge, confirm rows land in that account's **Joined** tab and not the first account's.
+3. Accept a badge from the **Achievements** tab — verify the kind:30008 event merges cleanly.
+
+---
+
+## Language pass
+
+Quick final check: switch between Spanish and English and glance at:
+
+- Landing (`/`), Sign-in, Explore (with a filter active), Create, one Challenge detail page, My Challenges, Settings.
+- Number / date formatting on challenge cards — Spanish uses comma for decimals and dot for thousands, English the opposite.
+
+## Known deferrals
+
+- **Community voting** — the original concept included participant-voted approvals. We shipped creator_approval + automatic + nostr_action + nostr_hashtag for MVP and deferred community voting. The API explicitly rejects a `community_vote` value if any client tries to set one.
+- **Notifications** — the `notifications` table exists in the schema; the UI and API routes that populate it are in-flight in a separate branch.
 
 ## What you've covered
 
-By the end of this walkthrough you will have touched every major feature of the app:
-
-- **Sign-in** — browser extension, create account, paste secret code, (optional) mobile signer.
-- **Profile** — edit, sync from Nostr, publish to Nostr, change theme, change language.
-- **Create challenge** — all five challenge types (one-time, streak, competition, race, creative), all four verification methods (creator approval, automatic, Nostr hashtag, Nostr action), sequential and parallel multi-step challenges, prizes, badges, tags, end dates.
-- **Explore** — grid, search, filter by type, filter by tag, three sort orders, popular tags, empty state.
-- **Challenge detail** — join, leave, rejoin, submit text proof, submit photo proof, complete checkpoints in order, complete checkpoints in any order, automatic approval, creator approval/rejection, edit a challenge, delete a challenge, **creator joins their own challenge with warning**, **creator_approval proofs self-approve for the creator**.
-- **Badges** — creator awards a badge, publishes it to Nostr, participant sees it in their Achievements and accepts it to their Nostr profile.
-- **Rewards** — creator distributes a Lightning prize; winner-takes-all and tiered split; **retained shares when the creator wins their own prize**.
-- **My Challenges** — Joined, Created, and Achievements tabs, each with correct data for each account.
-
----
-
-## Things to flag to the development team
-
-These are small issues I noticed while planning this walkthrough. You don't need to test them — just mention them back when you're done:
-
-1. The Explore page offers **Newest**, **Ending Soon**, and **Most Participants** as sort options, but the backend also knows how to sort by **"Trending"** (based on recent joins and completions). It would be nice to expose that as a fourth option in the sort menu.
-2. The Lightning donation flow on the landing page uses a payment-status checker, but the challenge reward flow doesn't. If a prize payment is slow to settle, there's no automatic "is it paid yet?" polling on the challenge page. Something to consider.
+By the end of the ten steps you'll have exercised: all three sign-in methods, profile sync + publish, all five challenge types, all four verification methods, sequential and parallel checkpoints, text and image proofs, Blossom uploads, creator approval, NIP-58 badge award + accept, NIP-57 Lightning payout (with QR fallback), NIP-75 zap goal publishing, NIP-02 follow-boosted discovery, and `/api/zap/status` NWC polling.
