@@ -109,7 +109,7 @@ This step has two parts — a supporter funding the pot (any logged-in user) and
 
 The `npm run seed` script provisions a ready-to-payout challenge titled **"Demo: Tiered Prize Payout"** owned by the real user. Three mock participants are already `completed` with staggered `completed_at` timestamps so the tiered 50/30/20 split is deterministic. Sign in as the real user, open that challenge, and jump straight to "Distribute rewards" without walking through join + proof + approve first.
 
-All seeded mock users share a `lightning_address` of `devs@bitbybit.com.ar`, so the payout loop resolves a real LNURL endpoint end to end. Any sats the judge actually sends route to the project wallet.
+All seeded mock users share whatever `lightning_address` is in `NEXT_PUBLIC_ZAP_LIGHTNING_ADDRESS` (the same env var the landing "Zap the devs" flow uses), so the payout loop resolves a real LNURL endpoint end to end. Any sats the judge actually sends route to that wallet. If the env var is unset, the seeder logs a warning and the payout step 400s with "Winner X has no lightning address on their Nostr profile".
 
 ### QR fallback requires NWC
 

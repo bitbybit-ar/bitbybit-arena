@@ -19,12 +19,14 @@ const MOCK_PREFIX = "mock-";
 
 // Every seeded mock gets this lud16 so the payout flow (POST /reward)
 // can resolve a Lightning address and the "Distribute rewards" loop
-// actually works against seed data. It's intentionally a real address
-// that belongs to the devs — if a judge actually completes the payout
-// during testing, the sats end up in the project wallet rather than
-// disappearing into a placeholder. Kept identical across mocks because
-// LNURL-pay doesn't support subaddressing (`user+tag@domain`).
-const MOCK_LUD16 = "devs@bitbybit.com.ar";
+// actually works against seed data. We reuse NEXT_PUBLIC_ZAP_LIGHTNING_
+// ADDRESS (already required by the landing "Zap the devs" flow) so there
+// is exactly one place to configure the project's receive address —
+// set it in `.env.local` to a real lud16 you control and any payout the
+// judges trigger against the seeded mocks lands in that wallet. Kept
+// identical across mocks because LNURL-pay doesn't support subaddressing
+// (`user+tag@domain`).
+const MOCK_LUD16 = process.env.NEXT_PUBLIC_ZAP_LIGHTNING_ADDRESS ?? null;
 
 type MockUser = {
   pubkey: string;
@@ -422,6 +424,12 @@ const MOCK_CHALLENGES: MockChallenge[] = [
 
 async function main() {
   const db = getDb();
+
+  if (!MOCK_LUD16) {
+    console.warn(
+      "[seed] NEXT_PUBLIC_ZAP_LIGHTNING_ADDRESS is unset — mock users will have no lightning_address, and POST /api/challenges/[id]/reward will 400 on the demo payout challenge. Set it in .env.local to a real lud16 you control."
+    );
+  }
 
   console.log("Wiping prior mock rows");
   const existingUsers = await db
