@@ -69,22 +69,24 @@ export default function SettingsPage() {
   const handleToggleNotifPref = async (type: NotificationType) => {
     // Default (missing key) is enabled. Flip to the opposite of that.
     const currentlyEnabled = notifPrefs[type] !== false;
-    const next: NotificationPrefs = { ...notifPrefs, [type]: !currentlyEnabled };
-    setNotifPrefs(next);
+    const nextValue = !currentlyEnabled;
+    setNotifPrefs((prev) => ({ ...prev, [type]: nextValue }));
     try {
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          notification_prefs: { [type]: !currentlyEnabled },
+          notification_prefs: { [type]: nextValue },
         }),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error);
       if (json.data) applyProfile(json.data);
     } catch {
-      // Revert the optimistic flip on failure.
-      setNotifPrefs(notifPrefs);
+      // Revert only this key — if the user flipped another toggle in
+      // parallel, snapshotting the whole map here would clobber that
+      // one too.
+      setNotifPrefs((prev) => ({ ...prev, [type]: currentlyEnabled }));
       showToast(t("notifications.saveFailed"), "error");
     }
   };

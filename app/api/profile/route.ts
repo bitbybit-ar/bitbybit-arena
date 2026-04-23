@@ -26,14 +26,14 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db }) => {
   // client to have to send the full object every time they flip one
   // toggle, otherwise concurrent tabs race and stomp each other. Merge
   // with whatever's currently on the row.
-  let merged_prefs: Record<string, boolean> | undefined;
+  let mergedPrefs: Record<string, boolean> | undefined;
   if (body.notification_prefs) {
     const [current] = await db
       .select({ prefs: users.notification_prefs })
       .from(users)
       .where(eq(users.id, session!.user_id))
       .limit(1);
-    merged_prefs = { ...(current?.prefs ?? {}), ...body.notification_prefs };
+    mergedPrefs = { ...(current?.prefs ?? {}), ...body.notification_prefs };
   }
 
   const { notification_prefs: _ignored, ...rest } = body;
@@ -42,7 +42,7 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db }) => {
     .update(users)
     .set({
       ...rest,
-      ...(merged_prefs ? { notification_prefs: merged_prefs } : {}),
+      ...(mergedPrefs ? { notification_prefs: mergedPrefs } : {}),
       updated_at: new Date(),
     })
     .where(eq(users.id, session!.user_id))
