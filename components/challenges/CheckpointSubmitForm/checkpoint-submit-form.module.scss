@@ -1,0 +1,86 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+  margin-top: $spacing-4;
+}
+
+.proofInput {
+  width: 100%;
+  padding: $spacing-12 $spacing-16;
+  border-radius: $border-radius-md;
+  border: 1px solid $color-border;
+  background: alpha($color-text-primary, 4%);
+  color: $color-text-primary;
+  font-size: $font-size-base;
+  font-family: $font-body;
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+  @include transition;
+
+  &:focus {
+    border-color: $color-primary;
+    box-shadow: 0 0 0 2px alpha($color-primary, 15%);
+  }
+
+  &::placeholder {
+    color: $color-text-secondary;
+    opacity: 0.5;
+  }
+}
+
+.inline {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+
+  @include tabletAndUp {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: $spacing-16;
+  }
+}
+
+.upload {
+  flex: 1;
+  min-width: 0;
+}
+
+.submit {
+  align-self: stretch;
+
+  @include tabletAndUp {
+    align-self: flex-start;
+    flex-shrink: 0;
+  }
+}
+
+.targetEventId {
+  font-family: monospace;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  word-break: break-all;
+  margin: $spacing-8 0;
+
+  a {
+    color: $color-primary;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.error {
+  color: $color-error;
+  font-size: $font-size-sm;
+  margin-top: $spacing-8;
+}

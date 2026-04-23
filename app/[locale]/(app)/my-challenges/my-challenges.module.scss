@@ -94,48 +94,11 @@
   font-weight: $font-weight-medium;
 }
 
-.checkpointProgress {
-  display: flex;
-  align-items: center;
-  gap: $spacing-8;
+// Wrapper that places <CheckpointProgress> below the card meta row
+// with a consistent gap. Dots + text + pending pill all come from the
+// component itself.
+.progressRow {
   margin-top: $spacing-8;
-  flex-wrap: wrap;
-}
-
-.checkpointDots {
-  display: flex;
-  gap: 4px;
-}
-
-@mixin checkpoint-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: $border-radius-full;
-}
-
-.checkpointDotDone {
-  @include checkpoint-dot;
-  background: $color-accent-alt;
-}
-
-.checkpointDotPending {
-  @include checkpoint-dot;
-  background: $color-secondary;
-}
-
-.checkpointDotTodo {
-  @include checkpoint-dot;
-  background: alpha($color-text-secondary, 25%);
-}
-
-.checkpointProgressText {
-  font-size: $font-size-xs;
-  color: $color-text-secondary;
-}
-
-.checkpointPending {
-  color: $color-secondary;
 }
 
 .achievementGrid {

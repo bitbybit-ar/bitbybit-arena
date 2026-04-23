@@ -1,0 +1,52 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.wrapper {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  flex-wrap: wrap;
+}
+
+.dots {
+  display: flex;
+  gap: 4px;
+}
+
+@mixin dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: $border-radius-full;
+}
+
+.dotDone {
+  @include dot;
+  background: $color-accent-alt;
+}
+
+.dotPending {
+  @include dot;
+  background: $color-secondary;
+}
+
+.dotTodo {
+  @include dot;
+  background: alpha($color-text-secondary, 25%);
+}
+
+.text {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.pending {
+  color: $color-secondary;
+}
+
+.compact {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+}

@@ -47,12 +47,43 @@ On first login the app creates a `users` row keyed by your Nostr pubkey and kick
 
 ## Step 4 — Checkpointed challenge
 
-Repeat step 3 but toggle checkpoints on. Add 2–3 checkpoints, each with its own verification method.
+Repeat step 3 but toggle checkpoints on. Add 2–3 checkpoints, each with its own verification method. Full design + state machine in [checkpoints.md](checkpoints.md).
 
-- **Sequential mode** — checkpoint N+1 is locked until N is approved. Try to complete #3 before #2 — the server should 409.
+- **Sequential mode** — checkpoint N+1 is locked until N is approved. Try to complete #3 before #2 — the server should 400.
 - **Parallel mode** — any order.
 
 Completing every checkpoint flips the participant's status to `completed` even if the challenge has no `goal` / `unit`.
+
+### Creator-approval flow (end-to-end)
+
+Use two accounts: the **creator** and the **participant**.
+
+1. As the creator, make a **2-step challenge** with `checkpoint_mode: "sequential"` and `verification_methods: ["creator_approval"]` on both checkpoints.
+2. Log out and log back in as the participant. Join the challenge.
+3. Submit step 1 — type a 5-char description **or** attach a photo (or both). The card should flip to an **"In review"** gold badge and hide the submit form. The creator gets a `checkpoint_submitted` notification.
+4. Try to submit step 2. The server returns 400 ("complete the previous checkpoint before this one") and the card shows the locked red hint.
+5. Switch back to the creator. The challenge detail page now shows a **"Checkpoint proofs to review"** section above the participant's checkpoint list. Click **Approve**.
+   - Participant progress bumps to `1/2`. The participant's `my-challenges` card updates on next poll.
+   - Step 1 flips to the **Completed** green badge; step 2 unlocks.
+   - Participant gets a `checkpoint_verified` notification, metadata `status=approved`.
+6. As the participant, submit step 2. Approve it as the creator. The participant's `participants.status` flips to `completed` and `completed_at` is set — verify with either the badge-award UI or a quick DB check.
+
+### Rejection retry
+
+Starting from a clean state (new test challenge + account):
+
+1. Participant submits step 1 with a deliberately weak proof.
+2. Creator clicks **Reject**.
+3. Participant reloads — the card shows the **Rejected** red badge and the "edit your response and submit again" hint. The submit form is back, pre-filled for retry.
+4. Submit a better proof. Confirm exactly **one** row exists in `checkpoint_completions` for this (participant, checkpoint) — the retry updates the existing row, it doesn't insert a second one (unique index would block it anyway).
+5. Creator approves. Progress advances normally.
+
+### my-challenges progress indicator
+
+With the participant account from above:
+
+1. Open `/my-challenges` (Joined tab). The card for the checkpointed challenge shows a dot-per-step indicator (green/gold/muted) plus `"X/Y checkpoints"` text. If a submission is pending, a `" · N in review"` suffix appears.
+2. With more than 20 joined challenges across the account, confirm **Load more** paginates correctly via the per-tab cursor.
 
 ## Step 5 — Explore
 
