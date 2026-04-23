@@ -109,10 +109,10 @@ This step has two parts — a supporter funding the pot (any logged-in user) and
 
 `npm run db:seed` provisions a ready-to-payout challenge titled **"Demo: Tiered Prize Payout"**. Three mock participants are already `completed` with staggered `completed_at` timestamps so the tiered 50/30/20 split is deterministic — a judge can open the challenge as its creator and jump straight to "Distribute rewards" without walking through join + proof + approve first.
 
-Two env vars control who owns the demo challenge and where winner payouts route:
+Two env vars control who owns the demo challenge and where winner payouts route — both live in `.env.local` (see `.env.example`):
 
-- **`SEED_OWNER_PUBKEY`** — set this in `.env.local` to your own Nostr pubkey before seeding (bech32 `npub1…` or raw 64-character hex both work). The demo challenges land under this pubkey, so when you log in with the same identity you see the creator view and the "Distribute rewards" button appears. If unset, the seed falls back to Analia's pubkey — you would need her nsec to test the creator flow, which you won't have.
-- **`NEXT_PUBLIC_ZAP_LIGHTNING_ADDRESS`** — every mock's `lightning_address` is set to this value, so the payout loop resolves a real LNURL endpoint end to end. Any sats the judge actually sends route to that wallet. The landing "Zap the devs" flow already requires this env var, so it's one place to configure the project's receive address. If unset, the seeder logs a warning and the payout step 400s with "Winner X has no lightning address on their Nostr profile".
+- **`SEED_OWNER_PUBKEY`** — required. Set it to your own Nostr pubkey before seeding (bech32 `npub1…` or raw 64-character hex both work). The demo challenges land under this pubkey, so when you log in with the same identity you see the creator view and the "Distribute rewards" button appears. The seeder refuses to run when this is unset so nobody ends up owning a demo challenge by accident.
+- **`NEXT_PUBLIC_ZAP_LIGHTNING_ADDRESS`** — required for the payout loop. Every mock's `lightning_address` is set to this value, so LNURL-pay resolves end to end and sats the judge actually sends route to whatever wallet the address points at. The landing "Zap the devs" flow also reads this env var, so there is a single place to configure a project receive address. If unset, the seeder logs a warning and the payout step 400s with "Winner X has no lightning address on their Nostr profile".
 
 ### QR fallback requires NWC
 

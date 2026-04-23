@@ -40,7 +40,7 @@ Set these in **Project Settings → Environment Variables**:
 | `DATABASE_URL` | Neon `main` branch URL | Neon `dev` branch URL |
 | `AUTH_SECRET` | `openssl rand -base64 32` | Different random value |
 | `NEXT_PUBLIC_BASE_URL` | `https://arena.bitbybit.com.ar` | _(leave empty — Vercel auto-sets)_ |
-| `NEXT_PUBLIC_ZAP_LIGHTNING_ADDRESS` | `devs@bitbybit.com.ar` | `devs@bitbybit.com.ar` |
+| `NEXT_PUBLIC_ZAP_LIGHTNING_ADDRESS` | A lud16 you control (e.g. from Alby, Primal, Mutiny) | Same as production, or a separate test address |
 
 > Set each variable's **Environment** scope (Production / Preview) individually in the Vercel UI.
 

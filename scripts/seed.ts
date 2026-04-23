@@ -37,30 +37,24 @@ type MockUser = {
   avatar: string;
 };
 
-// The "owner" of the seeded demo challenges — configurable per
-// environment so anyone (a judge, a collaborator, CI) can seed their
-// own database and then log in as that pubkey to see themselves as
-// creator of the demo prize-payout challenge.
+// The "owner" of the seeded demo challenges. Required — the seed
+// refuses to run without `SEED_OWNER_PUBKEY` set, because silently
+// falling back to a hardcoded pubkey would mean a judge who ran the
+// seed couldn't see themselves as creator of the demo challenge and
+// the creator payout flow would be ungated for the wrong identity.
 //
-// Resolution order:
-//   1. `SEED_OWNER_PUBKEY` env var — accepted as either bech32
-//      `npub1…` or raw 64-char hex.
-//   2. Default to Analia's pubkey (the original hardcoded value) so
-//      the seed still works unchanged in Analia's local and CI envs
-//      without any setup.
-//
-// Whoever owns this pubkey should also be the one logging in to test
-// the payout flow — the server gates "Distribute rewards" on
-// `creator_id === session.user_id`, so a judge signed in as a
-// different identity sees the challenge as a participant, not as
-// the creator.
-const DEFAULT_OWNER_PUBKEY =
-  "507fc20a0a9c6c661b4b3a600ef4f2545359fa0425689991f8edebae74c0dd02";
-const REAL_USER_PUBKEY = resolveOwnerPubkey(process.env.SEED_OWNER_PUBKEY);
+// The env var accepts either a bech32 `npub1…` or a raw 64-character
+// hex pubkey. Whoever owns this pubkey should also be the identity
+// used to log in for testing — the server gates "Distribute rewards"
+// on `creator_id === session.user_id`.
 const REAL_USER_KEY = "__real__";
 
 function resolveOwnerPubkey(raw: string | undefined): string {
-  if (!raw || raw.trim().length === 0) return DEFAULT_OWNER_PUBKEY;
+  if (!raw || raw.trim().length === 0) {
+    throw new Error(
+      "SEED_OWNER_PUBKEY is required. Set it in .env.local to your own Nostr pubkey (bech32 npub1… or 64-character hex) before running `npm run db:seed`."
+    );
+  }
   const trimmed = raw.trim();
   if (trimmed.startsWith("npub1")) {
     try {
@@ -464,11 +458,12 @@ const MOCK_CHALLENGES: MockChallenge[] = [
 async function main() {
   const db = getDb();
 
-  const ownerSource = process.env.SEED_OWNER_PUBKEY
-    ? "SEED_OWNER_PUBKEY"
-    : "default (Analia)";
+  // Resolve the owner pubkey inside `main` (not at module load) so
+  // the "env var required" error fires as a normal script error
+  // during `npm run db:seed` rather than at import time.
+  const ownerPubkey = resolveOwnerPubkey(process.env.SEED_OWNER_PUBKEY);
   console.log(
-    `[seed] Demo challenges will be owned by ${REAL_USER_PUBKEY} (${ownerSource}). Log in as this pubkey to test the creator payout flow.`
+    `[seed] Demo challenges will be owned by ${ownerPubkey}. Log in with this pubkey to test the creator payout flow.`
   );
 
   if (!MOCK_LUD16) {
@@ -537,28 +532,24 @@ async function main() {
     )
     .returning();
 
-  // Find-or-create the owner user (by pubkey, so if the account already exists
-  // from a prior login we reuse that row instead of conflicting). Only the
-  // placeholder display_name + username carry Analia-specific branding when
-  // the pubkey matches the default — a custom SEED_OWNER_PUBKEY gets a
-  // neutral stub that the owner can replace by editing their profile after
-  // their first login.
+  // Find-or-create the owner user (by pubkey, so if the account
+  // already exists from a prior login we reuse that row instead of
+  // conflicting). A fresh account gets a neutral placeholder
+  // display_name + username that the owner replaces by editing their
+  // profile after their first login.
   const [existingReal] = await db
     .select()
     .from(users)
-    .where(eq(users.nostr_pubkey, REAL_USER_PUBKEY));
-  const isDefaultOwner = REAL_USER_PUBKEY === DEFAULT_OWNER_PUBKEY;
+    .where(eq(users.nostr_pubkey, ownerPubkey));
   const realUser =
     existingReal ??
     (
       await db
         .insert(users)
         .values({
-          nostr_pubkey: REAL_USER_PUBKEY,
-          username: isDefaultOwner
-            ? `analia-${REAL_USER_PUBKEY.slice(0, 6)}`
-            : `owner-${REAL_USER_PUBKEY.slice(0, 6)}`,
-          display_name: isDefaultOwner ? "Analia" : "Demo Owner",
+          nostr_pubkey: ownerPubkey,
+          username: `owner-${ownerPubkey.slice(0, 6)}`,
+          display_name: "Demo Owner",
           locale: "es",
         })
         .returning()
