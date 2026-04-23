@@ -101,9 +101,30 @@ As a recipient:
 1. Go to **My Challenges → Achievements**. You'll see the new badge.
 2. Click **Accept on Nostr**. The client builds a **kind:30008** profile-badges event that merges the new `(a, e)` tag pair with whatever was already on your profile, so older badges from other apps aren't clobbered.
 
-## Step 9 — Lightning rewards
+## Step 9 — Lightning: funding and rewards
 
-As the creator of a challenge with `prize_amount_sats > 0`:
+This step has two parts — a supporter funding the pot (any logged-in user) and the creator paying out winners.
+
+### Before you start — fast path for the payout loop
+
+The `npm run seed` script provisions a ready-to-payout challenge titled **"Demo: Tiered Prize Payout"** owned by the real user. Three mock participants are already `completed` with staggered `completed_at` timestamps so the tiered 50/30/20 split is deterministic. Sign in as the real user, open that challenge, and jump straight to "Distribute rewards" without walking through join + proof + approve first.
+
+All seeded mock users share a `lightning_address` of `devs@bitbybit.com.ar`, so the payout loop resolves a real LNURL endpoint end to end. Any sats the judge actually sends route to the project wallet.
+
+### QR fallback requires NWC
+
+The QR-fallback modal polls `POST /api/zap/status`, which uses Nostr Wallet Connect via the `@getalby/sdk` client. If `NWC_CONNECTION_URL` isn't set in `.env.local`, the endpoint returns `{paid: false}` forever and the modal never advances — you'd need to pay the invoice in any wallet and refresh the page manually.
+
+`.env.example` documents the env var. For the QR path to auto-advance during testing, point `NWC_CONNECTION_URL` at any NWC-capable wallet (Alby, Primal, Mutiny). When running with a WebLN-capable browser extension, NWC isn't needed and the modal never renders in the first place.
+
+### Fund the pot (any logged-in user)
+
+1. Open any challenge with a prize.
+2. Click **Fund this pot** (or "Be the first to fund it" on an empty pot). The `FundPotModal` opens with preset amount chips, a custom-sats input, and an optional message.
+3. Pick an amount, optionally type a message, click **Fund**. The client signs a **kind:9734** NIP-57 zap request that `e`-tags the `kind:9041` zap goal event id and `p`-tags the creator, resolves the creator's `lud16`, and fetches a BOLT11 invoice with the signed zap request attached. WebLN pays silently; the QR fallback kicks in otherwise.
+4. Within a few seconds the `ZapGoalProgress` panel ticks up live (relay subscription to kind:9735 with `#e=<goal event id>`). Your avatar and message appear in the "Recent zappers" list without a page reload.
+
+### Distribute rewards (creator only)
 
 1. Once there's ≥1 completed participant, click **Distribute rewards**.
 2. The server (`POST /api/challenges/[id]/reward`) computes the winners list per the challenge's `prize_distribution` rule:
@@ -111,12 +132,11 @@ As the creator of a challenge with `prize_amount_sats > 0`:
    - `split` — equal split; remainder to the first completer.
    - `tiered` — top 3 get 50 / 30 / 20 %, renormalised if fewer than 3.
    - If the creator themselves would win a share, it's marked `retained` and not paid out (the creator keeps their own sats).
-3. For each payable winner the client builds a **kind:9734** NIP-57 zap request, signs it, resolves the recipient's `lud16`, fetches a BOLT11 invoice via LNURL-pay, and pays it:
-   - If `window.webln` is present → `webln.sendPayment(invoice)` — silent.
-   - Otherwise → a modal renders a QR of the invoice, a "Copy invoice" button, and polls `/api/zap/status` (which uses NWC) until the invoice settles, then advances to the next winner.
-4. After the last winner, the server PATCH flips `rewards_paid_at` and the client publishes a **kind:30101** challenge result event with winner / completer / stats tags.
+3. For each payable winner the client builds a **kind:9734** NIP-57 zap request, signs it, resolves the recipient's `lud16`, fetches a BOLT11 invoice via LNURL-pay, and pays it via WebLN or the QR + NWC-polling fallback.
+4. After the last winner, the client `PATCH`es `/api/challenges/[id]/reward` with `{all_winners_paid: true}` — the server **only** stamps `rewards_paid_at` when that flag is present, so the challenge can never flip into the "paid" state without the creator explicitly completing the loop.
+5. The client publishes a **kind:30101** Challenge Result event with winner / completer / stats tags.
 
-Verify the kind:30101 event on a relay explorer (e.g. `https://njump.me/<event-id>`) — it's the public record of who won.
+Verify the kind:30101 event on a relay explorer (e.g. `https://njump.me/<event-id>`) — it's the public record of who won. Verify the kind:9735 receipts for funding zaps in the same way to see the pot's full funding history on Nostr.
 
 ## Step 10 — My Challenges
 

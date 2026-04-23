@@ -129,7 +129,7 @@ Creating a challenge and its checkpoints in one request is atomic via `db.batch(
 
 ### Funding: NIP-75 Zap Goals
 
-When a creator sets `prize_amount_sats > 0`, they can optionally toggle **"Publish Zap Goal on Nostr"**. On challenge create, the client:
+When a creator sets `prize_amount_sats > 0`, the client **automatically** publishes a kind 9041 Zap Goal (no opt-in toggle — without it, supporters have nothing to zap). On challenge create, `CreateChallengeForm`:
 
 1. Builds a kind 9041 event via `buildZapGoalEvent`:
    ```json
@@ -146,63 +146,95 @@ When a creator sets `prize_amount_sats > 0`, they can optionally toggle **"Publi
    ```
 2. Signs it via `useSignerContext().signWithPrompt`.
 3. Publishes it to `DEFAULT_RELAYS`.
-4. PUTs the returned event id back to `/api/challenges/[id]` so the DB tracks the goal.
+4. `PUT`s the returned event id back to `/api/challenges/[id]` so the DB tracks the goal.
 
-Supporters can then zap the goal event directly from any NIP-57 client to grow the pot.
+If step 2 or 3 fails (signer rejected, relay outage), the challenge is still created but `zap_goal_event_id` stays null. The creator sees a **"Republish zap goal"** button on the challenge detail page that re-runs steps 1–4 via `handleRepublishZapGoal` in `challenge-client.tsx`.
+
+#### Supporter funding loop
+
+Any logged-in user on the challenge detail page can click **"Fund this pot"** (or "Be the first to fund it" when the pot is empty). The `FundPotModal` runs the same state machine as a zap on a completion:
+
+1. Builds a kind:9734 zap request that `e`-tags `zap_goal_event_id` and `p`-tags the creator.
+2. Signs it with the active signer.
+3. Resolves the creator's `lud16` to its LNURL-pay callback.
+4. Fetches a BOLT11 invoice with the signed zap request attached as the `nostr` query param.
+5. Pays via `window.webln.sendPayment` if available, or renders a QR + polls `/api/zap/status` (NWC-backed) until settled.
+
+The LNURL provider emits a kind:9735 receipt that `e`-tags the goal event id. Arena aggregates receipts two ways:
+
+- **Server**: `GET /api/challenges/[id]/zap-goal-progress` fetches all kind:9735 with `#e = zap_goal_event_id` from `DEFAULT_RELAYS`, sums amounts parsed out of the embedded requests' `description` tags, and caches the rollup for 45s. Used by Explore cards (`ZapGoalBar`) to render a compact progress bar per card.
+- **Client live**: `useZapGoalProgress` opens a long-lived `REQ` per relay on the detail page. New receipts dedupe by receipt id and tick the `ZapGoalProgress` panel (raised/goal sats, zapper count, 8 most recent zappers with avatars + messages) in real time without a reload.
 
 ### Payout: NIP-57 kind 9734
 
-The creator picks `reward_zap_mode` per challenge:
+The creator picks `prize_distribution` per challenge (source of truth is the column of the same name on `challenges`):
 
-| Mode | Winners | Split |
+| Value | Winners | Split |
 |---|---|---|
 | `first_to_complete` | Single earliest completer | 100% to winner |
 | `split` | All completers | Equal, rounding remainder to first place |
 | `tiered` | Top 3 by completion time | 50% / 30% / 20% (renormalized if <3 completers) |
+| `none` | — | Badge-only challenge; payout route rejects with 400 |
 
-Clicking **"Pay winners"** on the detail page runs this client-side loop:
+Clicking **"Distribute rewards"** on the detail page runs this client-side loop:
 
-1. `POST /api/challenges/[id]/reward` — server computes the winner list from `reward_zap_mode`, loads each winner's `lud16` from the `users` row (falling back to a parallel kind:0 metadata fetch from relays), and returns:
+1. `POST /api/challenges/[id]/reward` — server computes the winner list from `prize_distribution`, loads each winner's `lud16` from the `users` row (falling back to a parallel kind:0 metadata fetch from relays), and returns:
    ```json
    {
      "winners": [
-       { "user_id": "…", "nostr_pubkey": "…", "lightning_address": "…@getalby.com", "amount_sats": 1500 },
+       { "user_id": "…", "nostr_pubkey": "…", "lightning_address": "…@getalby.com", "amount_sats": 1500, "retained": false },
        ...
      ]
    }
    ```
-2. For each winner, the client:
-   - Builds a NIP-57 kind 9734 zap request via `buildZapRequestEvent`
-   - Signs it with the active signer
-   - Resolves the `lud16` to its LNURL-pay callback
-   - Calls `fetchInvoice(callback, amount_sats, undefined, signedZapRequest)` — the signed zap request is attached as the `nostr` query parameter, so the recipient's node emits a proper kind 9735 receipt
-   - Pays the returned BOLT11 via `window.webln.sendPayment`
-3. After all payments, `PATCH /api/challenges/[id]/reward` flips `rewards_paid_at` to now.
+2. For each non-retained winner, the client:
+   - Builds a NIP-57 kind 9734 zap request via `buildZapRequestEvent`.
+   - Signs it with the active signer.
+   - Resolves the `lud16` to its LNURL-pay callback.
+   - Calls `fetchInvoice(callback, amount_sats, undefined, signedZapRequest)` — the signed zap request is attached as the `nostr` query parameter, so the recipient's node emits a proper kind 9735 receipt.
+   - Pays via `window.webln.sendPayment`, falling back to QR + `/api/zap/status` polling when WebLN isn't present.
+3. After the last winner, `PATCH /api/challenges/[id]/reward` with `{all_winners_paid: true}` stamps `rewards_paid_at`. The server **only** flips the timestamp when the flag is explicitly set — an empty body is a 400. See "Known limits" below for the residual risk around mid-loop interruptions.
+4. The client publishes kind:30101 Challenge Result summarising winners + stats.
 
 No invoices cross our server. No sats sit on our server. No custody.
 
+#### Known limits
+
+- **Mid-loop interruption can replay payments.** If the creator pays 2 of 3 winners and the tab closes before step 3, `rewards_paid_at` stays null and a retry will re-offer every winner — including the two already paid. Closing this gap cleanly needs per-winner `reward_zap_receipt_id` bookkeeping on the participants row; tracked as follow-up.
+- **Receipt write-back is best-effort.** Most WebLN wallets don't return the on-relay kind:9735 id to the browser, so `completions.reward_zap_receipt_id` is typically null after a successful payout. The kind:30101 result event is the public record of who won.
+
 ### Files
 
-- `lib/nostr/events.ts` — `buildZapGoalEvent`, `buildZapRequestEvent`
-- `lib/nostr/lnurl.ts` — `fetchInvoice` now accepts an optional signed zap request
-- `app/api/challenges/[id]/reward/route.ts` — winner computation + receipt write-back
-- Challenge detail page — creator-only "Pay winners" section with per-winner progress
+- `lib/nostr/events.ts` — `buildZapGoalEvent`, `buildZapRequestEvent`, `buildChallengeResultEvent`.
+- `lib/nostr/fetch-zap-receipts.ts` — isomorphic kind:9735 fetch + embedded-9734 parser used by both the server cache and the client hook.
+- `lib/hooks/useZapGoalProgress.ts` — client-side live subscription + dedupe.
+- `lib/nostr/lnurl.ts` — `fetchInvoice` accepts an optional signed zap request.
+- `app/api/challenges/[id]/reward/route.ts` — winner computation + receipt write-back, `all_winners_paid` flag semantics.
+- `app/api/challenges/[id]/zap-goal-progress/route.ts` — cached server snapshot for Explore cards.
+- `components/challenges/FundPotModal/` — supporter funding flow.
+- `components/challenges/ZapGoalProgress/` — detail-page panel with live progress.
+- `components/challenges/ZapGoalBar/` — compact Explore-card variant.
+- Challenge detail page — creator-only "Distribute rewards" section with per-winner progress.
 
 ## Combined example
 
 Imagine a hackathon practice challenge:
 
-- Creator publishes a challenge with `checkpoint_mode: "sequential"`, three checkpoints, and a 10000-sat prize pool with `reward_zap_mode: "first_to_complete"`.
+- Creator publishes a challenge with `checkpoint_mode: "sequential"`, three checkpoints, and a 10000-sat prize pool with `prize_distribution: "first_to_complete"`.
 - Checkpoint 1 uses `verification_methods: ["nostr_action"]` targeting a specific note id ("like this announcement").
 - Checkpoint 2 is `verification_methods: ["creator_approval"]` with a text proof.
 - Checkpoint 3 uses `verification_methods: ["nostr_hashtag"]` with `nostr_hashtag: "arenahack"` — participants publish a kind:1 note tagged `#arenahack` to pass.
-- The creator also publishes a Zap Goal so the community can fund the pot before kickoff.
+- A Zap Goal is auto-published alongside the challenge so the community can top up the pot before kickoff.
+
+A supporter:
+1. Opens the challenge, clicks **Fund this pot**, chooses 1000 sats + a message.
+2. WebLN pops an invoice → pays → within seconds the progress bar ticks up and their avatar appears in the recent-zappers list.
 
 A participant:
 1. Likes note #1 from Damus → clicks "Verify my like on Nostr" → checkpoint 1 turns green.
 2. Writes a text proof for checkpoint 2 → creator reviews and approves → checkpoint 2 turns green.
 3. Likes note #3 from Amethyst → verifies → checkpoint 3 turns green → their participant row flips to `completed`.
 
-The creator clicks "Pay winners" → WebLN pops up one invoice → they pay → the challenge shows "Rewards already paid".
+The creator clicks **Distribute rewards** → WebLN pops up one invoice for the winner → they pay → the detail page shows the panel's "Prize distributed" badge and the kind:30101 Challenge Result lands on relays.
 
 Every step is backed by signed Nostr events; the DB is just a cache for UI.
