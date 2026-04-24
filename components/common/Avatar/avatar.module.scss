@@ -1,0 +1,42 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $border-radius-full;
+  background: alpha($color-primary, 15%);
+  color: $color-primary;
+  font-family: $font-display;
+  font-weight: $font-weight-bold;
+  overflow: hidden;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sm {
+  width: 24px;
+  height: 24px;
+  font-size: $font-size-xs;
+}
+
+.md {
+  width: 40px;
+  height: 40px;
+  font-size: $font-size-sm;
+}
+
+.lg {
+  width: 64px;
+  height: 64px;
+  font-size: $font-size-lg;
+}

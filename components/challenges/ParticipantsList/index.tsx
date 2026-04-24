@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { BadgeIcon } from "@/components/icons";
+import { Section, SectionTitle } from "@/components/common/Section";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import styles from "./participants-list.module.scss";
@@ -41,8 +42,8 @@ export function ParticipantsList({
   const tCommon = useTranslations("common");
 
   return (
-    <div className={styles.section}>
-      <h2 className={styles.sectionTitle}>{t("participants")} ({participants.length})</h2>
+    <Section>
+      <SectionTitle>{t("participants")} ({participants.length})</SectionTitle>
       {participants.length === 0 ? (
         <p className={styles.emptyText}>{t("noParticipants")}</p>
       ) : (
@@ -77,6 +78,6 @@ export function ParticipantsList({
           )}
         </>
       )}
-    </div>
+    </Section>
   );
 }

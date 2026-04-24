@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { BoltIcon } from "@/components/icons";
+import { Section, SectionTitle } from "@/components/common/Section";
 import { Button } from "@/components/ui/button";
 import type { PrizeDistribution } from "@/lib/types";
 import styles from "./reward-distribution-panel.module.scss";
@@ -50,8 +51,8 @@ export function RewardDistributionPanel({
         prizeDistribution &&
         prizeDistribution !== "none" &&
         !rewardsPaidAt && (
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>{t("rewardSectionTitle")}</h2>
+          <Section>
+            <SectionTitle>{t("rewardSectionTitle")}</SectionTitle>
             <p className={styles.emptyText}>
               {t("rewardInstructions", {
                 amount: prizeAmountSats,
@@ -74,12 +75,12 @@ export function RewardDistributionPanel({
               <p className={styles.emptyText}>{rewardStatus}</p>
             )}
             {rewardError && <p className={styles.error}>{rewardError}</p>}
-          </div>
+          </Section>
         )}
 
       {rewardsPaidAt && (
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>{t("rewardSectionTitle")}</h2>
+        <Section>
+          <SectionTitle>{t("rewardSectionTitle")}</SectionTitle>
           <p className={styles.emptyText}>{t("rewardAlreadyPaid")}</p>
           {!resultNostrEventId && (
             <>
@@ -104,7 +105,7 @@ export function RewardDistributionPanel({
               )}
             </>
           )}
-        </div>
+        </Section>
       )}
     </>
   );
