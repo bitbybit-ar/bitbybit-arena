@@ -1,8 +1,8 @@
-import { eq, and, type InferSelectModel } from "drizzle-orm";
+import { eq, and, sql, type InferSelectModel } from "drizzle-orm";
 import { getTableName, type Table } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import type { Db } from "@/lib/db";
-import { participants } from "@/lib/db/schema";
+import { challenges, participants, users } from "@/lib/db/schema";
 import { NotFoundError, ForbiddenError } from "./errors";
 
 // The drizzle-inferred row shape (dates as `Date`, not ISO strings).
@@ -106,4 +106,73 @@ export async function findParticipation(
     .limit(1);
 
   return row;
+}
+
+// Shape of the public "creator" projection that several challenge
+// endpoints spread onto the response. Kept narrow so consumers don't
+// leak `notification_prefs` / timestamps through the wire.
+export interface ChallengeCreatorProjection {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  nostr_pubkey: string;
+  lightning_address: string | null;
+}
+
+export interface ChallengeWithCounts extends InferSelectModel<typeof challenges> {
+  participant_count: number;
+  completion_count: number;
+  creator: ChallengeCreatorProjection;
+}
+
+/**
+ * Fetch a single challenge row plus the two derived scalar counts
+ * (`participant_count` and `completion_count`) and the public creator
+ * projection. Consolidates the joined-subquery shape that the single-
+ * challenge GET used to hand-roll.
+ *
+ * Returns `null` when no row matches — callers decide whether 404 is
+ * the right response. Callers that want the plain challenge row
+ * without these derived fields should stick with `findResourceOrOwn`.
+ */
+export async function fetchChallengeWithCounts(
+  db: Db,
+  challengeId: string
+): Promise<ChallengeWithCounts | null> {
+  const rows = await db
+    .select({
+      challenge: challenges,
+      creator: {
+        id: users.id,
+        username: users.username,
+        display_name: users.display_name,
+        avatar_url: users.avatar_url,
+        nostr_pubkey: users.nostr_pubkey,
+        lightning_address: users.lightning_address,
+      },
+      participant_count: sql<number>`(
+        SELECT COUNT(*)::int FROM participants
+        WHERE participants.challenge_id = ${challenges.id}
+        AND participants.status != 'withdrawn'
+      )`,
+      completion_count: sql<number>`(
+        SELECT COUNT(*)::int FROM completions
+        WHERE completions.challenge_id = ${challenges.id}
+      )`,
+    })
+    .from(challenges)
+    .innerJoin(users, eq(challenges.creator_id, users.id))
+    .where(eq(challenges.id, challengeId))
+    .limit(1);
+
+  if (rows.length === 0) return null;
+
+  const row = rows[0];
+  return {
+    ...row.challenge,
+    participant_count: row.participant_count,
+    completion_count: row.completion_count,
+    creator: row.creator,
+  };
 }
