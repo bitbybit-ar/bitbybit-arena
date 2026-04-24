@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
 import { Modal } from "@/components/ui/modal";
 import { BoltIcon, CopyIcon } from "@/components/icons";
 import { useClipboard } from "@/lib/hooks/useClipboard";
+import { useZapPolling } from "@/lib/hooks/useZapPolling";
 import { useSignerContext } from "@/lib/signer-context";
 import { buildZapRequestEvent } from "@/lib/nostr/events";
 import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
@@ -14,7 +15,6 @@ import { cn } from "@/lib/utils";
 import styles from "./fund-pot-modal.module.scss";
 
 const PRESET_AMOUNTS = [210, 1000, 5000, 21_000];
-const POLL_INTERVAL_MS = 4000;
 
 type Status =
   | "idle"
@@ -74,8 +74,6 @@ export function FundPotModal({
   const [invoice, setInvoice] = useState("");
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
-  const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
-
   const parsedCustom = Number(customAmount);
   const activeAmount =
     customAmount && Number.isFinite(parsedCustom) && parsedCustom > 0
@@ -84,41 +82,15 @@ export function FundPotModal({
 
   const hasLightning = !!creatorLightningAddress;
 
-  const clearPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = undefined;
-    }
-  }, []);
-
-  useEffect(() => () => clearPolling(), [clearPolling]);
-
   const onSuccess = useCallback(() => {
-    clearPolling();
     setStatus("success");
     onZapped?.();
-  }, [clearPolling, onZapped]);
+  }, [onZapped]);
 
-  const startPolling = useCallback(
-    (pr: string) => {
-      clearPolling();
-      pollRef.current = setInterval(async () => {
-        try {
-          const res = await fetch("/api/zap/status", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ invoice: pr }),
-          });
-          if (!res.ok) return;
-          const { paid } = await res.json();
-          if (paid) onSuccess();
-        } catch {
-          /* ignore tick errors — next interval will retry */
-        }
-      }, POLL_INTERVAL_MS);
-    },
-    [clearPolling, onSuccess]
-  );
+  // Poll `/api/zap/status` once we've shown the QR. The hook is a
+  // no-op while `invoice` is empty, and tears down automatically on
+  // unmount or when `invoice` changes.
+  useZapPolling({ invoice: invoice || null, onSuccess });
 
   const handleFund = useCallback(async () => {
     if (!hasLightning || !creatorLightningAddress) {
@@ -163,7 +135,6 @@ export function FundPotModal({
 
       setInvoice(pr);
       setStatus("no-webln");
-      startPolling(pr);
     } catch {
       setErrorKey("errorInvoice");
       setStatus("error");
@@ -178,7 +149,6 @@ export function FundPotModal({
     message,
     onSuccess,
     signWithPrompt,
-    startPolling,
   ]);
 
   const disabled =
