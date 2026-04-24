@@ -29,6 +29,13 @@
   }
 }
 
+// Kept visually in lockstep with the Dropdown trigger (see
+// components/ui/dropdown/dropdown.module.scss .trigger) so the
+// search box and the filter selects render at the same height and
+// carry the same elevation + focus-ring treatment when they sit
+// side-by-side in the controls row. The earlier version used
+// $font-size-base + a focus ring at 15% alpha, which made the
+// search 2–4px taller than the selects and gave it a paler ring.
 .searchInput {
   flex: 1;
   padding: $spacing-12 $spacing-16;
@@ -41,10 +48,12 @@
     transparent 60%
   );
   box-shadow:
+    0 2px 6px $card-shadow,
     inset 0 1px 0 $ceramic-highlight,
     inset 0 -2px 4px $ceramic-inner-shadow;
   color: $color-text-primary;
-  font-size: $font-size-base;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
   font-family: $font-body;
   outline: none;
   @include transition;
@@ -52,14 +61,16 @@
   &::placeholder {
     color: $color-text-secondary;
     opacity: 0.5;
+    font-weight: $font-weight-normal;
   }
 
   &:focus {
     border-color: $color-primary;
     box-shadow:
+      0 2px 6px $card-shadow,
       inset 0 1px 0 $ceramic-highlight,
       inset 0 -2px 4px $ceramic-inner-shadow,
-      0 0 0 2px alpha($color-primary, 15%);
+      0 0 0 2px alpha($color-primary, 20%);
   }
 }
 
