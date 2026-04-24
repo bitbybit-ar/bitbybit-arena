@@ -1,0 +1,87 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.achievementCard {
+  @include ceramic-card;
+  @include ceramic-card-hover;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: $spacing-16;
+  gap: $spacing-12;
+}
+
+.achievementLink {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+  text-decoration: none;
+  color: inherit;
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
+.acceptedPill {
+  align-self: flex-start;
+  padding: $spacing-4 $spacing-8;
+  background: color-mix(in srgb, $color-accent-alt 18%, transparent);
+  color: $color-accent-alt;
+  border-radius: $border-radius-full;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+}
+
+.achievementImageWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: color-mix(in srgb, $color-primary 8%, $color-surface);
+  border-radius: $border-radius-md;
+  overflow: hidden;
+}
+
+.achievementImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.achievementImagePlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-text-secondary;
+}
+
+.achievementBody {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+}
+
+.achievementName {
+  font-family: $font-display;
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  margin: 0;
+}
+
+.achievementChallenge {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  margin: 0;
+}
+
+.achievementDate {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  margin: 0;
+}
