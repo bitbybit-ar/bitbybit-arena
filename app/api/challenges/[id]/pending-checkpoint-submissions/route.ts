@@ -4,7 +4,7 @@ import { eq, and, asc, sql } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
 import { parseQuery } from "@/lib/api/parse";
 import { NotFoundError, ForbiddenError } from "@/lib/api/errors";
-import { IsoCursorSchema, LimitSchema } from "@/lib/schemas/pagination";
+import { LimitSchema } from "@/lib/schemas/pagination";
 import {
   challenges,
   challenge_checkpoints,
@@ -14,8 +14,29 @@ import {
 } from "@/lib/db/schema";
 import type { PendingCheckpointSubmission } from "@/lib/types";
 
+// Cursor is composite: `<iso>|<uuid>` of the last row. Timestamp alone
+// isn't enough because Postgres stores `created_at` at microsecond
+// precision while JS Date.toISOString() truncates to milliseconds —
+// two rows created within the same millisecond (rare in prod, common
+// in tests and at burst time) would re-include the cursor row on the
+// next page if we compared on the timestamp only. Pairing with the
+// row id gives a total order and a strictly-advancing cursor.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const CursorSchema = z
+  .string()
+  .optional()
+  .refine((v) => {
+    if (v === undefined) return true;
+    const parts = v.split("|");
+    if (parts.length !== 2) return false;
+    const [iso, id] = parts;
+    return !Number.isNaN(new Date(iso).getTime()) && UUID_RE.test(id);
+  }, "cursor must be `<ISO-8601>|<uuid>`");
+
 const QuerySchema = z.object({
-  cursor: IsoCursorSchema,
+  cursor: CursorSchema,
   limit: LimitSchema(1, 50, 20),
 });
 
@@ -44,11 +65,15 @@ export const GET = apiHandler(async (req: NextRequest, { session, db, params }) 
     eq(challenge_checkpoints.challenge_id, params.id),
     eq(checkpoint_completions.status, "pending"),
   ];
-  // Cursor is the ISO `created_at` of the last row in the previous
-  // page; we order ASC (oldest first) so `>` advances forward through
-  // the queue.
+
+  // Cursor carries the last row's (created_at, id). We compare as a
+  // tuple so ordering is total and a row never bleeds across pages
+  // when two submissions share a timestamp.
   if (cursor) {
-    conditions.push(sql`${checkpoint_completions.created_at} > ${cursor}`);
+    const [iso, id] = cursor.split("|");
+    conditions.push(
+      sql`(${checkpoint_completions.created_at}, ${checkpoint_completions.id}) > (${new Date(iso)}, ${id})`
+    );
   }
 
   const rows = await db
@@ -77,7 +102,10 @@ export const GET = apiHandler(async (req: NextRequest, { session, db, params }) 
     )
     .innerJoin(users, eq(participants.user_id, users.id))
     .where(and(...conditions))
-    .orderBy(asc(checkpoint_completions.created_at))
+    .orderBy(
+      asc(checkpoint_completions.created_at),
+      asc(checkpoint_completions.id)
+    )
     .limit(limit + 1);
 
   const hasMore = rows.length > limit;
@@ -103,10 +131,10 @@ export const GET = apiHandler(async (req: NextRequest, { session, db, params }) 
     },
   }));
 
-  const lastCreatedAt = sliced[sliced.length - 1]?.created_at;
+  const last = sliced[sliced.length - 1];
   const nextCursor =
-    hasMore && lastCreatedAt instanceof Date
-      ? lastCreatedAt.toISOString()
+    hasMore && last && last.created_at instanceof Date
+      ? `${last.created_at.toISOString()}|${last.id}`
       : null;
 
   return { items, nextCursor };
