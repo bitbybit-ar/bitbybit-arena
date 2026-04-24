@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import styles from "./avatar.module.scss";
 
@@ -37,6 +37,14 @@ export function Avatar({
   className,
 }: AvatarProps) {
   const [failed, setFailed] = useState(false);
+  // Reset the failed flag whenever the caller swaps in a new `src` —
+  // without this, once an `onError` fires the primitive stays on the
+  // fallback initial forever, even if the parent later points at a
+  // valid URL (e.g. the user updates their Nostr profile picture
+  // mid-session).
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
   const showImage = !!src && !failed;
 
   return (
