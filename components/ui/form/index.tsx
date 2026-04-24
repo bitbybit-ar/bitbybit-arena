@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dropdown, type DropdownOption } from "@/components/ui/dropdown";
@@ -58,6 +59,7 @@ export function FormInput({
   type,
   ...inputProps
 }: FormInputProps) {
+  const t = useTranslations("common");
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === "password";
 
@@ -85,7 +87,7 @@ export function FormInput({
             type="button"
             className={styles.passwordToggle}
             onClick={() => setShowPassword((prev) => !prev)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? t("hidePassword") : t("showPassword")}
             aria-pressed={showPassword}
           >
             {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}

@@ -127,14 +127,14 @@ $block-colors: (
   font-weight: $font-weight-medium;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: $spacing-2;
   z-index: 1;
 }
 
 .dots {
   display: inline-flex;
-  gap: 3px;
-  margin-left: 2px;
+  gap: $spacing-3;
+  margin-left: $spacing-2;
 }
 
 .dot {

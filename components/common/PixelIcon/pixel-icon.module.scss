@@ -1,3 +1,5 @@
+@use "@/styles/spacing" as *;
+
 .pixelIcon {
   width: fit-content;
 }
@@ -6,7 +8,7 @@
   width: 100% !important;
   height: auto !important;
   aspect-ratio: 1;
-  border-radius: 2px;
+  border-radius: $border-radius-xs;
 }
 
 .empty {

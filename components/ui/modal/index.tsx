@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useRef, useId } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { CloseIcon } from "@/components/icons";
 import { useClickOutside } from "@/lib/hooks/useClickOutside";
@@ -40,6 +41,7 @@ export function Modal({
   size = "md",
   className,
 }: ModalProps) {
+  const t = useTranslations("common");
   const modalRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
@@ -124,7 +126,7 @@ export function Modal({
         <button
           className={styles.closeButton}
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t("closeDialog")}
         >
           <CloseIcon size={20} />
         </button>

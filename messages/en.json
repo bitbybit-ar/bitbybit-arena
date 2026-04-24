@@ -40,7 +40,16 @@
     "approved": "Approved",
     "rejected": "Rejected",
     "active": "Active",
-    "withdrawn": "Withdrawn"
+    "withdrawn": "Withdrawn",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "closeDialog": "Close"
+  },
+  "navbar": {
+    "switchToLightMode": "Switch to light mode",
+    "switchToDarkMode": "Switch to dark mode",
+    "switchToEnglish": "Switch to English",
+    "switchToSpanish": "Cambiar a Español"
   },
   "notifications": {
     "ariaLabel": "Notifications",
