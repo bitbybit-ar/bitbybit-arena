@@ -44,10 +44,10 @@ import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
 import { useToast } from "@/components/ui/toast";
 import type {
-  CompletionStatus,
+  Checkpoint,
+  CheckpointCompletion,
   PendingCheckpointSubmission,
   PrizeDistribution,
-  VerificationMethod,
 } from "@/lib/types";
 import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
 import {
@@ -59,29 +59,6 @@ import styles from "./challenge-detail.module.scss";
 // Same cadence as the landing ZapModal's NWC polling. 4 s keeps latency
 // tolerable without hammering the wallet endpoint.
 const REWARD_POLL_INTERVAL_MS = 4000;
-
-export interface CheckpointItem {
-  id: string;
-  challenge_id: string;
-  order: number;
-  title: string;
-  description: string | null;
-  verification_methods: VerificationMethod[];
-  nostr_action_target_event_id: string | null;
-  nostr_hashtag: string | null;
-}
-
-export interface CheckpointCompletionItem {
-  id: string;
-  participant_id: string;
-  checkpoint_id: string;
-  proof_event_id: string | null;
-  content: string | null;
-  image_url: string | null;
-  status: CompletionStatus;
-  reject_reason: string | null;
-  completed_at: string | null;
-}
 
 interface ChallengeDetail {
   id: string;
@@ -111,8 +88,8 @@ interface ChallengeDetail {
   rewards_paid_at: string | null;
   result_nostr_event_id: string | null;
   creator: { id: string; display_name: string; username: string; nostr_pubkey: string; lightning_address?: string };
-  checkpoints: CheckpointItem[];
-  my_checkpoint_completions: CheckpointCompletionItem[];
+  checkpoints: Checkpoint[];
+  my_checkpoint_completions: CheckpointCompletion[];
 }
 
 interface RewardWinner {
@@ -891,7 +868,7 @@ export default function ChallengeClient() {
     }
   };
 
-  const handleCompleteCheckpoint = async (checkpoint: CheckpointItem) => {
+  const handleCompleteCheckpoint = async (checkpoint: Checkpoint) => {
     // Clear any previous error on this checkpoint draft before retrying.
     updateCheckpointDraft(setCheckpointDrafts, checkpoint.id, { error: null });
     setActionLoading(`cp_${checkpoint.id}`);

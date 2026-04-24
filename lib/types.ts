@@ -199,3 +199,52 @@ export interface Notification {
   metadata: Record<string, unknown> | null;
   created_at: string;
 }
+
+// Card-facing projection of a challenge row — matches the shape the
+// Explore `/api/challenges` endpoint returns for the public card feed.
+// Kept here (rather than on the ChallengeCard component) so page + grid
+// + card can all type their props off a single source of truth.
+export interface ChallengeItem {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  status: string;
+  tags: string[];
+  participant_count: number;
+  ends_at: string | null;
+  created_at: string;
+  prize_amount_sats: number;
+  zap_goal_event_id: string | null;
+  badge_name: string | null;
+  badge_image_url: string | null;
+  creator: {
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+  };
+}
+
+// Card-facing projection of a NIP-58 badge earned by the viewer —
+// matches `/api/my-badges` rows. Kept here so the my-challenges page
+// and the AchievementCard component share one shape.
+export interface AchievementItem {
+  id: string;
+  badge_name: string;
+  badge_image_url: string | null;
+  nostr_event_id: string | null;
+  awarded_at: string;
+  accepted_at: string | null;
+  challenge: {
+    id: string;
+    slug: string;
+    title: string;
+    badge_nostr_event_id: string | null;
+  };
+  issuer: {
+    id: string;
+    display_name: string;
+    username: string;
+    nostr_pubkey: string;
+  };
+}

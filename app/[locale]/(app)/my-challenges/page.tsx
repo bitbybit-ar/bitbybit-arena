@@ -9,10 +9,8 @@ import { BlockLoader } from "@/components/ui/block-loader";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { CheckpointProgress } from "@/components/challenges/CheckpointProgress";
-import {
-  AchievementCard,
-  type AchievementItem,
-} from "@/components/challenges/AchievementCard";
+import { AchievementCard } from "@/components/challenges/AchievementCard";
+import type { AchievementItem } from "@/lib/types";
 import { Tabs, panelIdFor } from "@/components/ui/tabs";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { useRouter } from "@/i18n/routing";

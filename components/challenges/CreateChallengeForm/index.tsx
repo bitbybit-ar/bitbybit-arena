@@ -4,7 +4,7 @@ import { type ReactNode, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/routing";
 import { FormInput, FormTextarea } from "@/components/ui/form";
-import { Tooltip } from "@/components/common/Tooltip";
+import { FieldLabel } from "@/components/common/FieldLabel";
 import { FormDivider } from "@/components/common/FormDivider";
 import { OptionCard, OptionCardGroup } from "@/components/common/OptionCard";
 import { TagInput } from "@/components/common/TagInput";
@@ -42,34 +42,6 @@ const CHALLENGE_TYPES: ChallengeType[] = [
   "creative",
 ];
 const CHECKPOINT_MODES: CheckpointMode[] = ["none", "sequential", "parallel"];
-
-// Small helper: label + optional tooltip rendered as sibling of the <label>,
-// not a child. Avoids the "click tooltip → focus input" side effect caused by
-// nesting interactive elements inside a <label htmlFor>.
-function FieldLabel({
-  htmlFor,
-  children,
-  tooltip,
-  required,
-}: {
-  htmlFor?: string;
-  children: ReactNode;
-  tooltip?: { text: string; example?: string };
-  required?: boolean;
-}) {
-  const inner = (
-    <>
-      {children}
-      {required && <span className={styles.required}>*</span>}
-    </>
-  );
-  return (
-    <div className={styles.labelRow}>
-      {htmlFor ? <label htmlFor={htmlFor}>{inner}</label> : <span>{inner}</span>}
-      {tooltip && <Tooltip text={tooltip.text} example={tooltip.example} />}
-    </div>
-  );
-}
 
 interface RenderHeaderContext {
   loading: boolean;

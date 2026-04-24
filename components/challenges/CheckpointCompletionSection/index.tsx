@@ -3,16 +3,13 @@
 import { useTranslations } from "next-intl";
 import { Section, SectionTitle } from "@/components/common/Section";
 import {
-  CheckpointItem as CheckpointItemRow,
+  CheckpointItem,
   type CheckpointItemStatus,
 } from "@/components/challenges/CheckpointItem";
 import { CheckpointProgress } from "@/components/challenges/CheckpointProgress";
 import { CheckpointSubmitForm } from "@/components/challenges/CheckpointSubmitForm";
 import type { BlossomDescriptor } from "@/lib/nostr/blossom";
-import type {
-  CheckpointItem,
-  CheckpointCompletionItem,
-} from "@/app/[locale]/(app)/explore/[id]/challenge-client";
+import type { Checkpoint, CheckpointCompletion } from "@/lib/types";
 import styles from "./checkpoint-completion-section.module.scss";
 
 /**
@@ -36,15 +33,15 @@ export function defaultDraft(): CheckpointDraft {
 
 interface CheckpointCompletionSectionProps {
   checkpointMode: "none" | "sequential" | "parallel";
-  checkpoints: CheckpointItem[];
-  myCheckpointCompletions: CheckpointCompletionItem[];
+  checkpoints: Checkpoint[];
+  myCheckpointCompletions: CheckpointCompletion[];
   isParticipant: boolean;
   /** Collapsed per-checkpoint draft state keyed by checkpoint id. */
   drafts: Record<string, CheckpointDraft>;
   onDraftChange: (checkpointId: string, patch: Partial<CheckpointDraft>) => void;
   /** Called when the user hits submit on a given checkpoint. Parent
    *  handles signing + Blossom upload + POST. */
-  onSubmitCheckpoint: (checkpoint: CheckpointItem) => void;
+  onSubmitCheckpoint: (checkpoint: Checkpoint) => void;
   /** Parent's in-flight sentinel; drives each row's disabled state. */
   submittingCheckpointId: string | null;
 }
@@ -121,7 +118,7 @@ export function CheckpointCompletionSection({
             status !== "locked";
           const draft = drafts[cp.id];
           return (
-            <CheckpointItemRow
+            <CheckpointItem
               key={cp.id}
               index={idx + 1}
               title={cp.title}
