@@ -228,16 +228,18 @@ export default function ExplorePage() {
           onChange={(e) => setSearch(e.target.value)}
         />
         <div className={styles.filters}>
-          <Dropdown
-            options={sourceDropdownOptions}
-            value={source}
-            onChange={(value) =>
-              setSource(value as "everyone" | "following")
-            }
-            aria-label={t("source")}
-            disabled={!followBoostActive}
-            className={styles.filterDropdown}
-          />
+          {session && (
+            <Dropdown
+              options={sourceDropdownOptions}
+              value={source}
+              onChange={(value) =>
+                setSource(value as "everyone" | "following")
+              }
+              aria-label={t("source")}
+              disabled={!followBoostActive}
+              className={styles.filterDropdown}
+            />
+          )}
           <Dropdown
             multiple
             options={typeDropdownOptions}
