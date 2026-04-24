@@ -53,14 +53,15 @@ export type AuthEventValidation =
  *   We previously used kind 22242 (NIP-42) which is reserved for
  *   client→relay AUTH and is technically the wrong protocol for
  *   HTTP login — see github.com/nostr-protocol/nips/blob/master/98.md.
- * - The ±60s clock window matches the spec's recommendation. Tighter
- *   than the NIP-42 ±300s we used to allow, but legitimate signers
- *   (NIP-07 extensions, nostr-tools, NIP-46 bunkers) all stamp the
- *   current time accurately and 60s is the canonical window other
- *   NIP-98 servers (Blossom, Snort, nostr.build) enforce.
+ * - The ±30s clock window is inside the NIP-98 recommended band and
+ *   tightens the replay surface: legitimate signers (NIP-07 extensions,
+ *   nostr-tools, NIP-46 bunkers) all stamp the current time accurately
+ *   within a second or two, so a 30s window leaves plenty of slack for
+ *   reasonable clock drift while halving the time a captured event
+ *   stays reusable on a compromised transport.
  */
 const NIP98_KIND = 27235;
-const CLOCK_SKEW_SECONDS = 60;
+const CLOCK_SKEW_SECONDS = 30;
 
 interface RequestContext {
   /** Absolute URL of the incoming request (origin + path + query). */
@@ -112,7 +113,7 @@ function urlsMatch(a: string, b: string): boolean {
  * than crashing inside verifyNostrEvent. Then, in order:
  *
  *   1. kind === 27235
- *   2. created_at within ±60 s of now
+ *   2. created_at within ±30 s of now
  *   3. content is the empty string (NIP-98 §"Validation")
  *   4. `["u", <abs URL>]` tag matches the request URL
  *   5. `["method", <verb>]` tag matches the request method

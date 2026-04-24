@@ -7,12 +7,12 @@ import { Modal } from "@/components/ui/modal";
 import { BoltIcon, CopyIcon } from "@/components/icons";
 import { fetchLnurlPayEndpoint, fetchInvoice } from "@/lib/nostr/lnurl";
 import { useClipboard } from "@/lib/hooks/useClipboard";
+import { useZapPolling } from "@/lib/hooks/useZapPolling";
 import { cn } from "@/lib/utils";
 import styles from "./zap-modal.module.scss";
 
 const PRESET_AMOUNTS = [21, 100, 500, 1000, 5000];
 const LIGHTNING_ADDRESS = process.env.NEXT_PUBLIC_ZAP_LIGHTNING_ADDRESS ?? "";
-const POLL_INTERVAL_MS = 4000;
 const CONFETTI_COUNT = 24;
 const CONFETTI_COLORS = ["#8B5CF6", "#F7A825", "#22C55E", "#EF4444", "#3B82F6"];
 
@@ -53,56 +53,26 @@ export function ZapModal({ onClose }: ZapModalProps) {
   const { copied, copy: copyToClipboard } = useClipboard();
   const [showConfetti, setShowConfetti] = useState(false);
   const confettiTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
-  // A polling tick can resolve *after* the modal has unmounted (parent
-  // closed it, route changed, etc.). Guard every setState call made from
-  // the awaited fetch branch on this ref so we never touch React state
-  // on a disposed component.
-  const isMountedRef = useRef(true);
 
   const parsedCustom = Number(customAmount);
   const activeAmount = customAmount && !isNaN(parsedCustom) ? parsedCustom : amount;
 
   const triggerSuccess = useCallback(() => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    if (!isMountedRef.current) return;
     setStatus("success");
     setShowConfetti(true);
     confettiTimeout.current = setTimeout(() => setShowConfetti(false), 2000);
   }, []);
 
-  // Poll for payment confirmation when showing QR
-  const startPolling = useCallback(
-    (invoiceStr: string) => {
-      if (pollRef.current) clearInterval(pollRef.current);
-
-      pollRef.current = setInterval(async () => {
-        try {
-          const res = await fetch("/api/zap/status", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ invoice: invoiceStr }),
-          });
-
-          if (!isMountedRef.current) return;
-          if (res.ok) {
-            const { paid } = await res.json();
-            if (paid) triggerSuccess();
-          }
-        } catch {
-          // Silently ignore polling errors
-        }
-      }, POLL_INTERVAL_MS);
-    },
-    [triggerSuccess]
-  );
+  // Poll for payment confirmation when showing QR. The hook only
+  // polls while `invoice` is non-empty, so passing it unconditionally
+  // is safe — no polling happens before the invoice is set. The
+  // mounted-ref guard for post-unmount fetch resolutions lives inside
+  // the hook itself (see lib/hooks/useZapPolling.ts).
+  useZapPolling({ invoice, onSuccess: triggerSuccess });
 
   useEffect(() => {
-    isMountedRef.current = true;
     return () => {
-      isMountedRef.current = false;
       if (confettiTimeout.current) clearTimeout(confettiTimeout.current);
-      if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
 
@@ -134,10 +104,10 @@ export function ZapModal({ onClose }: ZapModalProps) {
         }
       }
 
-      // No WebLN or it failed — show invoice for manual payment
+      // No WebLN or it failed — show invoice for manual payment.
+      // Setting `invoice` kicks off `useZapPolling` automatically.
       setInvoice(pr);
       setStatus("no-webln");
-      startPolling(pr);
     } catch {
       setErrorKey("errorInvalidAddress");
       setStatus("error");

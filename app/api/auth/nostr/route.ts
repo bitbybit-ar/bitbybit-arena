@@ -21,7 +21,7 @@ import type { SignerType } from "@/lib/nostr/signers";
  * from:
  *   - the `u` tag binding the event to this exact URL
  *   - the `method` tag binding it to POST
- *   - the ±60 s `created_at` window
+ *   - the ±30 s `created_at` window
  *   - server-side rate limiting per IP
  *
  * The signer method (extension / nsec / nip46) travels in a custom
@@ -67,8 +67,7 @@ export const POST = apiHandler(
     });
     if (!validation.ok) {
       console.warn(
-        `[auth/nostr] validation failed: ${validation.reason}`,
-        { pubkey: (signedEvent as { pubkey?: unknown })?.pubkey }
+        `[auth/nostr] validation failed: ${validation.reason}`
       );
       throw new BadRequestError(
         `Invalid signature or auth event (${validation.reason})`

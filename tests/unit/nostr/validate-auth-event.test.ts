@@ -88,7 +88,7 @@ describe("validateNip98AuthEvent", () => {
     if (!result.ok) expect(result.reason).toBe("kind");
   });
 
-  it("rejects with reason=clock when created_at is more than 60s off", () => {
+  it("rejects with reason=clock when created_at is more than 30s off", () => {
     const event = signAuthEvent({
       createdAt: Math.floor(Date.now() / 1000) - 5 * 60,
     });
