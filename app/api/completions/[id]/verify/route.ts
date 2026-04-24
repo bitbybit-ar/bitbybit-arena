@@ -1,36 +1,29 @@
 import { NextRequest } from "next/server";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
 import { parseBody } from "@/lib/api/parse";
-import { NotFoundError, BadRequestError, ForbiddenError } from "@/lib/api/errors";
+import { BadRequestError } from "@/lib/api/errors";
+import { findResourceOrOwn, findParticipation } from "@/lib/api/db-helpers";
 import { VerifyCompletionBodySchema } from "@/lib/schemas/completions";
 import { completions, challenges, participants } from "@/lib/db/schema";
-import { createNotification } from "@/lib/notifications";
+import { notifyUser } from "@/lib/notifications";
 
 // POST /api/completions/[id]/verify — creator approves or rejects a completion
 export const POST = apiHandler(async (req: NextRequest, { session, db, params }) => {
   const { status } = await parseBody(req, VerifyCompletionBodySchema);
 
-  const [completion] = await db
-    .select()
-    .from(completions)
-    .where(eq(completions.id, params.id))
-    .limit(1);
+  const completion = await findResourceOrOwn(db, completions, params.id, {
+    resourceName: "Completion",
+  });
 
-  if (!completion) throw new NotFoundError("Completion");
-
-  const [challenge] = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.id, completion.challenge_id))
-    .limit(1);
-
-  if (!challenge) throw new NotFoundError("Challenge");
   // Authz before the status check so a non-creator probing a completion
   // id can't tell whether it exists or whether it's been reviewed.
-  if (challenge.creator_id !== session!.user_id) {
-    throw new ForbiddenError("Only the challenge creator can verify completions");
-  }
+  const challenge = await findResourceOrOwn(db, challenges, completion.challenge_id, {
+    resourceName: "Challenge",
+    ownerField: "creator_id",
+    session: session!,
+    forbiddenMessage: "Only the challenge creator can verify completions",
+  });
   if (completion.status !== "pending") throw new BadRequestError("This completion has already been reviewed");
 
   const [updated] = await db
@@ -45,16 +38,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
 
   // If approved, update participant progress
   if (status === "approved") {
-    const [participation] = await db
-      .select()
-      .from(participants)
-      .where(
-        and(
-          eq(participants.challenge_id, challenge.id),
-          eq(participants.user_id, completion.user_id)
-        )
-      )
-      .limit(1);
+    const participation = await findParticipation(db, challenge.id, completion.user_id);
 
     if (participation) {
       const newProgress = participation.progress + 1;
@@ -73,22 +57,18 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
   // Ping the submitter with the verdict. Client renders approved vs
   // rejected from metadata.status, so we only need one notification type.
   if (completion.user_id !== session!.user_id) {
-    try {
-      await createNotification(
-        completion.user_id,
-        "completion_verified",
-        status === "approved" ? "Proof approved!" : "Proof rejected",
-        `Your proof on "${challenge.title}" was ${status}.`,
-        {
-          status,
-          challenge: challenge.title,
-          challenge_id: challenge.id,
-          completion_id: completion.id,
-        }
-      );
-    } catch (err) {
-      console.error("notification:completion_verified failed", err);
-    }
+    await notifyUser(
+      completion.user_id,
+      "completion_verified",
+      status === "approved" ? "Proof approved!" : "Proof rejected",
+      `Your proof on "${challenge.title}" was ${status}.`,
+      {
+        status,
+        challenge: challenge.title,
+        challenge_id: challenge.id,
+        completion_id: completion.id,
+      }
+    );
   }
 
   return updated;

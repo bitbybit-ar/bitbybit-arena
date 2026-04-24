@@ -2,11 +2,8 @@ import { NextRequest } from "next/server";
 import { eq, and, asc, desc, isNull } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
 import { parseBody } from "@/lib/api/parse";
-import {
-  NotFoundError,
-  ForbiddenError,
-  BadRequestError,
-} from "@/lib/api/errors";
+import { BadRequestError } from "@/lib/api/errors";
+import { findResourceOrOwn } from "@/lib/api/db-helpers";
 import { RecordRewardBodySchema } from "@/lib/schemas/challenges";
 import { PAYOUT_DISTRIBUTIONS } from "@/lib/schemas/enums";
 import {
@@ -17,7 +14,7 @@ import {
 } from "@/lib/db/schema";
 import { fetchNostrMetadataServer } from "@/lib/nostr/server-metadata";
 import type { PrizeDistribution } from "@/lib/types";
-import { createNotification } from "@/lib/notifications";
+import { notifyUser } from "@/lib/notifications";
 
 interface WinnerPayload {
   user_id: string;
@@ -51,15 +48,12 @@ function tieredSplit(total: number, winners: number): number[] {
 // The client then signs a NIP-57 zap request per winner, fetches an
 // invoice, pays via WebLN, and PATCHes back to record each receipt.
 export const POST = apiHandler(async (_req: NextRequest, { session, db, params }) => {
-  const [challenge] = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.id, params.id))
-    .limit(1);
-  if (!challenge) throw new NotFoundError("Challenge");
-  if (challenge.creator_id !== session!.user_id) {
-    throw new ForbiddenError("Only the creator can distribute rewards");
-  }
+  const challenge = await findResourceOrOwn(db, challenges, params.id, {
+    resourceName: "Challenge",
+    ownerField: "creator_id",
+    session: session!,
+    forbiddenMessage: "Only the creator can distribute rewards",
+  });
   if (!challenge.prize_amount_sats || challenge.prize_amount_sats <= 0) {
     throw new BadRequestError("This challenge has no prize configured");
   }
@@ -212,15 +206,12 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
 //     them.
 //   - Both — do both in one request.
 export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }) => {
-  const [challenge] = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.id, params.id))
-    .limit(1);
-  if (!challenge) throw new NotFoundError("Challenge");
-  if (challenge.creator_id !== session!.user_id) {
-    throw new ForbiddenError("Only the creator can record rewards");
-  }
+  const challenge = await findResourceOrOwn(db, challenges, params.id, {
+    resourceName: "Challenge",
+    ownerField: "creator_id",
+    session: session!,
+    forbiddenMessage: "Only the creator can record rewards",
+  });
 
   const {
     user_id: winnerUserId,
@@ -284,21 +275,17 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
     // Skip self-pay: creators who win their own challenge don't get a
     // prize (retained=true), so there's nothing to notify them about.
     if (winnerUserId !== challenge.creator_id) {
-      try {
-        await createNotification(
-          winnerUserId,
-          "prize_awarded",
-          "You won sats!",
-          `You received the prize for "${challenge.title}".`,
-          {
-            challenge: challenge.title,
-            challenge_id: challenge.id,
-            receipt_event_id: receiptEventId ?? null,
-          }
-        );
-      } catch (err) {
-        console.error("notification:prize_awarded failed", err);
-      }
+      await notifyUser(
+        winnerUserId,
+        "prize_awarded",
+        "You won sats!",
+        `You received the prize for "${challenge.title}".`,
+        {
+          challenge: challenge.title,
+          challenge_id: challenge.id,
+          receipt_event_id: receiptEventId ?? null,
+        }
+      );
     }
   }
 

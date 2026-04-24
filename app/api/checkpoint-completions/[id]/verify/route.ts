@@ -15,7 +15,7 @@ import {
   participants,
 } from "@/lib/db/schema";
 import { recomputeCheckpointProgress } from "@/lib/db/checkpoints";
-import { createNotification } from "@/lib/notifications";
+import { notifyUser } from "@/lib/notifications";
 
 // POST /api/checkpoint-completions/[id]/verify — creator approves or
 // rejects a pending checkpoint_completions row. Mirrors
@@ -84,27 +84,23 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
   }
 
   if (row.participant.user_id !== session!.user_id) {
-    try {
-      await createNotification(
-        row.participant.user_id,
-        "checkpoint_verified",
-        status === "approved"
-          ? "Checkpoint approved!"
-          : "Checkpoint rejected",
-        `Your proof for "${row.checkpoint.title}" on "${row.challenge.title}" was ${status}.`,
-        {
-          status,
-          challenge_id: row.challenge.id,
-          challenge_title: row.challenge.title,
-          checkpoint_id: row.checkpoint.id,
-          checkpoint_title: row.checkpoint.title,
-          checkpoint_completion_id: row.completion.id,
-          reject_reason: status === "rejected" ? reject_reason : null,
-        }
-      );
-    } catch (err) {
-      console.error("notification:checkpoint_verified failed", err);
-    }
+    await notifyUser(
+      row.participant.user_id,
+      "checkpoint_verified",
+      status === "approved"
+        ? "Checkpoint approved!"
+        : "Checkpoint rejected",
+      `Your proof for "${row.checkpoint.title}" on "${row.challenge.title}" was ${status}.`,
+      {
+        status,
+        challenge_id: row.challenge.id,
+        challenge_title: row.challenge.title,
+        checkpoint_id: row.checkpoint.id,
+        checkpoint_title: row.checkpoint.title,
+        checkpoint_completion_id: row.completion.id,
+        reject_reason: status === "rejected" ? reject_reason : null,
+      }
+    );
   }
 
   return updated;

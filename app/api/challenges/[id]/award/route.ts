@@ -2,27 +2,24 @@ import { NextRequest } from "next/server";
 import { eq, and, inArray } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { parseBody } from "@/lib/api/parse";
-import { NotFoundError, ForbiddenError, BadRequestError, ConflictError } from "@/lib/api/errors";
+import { NotFoundError, BadRequestError, ConflictError } from "@/lib/api/errors";
+import { findResourceOrOwn } from "@/lib/api/db-helpers";
 import {
   AwardBadgesBodySchema,
   RecordBadgeAwardBodySchema,
 } from "@/lib/schemas/challenges";
 import { challenges, participants, badges } from "@/lib/db/schema";
-import { createNotification } from "@/lib/notifications";
+import { notifyUser } from "@/lib/notifications";
 
 // POST /api/challenges/[id]/award — creator awards badges to participants
 // Body: { user_ids: string[] } — list of participant user IDs to award
 export const POST = apiHandler(async (req: NextRequest, { session, db, params }) => {
-  const [challenge] = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.id, params.id))
-    .limit(1);
-
-  if (!challenge) throw new NotFoundError("Challenge");
-  if (challenge.creator_id !== session!.user_id) {
-    throw new ForbiddenError("Only the challenge creator can award badges");
-  }
+  const challenge = await findResourceOrOwn(db, challenges, params.id, {
+    resourceName: "Challenge",
+    ownerField: "creator_id",
+    session: session!,
+    forbiddenMessage: "Only the challenge creator can award badges",
+  });
 
   const { user_ids } = await parseBody(req, AwardBadgesBodySchema);
 
@@ -93,7 +90,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     newUserIds
       .filter((uid: string) => uid !== challenge.creator_id)
       .map((uid: string) =>
-        createNotification(
+        notifyUser(
           uid,
           "badge_earned",
           "New badge!",
@@ -103,9 +100,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
             challenge: challenge.title,
             challenge_id: challenge.id,
           }
-        ).catch((err) => {
-          console.error("notification:badge_earned failed", err);
-        })
+        )
       )
   );
 
@@ -117,16 +112,12 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
 // it signs + publishes the badge award event, so badges.nostr_event_id
 // stops being dead storage.
 export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }) => {
-  const [challenge] = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.id, params.id))
-    .limit(1);
-
-  if (!challenge) throw new NotFoundError("Challenge");
-  if (challenge.creator_id !== session!.user_id) {
-    throw new ForbiddenError("Only the challenge creator can record badge event ids");
-  }
+  await findResourceOrOwn(db, challenges, params.id, {
+    resourceName: "Challenge",
+    ownerField: "creator_id",
+    session: session!,
+    forbiddenMessage: "Only the challenge creator can record badge event ids",
+  });
 
   const { user_id, nostr_event_id } = await parseBody(
     req,
