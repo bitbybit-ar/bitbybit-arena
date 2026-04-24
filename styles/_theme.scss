@@ -42,6 +42,22 @@ $themes: (
     ceramic-highlight: rgba(255 255 255 / 0.6),
     ceramic-highlight-soft: rgba(255 255 255 / 0.25),
     ceramic-inner-shadow: rgba(0 0 0 / 0.06),
+
+    // ceramic-surface mixin tints — intentionally identical across
+    // themes because the mixin always paints over a saturated accent
+    // color (primary, secondary, accent-alt, etc.) where the white
+    // gloss reads the same in light and dark.
+    ceramic-gloss-strong: rgba(255 255 255 / 0.22),
+    ceramic-gloss-soft: rgba(255 255 255 / 0.08),
+    ceramic-gloss-edge: rgba(255 255 255 / 0.4),
+    ceramic-shadow-edge: rgba(0 0 0 / 0.18),
+
+    // bubble-surface mixin tints — same rationale: bubbles are
+    // translucent spheres that render identically in both themes.
+    bubble-spec-top: rgba(255 255 255 / 0.4),
+    bubble-spec-dot: rgba(255 255 255 / 0.55),
+    bubble-edge: rgba(255 255 255 / 0.25),
+    bubble-inner-glow: rgba(255 255 255 / 0.12),
   ),
   dark: (
     // Backgrounds
@@ -82,6 +98,20 @@ $themes: (
     ceramic-highlight: rgba(138 152 200 / 0.22),
     ceramic-highlight-soft: rgba(138 152 200 / 0.1),
     ceramic-inner-shadow: rgba(0 0 0 / 0.35),
+
+    // ceramic-surface mixin tints — match light theme exactly. The
+    // mixin paints over a saturated accent color, so the same white
+    // gloss reads correctly on both backgrounds.
+    ceramic-gloss-strong: rgba(255 255 255 / 0.22),
+    ceramic-gloss-soft: rgba(255 255 255 / 0.08),
+    ceramic-gloss-edge: rgba(255 255 255 / 0.4),
+    ceramic-shadow-edge: rgba(0 0 0 / 0.18),
+
+    // bubble-surface mixin tints — match light theme exactly.
+    bubble-spec-top: rgba(255 255 255 / 0.4),
+    bubble-spec-dot: rgba(255 255 255 / 0.55),
+    bubble-edge: rgba(255 255 255 / 0.25),
+    bubble-inner-glow: rgba(255 255 255 / 0.12),
   ),
 );
 

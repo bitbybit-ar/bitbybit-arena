@@ -76,14 +76,14 @@
   background-color: $color;
   background-image: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.22) 0%,
-    rgba(255, 255, 255, 0.08) 35%,
+    $ceramic-gloss-strong 0%,
+    $ceramic-gloss-soft 35%,
     transparent 55%
   );
   box-shadow:
     0 4px 12px alpha($color, $shadow-strength),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.18);
+    inset 0 1px 0 $ceramic-gloss-edge,
+    inset 0 -2px 4px $ceramic-shadow-edge;
 }
 
 // Method-button layout used by the signer picker buttons and by the
@@ -126,13 +126,13 @@
   background:
     radial-gradient(
       circle at 30% 28%,
-      rgba(255, 255, 255, 0.4) 0%,
+      $bubble-spec-top 0%,
       transparent 45%
     ),
     $bg;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid $bubble-edge;
   box-shadow:
-    inset 0 0 20px rgba(255, 255, 255, 0.12),
+    inset 0 0 20px $bubble-inner-glow,
     0 4px 20px alpha(var(--bubble-color), 15%);
 
   &::after {
@@ -143,7 +143,7 @@
     width: 28%;
     height: 22%;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.55);
+    background: $bubble-spec-dot;
     filter: blur(2px);
     pointer-events: none;
   }
