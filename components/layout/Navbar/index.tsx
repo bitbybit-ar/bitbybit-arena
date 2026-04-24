@@ -17,6 +17,7 @@ import styles from "./navbar.module.scss";
 
 export function Navbar() {
   const t = useTranslations("common");
+  const tNav = useTranslations("navbar");
   const { theme, toggleTheme } = useTheme();
   const { user } = useSession();
   const { clearSigner } = useSignerContext();
@@ -78,7 +79,7 @@ export function Navbar() {
             <button
               className={styles.toggle}
               onClick={toggleTheme}
-              aria-label={mounted && theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={mounted && theme === "dark" ? tNav("switchToLightMode") : tNav("switchToDarkMode")}
               suppressHydrationWarning
             >
               {mounted ? (
@@ -90,7 +91,7 @@ export function Navbar() {
             <button
               className={styles.toggle}
               onClick={toggleLocale}
-              aria-label={locale === "es" ? "Switch to English" : "Cambiar a Espanol"}
+              aria-label={locale === "es" ? tNav("switchToEnglish") : tNav("switchToSpanish")}
             >
               {locale === "es" ? "EN" : "ES"}
             </button>

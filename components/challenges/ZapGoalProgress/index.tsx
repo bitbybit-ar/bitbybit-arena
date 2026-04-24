@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { BoltIcon } from "@/components/icons";
 import { useZapGoalProgress } from "@/lib/hooks/useZapGoalProgress";
@@ -130,7 +130,7 @@ export function ZapGoalProgress({
       >
         <div
           className={styles.progressFill}
-          style={{ width: `${percent}%` }}
+          style={{ "--fill-width": `${percent}%` } as CSSProperties}
         />
       </div>
 

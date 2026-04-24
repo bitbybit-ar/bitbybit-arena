@@ -3,6 +3,7 @@
 @use "@/styles/typography" as *;
 @use "@/styles/common-mixins" as *;
 @use "@/styles/media-mixins" as *;
+@use "@/styles/z-index" as *;
 
 .navbar {
   position: fixed;
@@ -10,7 +11,7 @@
   left: 0;
   right: 0;
   height: $navbar-height;
-  z-index: 1000;
+  z-index: $z-index-navbar;
   background-color: $static-white;
   transition: background-color 0.3s ease, border-color 0.3s ease,
     box-shadow 0.3s ease, transform 0.3s ease;
@@ -177,7 +178,7 @@
     inset 0 1px 0 $ceramic-highlight,
     inset 0 -2px 4px $ceramic-inner-shadow;
   padding: $spacing-4;
-  z-index: 1001;
+  z-index: $z-index-dropdown;
   animation: avatarMenuFadeIn 0.15s ease-out;
 }
 

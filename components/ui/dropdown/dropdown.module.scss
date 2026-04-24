@@ -2,6 +2,7 @@
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
 @use "@/styles/common-mixins" as *;
+@use "@/styles/z-index" as *;
 
 .dropdown {
   position: relative;
@@ -99,7 +100,7 @@
     0 12px 32px $card-shadow-hover,
     inset 0 1px 0 $ceramic-highlight,
     inset 0 -2px 4px $ceramic-inner-shadow;
-  z-index: 1001;
+  z-index: $z-index-dropdown;
   max-height: 280px;
   overflow-y: auto;
   animation: dropdownFadeIn 0.15s ease-out;

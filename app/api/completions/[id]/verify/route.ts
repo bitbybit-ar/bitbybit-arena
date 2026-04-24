@@ -26,7 +26,18 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
   });
   if (completion.status !== "pending") throw new BadRequestError("This completion has already been reviewed");
 
-  const [updated] = await db
+  // For an approval we also bump the participant's progress — a mid-flow
+  // crash between those writes used to leave the completion marked
+  // approved with stale progress, so batch them together. neon-http's
+  // drizzle driver runs `db.batch([...])` as a single implicit
+  // transaction; read the participant up-front so progress math can
+  // be resolved before the batch is assembled.
+  const participation =
+    status === "approved"
+      ? await findParticipation(db, challenge.id, completion.user_id)
+      : undefined;
+
+  const updateCompletionStmt = db
     .update(completions)
     .set({
       status,
@@ -36,22 +47,27 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     .where(eq(completions.id, params.id))
     .returning();
 
-  // If approved, update participant progress
-  if (status === "approved") {
-    const participation = await findParticipation(db, challenge.id, completion.user_id);
+  let updated: typeof completion;
+  if (status === "approved" && participation) {
+    const newProgress = participation.progress + 1;
+    const isComplete = challenge.goal ? newProgress >= challenge.goal : true;
 
-    if (participation) {
-      const newProgress = participation.progress + 1;
-      const isComplete = challenge.goal ? newProgress >= challenge.goal : true;
-
-      await db
+    const [completionRows] = await db.batch([
+      updateCompletionStmt,
+      db
         .update(participants)
         .set({
           progress: newProgress,
-          ...(isComplete ? { status: "completed" as const, completed_at: new Date() } : {}),
+          ...(isComplete
+            ? { status: "completed" as const, completed_at: new Date() }
+            : {}),
         })
-        .where(eq(participants.id, participation.id));
-    }
+        .where(eq(participants.id, participation.id)),
+    ]);
+    updated = completionRows[0];
+  } else {
+    const [row] = await updateCompletionStmt;
+    updated = row;
   }
 
   // Ping the submitter with the verdict. Client renders approved vs

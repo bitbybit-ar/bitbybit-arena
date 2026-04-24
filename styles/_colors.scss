@@ -28,6 +28,22 @@ $ceramic-highlight: var(--ceramic-highlight);
 $ceramic-highlight-soft: var(--ceramic-highlight-soft);
 $ceramic-inner-shadow: var(--ceramic-inner-shadow);
 
+// Ceramic-surface mixin tints — the glossy highlights and bottom
+// shadow painted over a saturated accent color. Same values in both
+// themes today, but routed through theme tokens so future tuning
+// doesn't require touching the mixin.
+$ceramic-gloss-strong: var(--ceramic-gloss-strong);
+$ceramic-gloss-soft: var(--ceramic-gloss-soft);
+$ceramic-gloss-edge: var(--ceramic-gloss-edge);
+$ceramic-shadow-edge: var(--ceramic-shadow-edge);
+
+// Bubble-surface mixin tints — specular + edge highlights for the
+// translucent bubble decorations.
+$bubble-spec-top: var(--bubble-spec-top);
+$bubble-spec-dot: var(--bubble-spec-dot);
+$bubble-edge: var(--bubble-edge);
+$bubble-inner-glow: var(--bubble-inner-glow);
+
 // Static colors (don't change with theme)
 $static-white: #ffffff;
 $static-black: #000000;

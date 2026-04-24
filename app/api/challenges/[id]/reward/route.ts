@@ -219,6 +219,15 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
     all_winners_paid: allWinnersPaid,
   } = await parseBody(req, RecordRewardBodySchema);
 
+  // Resolve read-side guards and id lookups up front, then push every
+  // write onto a single `db.batch([...])` so a crash mid-request can't
+  // leave the challenge in a half-paid state (participant rewarded_at
+  // stamped but completion receipt missing, or all_winners_paid with
+  // challenges.rewards_paid_at unset). neon-http runs the batch as one
+  // implicit transaction.
+  type BatchWrite = Parameters<typeof db.batch>[0][number];
+  const writes: BatchWrite[] = [];
+
   if (winnerUserId) {
     // Guard: the target user must actually be a completed participant
     // on this challenge. Prevents stamping an unrelated row and also
@@ -241,10 +250,12 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
       );
     }
 
-    await db
-      .update(participants)
-      .set({ rewarded_at: new Date() })
-      .where(eq(participants.id, participantRow.id));
+    writes.push(
+      db
+        .update(participants)
+        .set({ rewarded_at: new Date() })
+        .where(eq(participants.id, participantRow.id))
+    );
 
     if (receiptEventId) {
       const [target] = await db
@@ -261,31 +272,17 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
         .limit(1);
 
       if (target) {
-        await db
-          .update(completions)
-          .set({ reward_zap_receipt_id: receiptEventId })
-          .where(eq(completions.id, target.id));
+        writes.push(
+          db
+            .update(completions)
+            .set({ reward_zap_receipt_id: receiptEventId })
+            .where(eq(completions.id, target.id))
+        );
       }
       // If there's no approved completion (edge case: a participant
       // flipped to `completed` via checkpoints without an approved
       // completion row), we still stamp `rewarded_at` above and swallow
       // the receipt — no place to put it, not worth 400ing over.
-    }
-
-    // Skip self-pay: creators who win their own challenge don't get a
-    // prize (retained=true), so there's nothing to notify them about.
-    if (winnerUserId !== challenge.creator_id) {
-      await notifyUser(
-        winnerUserId,
-        "prize_awarded",
-        "You won sats!",
-        `You received the prize for "${challenge.title}".`,
-        {
-          challenge: challenge.title,
-          challenge_id: challenge.id,
-          receipt_event_id: receiptEventId ?? null,
-        }
-      );
     }
   }
 
@@ -294,21 +291,51 @@ export const PATCH = apiHandler(async (req: NextRequest, { session, db, params }
     // (typically the retained creator, which the client skips in the
     // zap loop). Without this sweep, POST /reward on this challenge
     // would still see them as "unpaid" and either 400 or re-offer.
-    await db
-      .update(challenges)
-      .set({ rewards_paid_at: new Date() })
-      .where(eq(challenges.id, params.id));
-
-    await db
-      .update(participants)
-      .set({ rewarded_at: new Date() })
-      .where(
-        and(
-          eq(participants.challenge_id, params.id),
-          eq(participants.status, "completed"),
-          isNull(participants.rewarded_at)
+    writes.push(
+      db
+        .update(challenges)
+        .set({ rewards_paid_at: new Date() })
+        .where(eq(challenges.id, params.id))
+    );
+    writes.push(
+      db
+        .update(participants)
+        .set({ rewarded_at: new Date() })
+        .where(
+          and(
+            eq(participants.challenge_id, params.id),
+            eq(participants.status, "completed"),
+            isNull(participants.rewarded_at)
+          )
         )
-      );
+    );
+  }
+
+  if (writes.length >= 2) {
+    // batch's input type is a non-empty tuple; a dynamically-pushed
+    // array loses that shape, so cast back at the call site.
+    await db.batch(writes as [BatchWrite, BatchWrite, ...BatchWrite[]]);
+  } else if (writes.length === 1) {
+    await writes[0];
+  }
+
+  // Notifications are side effects outside the DB atomicity contract —
+  // fire after the writes have landed so a failed batch doesn't page a
+  // winner who wasn't actually marked paid.
+  if (winnerUserId && winnerUserId !== challenge.creator_id) {
+    // Skip self-pay: creators who win their own challenge don't get a
+    // prize (retained=true), so there's nothing to notify them about.
+    await notifyUser(
+      winnerUserId,
+      "prize_awarded",
+      "You won sats!",
+      `You received the prize for "${challenge.title}".`,
+      {
+        challenge: challenge.title,
+        challenge_id: challenge.id,
+        receipt_event_id: receiptEventId ?? null,
+      }
+    );
   }
 
   return { ok: true };

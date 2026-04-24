@@ -3,11 +3,12 @@
 @use "@/styles/typography" as *;
 @use "@/styles/common-mixins" as *;
 @use "@/styles/media-mixins" as *;
+@use "@/styles/z-index" as *;
 
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: $z-index-modal;
   display: flex;
   align-items: center;
   justify-content: center;

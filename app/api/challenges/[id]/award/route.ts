@@ -60,28 +60,31 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
 
   const badgeName = challenge.badge_name || challenge.title;
 
-  const awarded = await db
-    .insert(badges)
-    .values(
-      newUserIds.map((user_id: string) => ({
-        challenge_id: params.id,
-        user_id,
-        badge_name: badgeName,
-        badge_image_url: challenge.badge_image_url,
-      }))
-    )
-    .returning();
-
-  // Mark awarded participants as completed
-  await db
-    .update(participants)
-    .set({ status: "completed", completed_at: new Date() })
-    .where(
-      and(
-        eq(participants.challenge_id, params.id),
-        inArray(participants.user_id, newUserIds)
+  // Atomic: insert badges AND mark recipients as completed in one
+  // implicit transaction. Previously a crash between the two writes
+  // left badges awarded to participants still in "joined" status.
+  const [awarded] = await db.batch([
+    db
+      .insert(badges)
+      .values(
+        newUserIds.map((user_id: string) => ({
+          challenge_id: params.id,
+          user_id,
+          badge_name: badgeName,
+          badge_image_url: challenge.badge_image_url,
+        }))
       )
-    );
+      .returning(),
+    db
+      .update(participants)
+      .set({ status: "completed", completed_at: new Date() })
+      .where(
+        and(
+          eq(participants.challenge_id, params.id),
+          inArray(participants.user_id, newUserIds)
+        )
+      ),
+  ]);
 
   // One notification per newly awarded recipient. Skip the creator to
   // avoid self-ping when they award themselves in a challenge they also

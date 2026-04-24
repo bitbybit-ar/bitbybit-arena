@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useParams, notFound } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { useRouter } from "@/i18n/routing";
-import { ArrowRightIcon, BadgeIcon, BoltIcon, CopyIcon } from "@/components/icons";
+import { ArrowRightIcon, BoltIcon, CopyIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { Modal } from "@/components/ui/modal";
@@ -15,6 +15,8 @@ import { CheckpointItem, type CheckpointItemStatus } from "@/components/challeng
 import { CheckpointProgress } from "@/components/challenges/CheckpointProgress";
 import { CheckpointSubmissionCard } from "@/components/challenges/CheckpointSubmissionCard";
 import { CheckpointSubmitForm } from "@/components/challenges/CheckpointSubmitForm";
+import { ParticipantsList, type ParticipantItem } from "@/components/challenges/ParticipantsList";
+import { RewardDistributionPanel } from "@/components/challenges/RewardDistributionPanel";
 import { useClipboard } from "@/lib/hooks/useClipboard";
 import { fetchNostrMetadata } from "@/lib/nostr/metadata";
 import {
@@ -131,14 +133,6 @@ interface CompletionItem {
   proof_event_id: string | null;
   status: string;
   submitted_at: string;
-  user: { id: string; display_name: string; username: string; nostr_pubkey?: string };
-}
-
-interface ParticipantItem {
-  id: string;
-  user_id: string;
-  status: string;
-  progress: number;
   user: { id: string; display_name: string; username: string; nostr_pubkey?: string };
 }
 
@@ -1592,106 +1586,30 @@ export default function ChallengeClient() {
         </div>
 
         {/* Participants + Award */}
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>{t("participants")} ({participants.length})</h2>
-          {participants.length === 0 ? (
-            <p className={styles.emptyText}>{t("noParticipants")}</p>
-          ) : (
-            <>
-              <div className={styles.participantList}>
-                {participants.map((p) => (
-                  <div key={p.id} className={styles.participantRow}>
-                    {isCreator && (
-                      <input
-                        type="checkbox"
-                        checked={selectedWinners.has(p.user_id)}
-                        onChange={() => toggleWinner(p.user_id)}
-                      />
-                    )}
-                    <span className={styles.participantName}>{p.user.display_name}</span>
-                    <Tag variant={p.status === "completed" ? "green" : "purple"}>
-                      {tCommon(p.status)}
-                    </Tag>
-                    {challenge.goal && (
-                      <span className={styles.participantProgress}>
-                        {p.progress}/{challenge.goal}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {isCreator && selectedWinners.size > 0 && (
-                <Button size="sm" onClick={handleAwardBadges} disabled={actionLoading === "award"}>
-                  <BadgeIcon size={16} />
-                  {actionLoading === "award" ? t("awarding") : `${t("awardBadges")} (${selectedWinners.size})`}
-                </Button>
-              )}
-            </>
-          )}
-        </div>
+        <ParticipantsList
+          participants={participants}
+          isCreator={isCreator}
+          goal={challenge.goal}
+          selectedWinners={selectedWinners}
+          onToggleWinner={toggleWinner}
+          onAwardBadges={handleAwardBadges}
+          awardLoading={actionLoading === "award"}
+        />
 
         {/* Reward zaps */}
-        {isCreator &&
-          challenge.prize_amount_sats > 0 &&
-          challenge.prize_distribution &&
-          challenge.prize_distribution !== "none" &&
-          !challenge.rewards_paid_at && (
-            <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>{t("rewardSectionTitle")}</h2>
-              <p className={styles.emptyText}>
-                {t("rewardInstructions", {
-                  amount: challenge.prize_amount_sats,
-                  mode: tCreate(
-                    `rewardZapModes.${challenge.prize_distribution}`
-                  ),
-                })}
-              </p>
-              <Button
-                size="sm"
-                onClick={handleClaimReward}
-                disabled={actionLoading === "reward"}
-              >
-                <BoltIcon size={16} />
-                {actionLoading === "reward"
-                  ? t("rewardSending")
-                  : t("claimReward")}
-              </Button>
-              {rewardStatus && (
-                <p className={styles.emptyText}>{rewardStatus}</p>
-              )}
-              {rewardError && <p className={styles.error}>{rewardError}</p>}
-            </div>
-          )}
-
-        {isCreator && challenge.rewards_paid_at && (
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>{t("rewardSectionTitle")}</h2>
-            <p className={styles.emptyText}>{t("rewardAlreadyPaid")}</p>
-            {!challenge.result_nostr_event_id && (
-              <>
-                <p className={styles.emptyText}>
-                  {t("republishResultHint")}
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleRepublishResult}
-                  disabled={actionLoading === "republishResult"}
-                >
-                  {actionLoading === "republishResult"
-                    ? t("republishingResult")
-                    : t("republishResult")}
-                </Button>
-                {rewardStatus && (
-                  <p className={styles.emptyText}>{rewardStatus}</p>
-                )}
-                {rewardError && (
-                  <p className={styles.error}>{rewardError}</p>
-                )}
-              </>
-            )}
-          </div>
-        )}
+        <RewardDistributionPanel
+          isCreator={isCreator}
+          prizeAmountSats={challenge.prize_amount_sats}
+          prizeDistribution={challenge.prize_distribution}
+          rewardsPaidAt={challenge.rewards_paid_at}
+          resultNostrEventId={challenge.result_nostr_event_id}
+          claimLoading={actionLoading === "reward"}
+          republishResultLoading={actionLoading === "republishResult"}
+          rewardStatus={rewardStatus}
+          rewardError={rewardError}
+          onClaimReward={handleClaimReward}
+          onRepublishResult={handleRepublishResult}
+        />
       </div>
 
       {shareContext && (
