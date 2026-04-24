@@ -34,6 +34,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Persist Next.js's build cache across CI runs. Without this,
+      # `next build` logs "No build cache found" on every run and
+      # recompiles + retraces from scratch. Cache key follows the
+      # snippet from https://nextjs.org/docs/messages/no-cache —
+      # invalidate on lockfile + source file changes, with a
+      # lockfile-only fallback so a one-file edit still hits the
+      # previous cache.
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+
       - name: Typecheck
         run: npx tsc --noEmit
 
