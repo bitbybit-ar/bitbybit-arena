@@ -1,0 +1,27 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.checkpointsHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: $spacing-12;
+  flex-wrap: wrap;
+
+  .sectionTitle {
+    margin-bottom: 0;
+  }
+}
+
+.emptyText {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+}
+
+.checkpointTower {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+  margin-top: $spacing-16;
+}

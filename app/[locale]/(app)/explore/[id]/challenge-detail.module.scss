@@ -144,18 +144,6 @@
   margin-bottom: $spacing-16;
 }
 
-.checkpointsHeader {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: $spacing-12;
-  flex-wrap: wrap;
-
-  .sectionTitle {
-    margin-bottom: 0;
-  }
-}
-
 .emptyText {
   color: $color-text-secondary;
   font-size: $font-size-sm;
@@ -361,13 +349,6 @@
   color: $color-error;
   font-size: $font-size-sm;
   margin-top: $spacing-8;
-}
-
-.checkpointTower {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-12;
-  margin-top: $spacing-16;
 }
 
 .loadMoreRow {
