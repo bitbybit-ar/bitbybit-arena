@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { ExploreFilters } from "@/components/challenges/ExploreFilters";
 import { ChallengeGrid } from "@/components/challenges/ChallengeGrid";
-import type { ChallengeItem } from "@/components/challenges/ChallengeCard";
+import type { ChallengeItem } from "@/lib/types";
 import type { ZapGoalProgressData } from "@/app/api/challenges/[id]/zap-goal-progress/route";
 import { useRouter } from "@/i18n/routing";
 import { useSignerContext } from "@/lib/signer-context";

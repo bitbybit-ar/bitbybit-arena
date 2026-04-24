@@ -7,28 +7,8 @@ import { Tag } from "@/components/ui/tag";
 import { BoltIcon } from "@/components/icons";
 import { ZapGoalBar } from "@/components/challenges/ZapGoalBar";
 import type { ZapGoalProgressData } from "@/app/api/challenges/[id]/zap-goal-progress/route";
+import type { ChallengeItem } from "@/lib/types";
 import styles from "./challenge-card.module.scss";
-
-export interface ChallengeItem {
-  id: string;
-  title: string;
-  description: string;
-  type: string;
-  status: string;
-  tags: string[];
-  participant_count: number;
-  ends_at: string | null;
-  created_at: string;
-  prize_amount_sats: number;
-  zap_goal_event_id: string | null;
-  badge_name: string | null;
-  badge_image_url: string | null;
-  creator: {
-    username: string;
-    display_name: string;
-    avatar_url: string | null;
-  };
-}
 
 interface ChallengeCardProps {
   challenge: ChallengeItem;

@@ -5,10 +5,8 @@ import { BlockLoader } from "@/components/ui/block-loader";
 import { PixelIcon } from "@/components/common/PixelIcon";
 import { EmptyState } from "@/components/common/EmptyState";
 import { InfiniteScrollSentinel } from "@/components/common/InfiniteScrollSentinel";
-import {
-  ChallengeCard,
-  type ChallengeItem,
-} from "@/components/challenges/ChallengeCard";
+import { ChallengeCard } from "@/components/challenges/ChallengeCard";
+import type { ChallengeItem } from "@/lib/types";
 import type { ZapGoalProgressData } from "@/app/api/challenges/[id]/zap-goal-progress/route";
 import styles from "./challenge-grid.module.scss";
 

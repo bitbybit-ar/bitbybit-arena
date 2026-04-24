@@ -55,7 +55,7 @@ export async function notifyUser(
   userId: string,
   type: NotificationType,
   title: string,
-  body: string,
+  body: string | null,
   metadata?: Record<string, unknown>,
   context?: string
 ): Promise<void> {

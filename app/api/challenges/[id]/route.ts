@@ -3,11 +3,14 @@ import { eq, sql, and, asc } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
 import { parseBody } from "@/lib/api/parse";
 import { NotFoundError, BadRequestError } from "@/lib/api/errors";
-import { findResourceOrOwn, findParticipation } from "@/lib/api/db-helpers";
+import {
+  fetchChallengeWithCounts,
+  findResourceOrOwn,
+  findParticipation,
+} from "@/lib/api/db-helpers";
 import { UpdateChallengeBodySchema } from "@/lib/schemas/challenges";
 import {
   challenges,
-  users,
   participants,
   challenge_checkpoints,
   checkpoint_completions,
@@ -17,33 +20,8 @@ import { getSession } from "@/lib/auth";
 // GET /api/challenges/[id] — get single challenge with creator and participant count
 export const GET = apiHandler(
   async (_req: NextRequest, { db, params }) => {
-    const rows = await db
-      .select({
-        challenge: challenges,
-        creator: {
-          id: users.id,
-          username: users.username,
-          display_name: users.display_name,
-          avatar_url: users.avatar_url,
-          nostr_pubkey: users.nostr_pubkey,
-          lightning_address: users.lightning_address,
-        },
-        participant_count: sql<number>`(
-          SELECT COUNT(*)::int FROM participants
-          WHERE participants.challenge_id = ${challenges.id}
-          AND participants.status != 'withdrawn'
-        )`,
-        completion_count: sql<number>`(
-          SELECT COUNT(*)::int FROM completions
-          WHERE completions.challenge_id = ${challenges.id}
-        )`,
-      })
-      .from(challenges)
-      .innerJoin(users, eq(challenges.creator_id, users.id))
-      .where(eq(challenges.id, params.id))
-      .limit(1);
-
-    if (rows.length === 0) throw new NotFoundError("Challenge");
+    const challenge = await fetchChallengeWithCounts(db, params.id);
+    if (!challenge) throw new NotFoundError("Challenge");
 
     const checkpoints = await db
       .select()
@@ -65,10 +43,7 @@ export const GET = apiHandler(
     }
 
     return {
-      ...rows[0].challenge,
-      participant_count: rows[0].participant_count,
-      completion_count: rows[0].completion_count,
-      creator: rows[0].creator,
+      ...challenge,
       checkpoints,
       my_checkpoint_completions: myCheckpointCompletions,
     };
