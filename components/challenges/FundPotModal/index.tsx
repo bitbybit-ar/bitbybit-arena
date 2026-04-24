@@ -75,6 +75,13 @@ export function FundPotModal({
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  // A polling tick can resolve *after* the modal has unmounted (parent
+  // closed it, route changed, etc.). Guard every setState call and the
+  // `onZapped` callback made from the awaited fetch branch on this ref
+  // so we never fire on a disposed component — current callers only
+  // flip local state, but a future caller that navigates on success
+  // would hit the classic setState-after-unmount warning.
+  const isMountedRef = useRef(true);
 
   const parsedCustom = Number(customAmount);
   const activeAmount =
@@ -91,10 +98,17 @@ export function FundPotModal({
     }
   }, []);
 
-  useEffect(() => () => clearPolling(), [clearPolling]);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      clearPolling();
+    };
+  }, [clearPolling]);
 
   const onSuccess = useCallback(() => {
     clearPolling();
+    if (!isMountedRef.current) return;
     setStatus("success");
     onZapped?.();
   }, [clearPolling, onZapped]);
@@ -109,6 +123,7 @@ export function FundPotModal({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ invoice: pr }),
           });
+          if (!isMountedRef.current) return;
           if (!res.ok) return;
           const { paid } = await res.json();
           if (paid) onSuccess();

@@ -54,12 +54,18 @@ export function ZapModal({ onClose }: ZapModalProps) {
   const [showConfetti, setShowConfetti] = useState(false);
   const confettiTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  // A polling tick can resolve *after* the modal has unmounted (parent
+  // closed it, route changed, etc.). Guard every setState call made from
+  // the awaited fetch branch on this ref so we never touch React state
+  // on a disposed component.
+  const isMountedRef = useRef(true);
 
   const parsedCustom = Number(customAmount);
   const activeAmount = customAmount && !isNaN(parsedCustom) ? parsedCustom : amount;
 
   const triggerSuccess = useCallback(() => {
     if (pollRef.current) clearInterval(pollRef.current);
+    if (!isMountedRef.current) return;
     setStatus("success");
     setShowConfetti(true);
     confettiTimeout.current = setTimeout(() => setShowConfetti(false), 2000);
@@ -78,6 +84,7 @@ export function ZapModal({ onClose }: ZapModalProps) {
             body: JSON.stringify({ invoice: invoiceStr }),
           });
 
+          if (!isMountedRef.current) return;
           if (res.ok) {
             const { paid } = await res.json();
             if (paid) triggerSuccess();
@@ -91,7 +98,9 @@ export function ZapModal({ onClose }: ZapModalProps) {
   );
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       if (confettiTimeout.current) clearTimeout(confettiTimeout.current);
       if (pollRef.current) clearInterval(pollRef.current);
     };

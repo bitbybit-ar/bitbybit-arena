@@ -155,4 +155,72 @@ describe("validateNip98AuthEvent", () => {
       expect(signerTag?.[1]).toBe("extension");
     }
   });
+
+  describe("payload-hash opt-in", () => {
+    const PAYLOAD_HEX =
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
+    it("accepts the event when payloadHash matches the [payload, <hex>] tag", () => {
+      const event = signAuthEvent({
+        extraTags: [["payload", PAYLOAD_HEX]],
+      });
+      const result = validateNip98AuthEvent(event, {
+        url: REQUEST_URL,
+        method: REQUEST_METHOD,
+        payloadHash: PAYLOAD_HEX,
+      });
+      expect(result.ok).toBe(true);
+    });
+
+    it("accepts the event when payloadHash matches case-insensitively", () => {
+      const event = signAuthEvent({
+        extraTags: [["payload", PAYLOAD_HEX]],
+      });
+      const result = validateNip98AuthEvent(event, {
+        url: REQUEST_URL,
+        method: REQUEST_METHOD,
+        payloadHash: PAYLOAD_HEX.toUpperCase(),
+      });
+      expect(result.ok).toBe(true);
+    });
+
+    it("rejects with reason=payload when the [payload] tag value doesn't match", () => {
+      const event = signAuthEvent({
+        extraTags: [["payload", "f".repeat(64)]],
+      });
+      const result = validateNip98AuthEvent(event, {
+        url: REQUEST_URL,
+        method: REQUEST_METHOD,
+        payloadHash: PAYLOAD_HEX,
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe("payload");
+    });
+
+    it("rejects with reason=payload when payloadHash is required but tag is missing", () => {
+      const event = signAuthEvent();
+      const result = validateNip98AuthEvent(event, {
+        url: REQUEST_URL,
+        method: REQUEST_METHOD,
+        payloadHash: PAYLOAD_HEX,
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe("payload");
+    });
+
+    it("ignores the [payload] tag when the caller didn't opt in (login endpoint)", () => {
+      // Body-less endpoints keep working: a `[payload]` tag may even
+      // be present but we don't look at it when `ctx.payloadHash` is
+      // undefined. This guards the login endpoint against a behavior
+      // change when the new parameter shipped.
+      const event = signAuthEvent({
+        extraTags: [["payload", "deadbeef".repeat(8)]],
+      });
+      const result = validateNip98AuthEvent(event, {
+        url: REQUEST_URL,
+        method: REQUEST_METHOD,
+      });
+      expect(result.ok).toBe(true);
+    });
+  });
 });

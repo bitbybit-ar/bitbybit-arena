@@ -39,6 +39,7 @@ export type AuthEventRejection =
   | "content"
   | "url"
   | "method"
+  | "payload"
   | "signature";
 
 export type AuthEventValidation =
@@ -66,6 +67,14 @@ interface RequestContext {
   url: string;
   /** HTTP method of the incoming request, in upper-case. */
   method: string;
+  /**
+   * Optional sha256 (hex) of the request body. When provided, the
+   * validator enforces the NIP-98 `["payload", <hex>]` tag and rejects
+   * with reason "payload" if it's missing or mismatched. Leave
+   * undefined for body-less endpoints — the login endpoint takes no
+   * body, so it opts out.
+   */
+  payloadHash?: string;
 }
 
 function findTag(event: NostrEvent, name: string): string | undefined {
@@ -107,15 +116,19 @@ function urlsMatch(a: string, b: string): boolean {
  *   3. content is the empty string (NIP-98 §"Validation")
  *   4. `["u", <abs URL>]` tag matches the request URL
  *   5. `["method", <verb>]` tag matches the request method
- *   6. Schnorr signature verifies
+ *   6. If the caller passed `ctx.payloadHash`, the `["payload", <hex>]`
+ *      tag is present and its hex value matches (case-insensitive).
+ *   7. Schnorr signature verifies
  *
  * Returns a discriminated result so the route handler can surface
  * *which* check failed in both the server log and the 400 body —
  * critical for debugging a login issue we can't reproduce locally.
  *
- * Note: the optional `["payload", <sha256(body)>]` tag is not checked
- * here because our login endpoint takes no body. Add a payload check
- * when extending NIP-98 auth to endpoints that send a body.
+ * Payload validation is **opt-in**: body-less endpoints (like the
+ * current `/api/auth/nostr` login) leave `ctx.payloadHash` undefined
+ * and the `["payload", ...]` tag is ignored. A future body-bearing
+ * endpoint adopting NIP-98 just passes the sha256 of the raw request
+ * body and the check turns on automatically.
  */
 export function validateNip98AuthEvent(
   input: unknown,
@@ -142,6 +155,14 @@ export function validateNip98AuthEvent(
   const methodTag = findTag(event, "method");
   if (!methodTag || methodTag.toUpperCase() !== ctx.method.toUpperCase()) {
     return { ok: false, reason: "method" };
+  }
+
+  if (ctx.payloadHash !== undefined) {
+    const payloadTag = findTag(event, "payload");
+    if (!payloadTag) return { ok: false, reason: "payload" };
+    if (payloadTag.toLowerCase() !== ctx.payloadHash.toLowerCase()) {
+      return { ok: false, reason: "payload" };
+    }
   }
 
   if (!verifyNostrEvent(event)) return { ok: false, reason: "signature" };
