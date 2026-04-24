@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useTranslations } from "next-intl";
 import { useParams, notFound } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
@@ -11,10 +12,12 @@ import { Tag } from "@/components/ui/tag";
 import { Modal } from "@/components/ui/modal";
 import { BlockLoader } from "@/components/ui/block-loader";
 import { ImageUpload } from "@/components/common/ImageUpload";
-import { CheckpointItem, type CheckpointItemStatus } from "@/components/challenges/CheckpointItem";
-import { CheckpointProgress } from "@/components/challenges/CheckpointProgress";
+import {
+  CheckpointCompletionSection,
+  defaultDraft,
+  type CheckpointDraft,
+} from "@/components/challenges/CheckpointCompletionSection";
 import { CheckpointSubmissionCard } from "@/components/challenges/CheckpointSubmissionCard";
-import { CheckpointSubmitForm } from "@/components/challenges/CheckpointSubmitForm";
 import { ParticipantsList, type ParticipantItem } from "@/components/challenges/ParticipantsList";
 import { RewardDistributionPanel } from "@/components/challenges/RewardDistributionPanel";
 import { useClipboard } from "@/lib/hooks/useClipboard";
@@ -57,7 +60,7 @@ import styles from "./challenge-detail.module.scss";
 // tolerable without hammering the wallet endpoint.
 const REWARD_POLL_INTERVAL_MS = 4000;
 
-interface CheckpointItem {
+export interface CheckpointItem {
   id: string;
   challenge_id: string;
   order: number;
@@ -68,7 +71,7 @@ interface CheckpointItem {
   nostr_hashtag: string | null;
 }
 
-interface CheckpointCompletionItem {
+export interface CheckpointCompletionItem {
   id: string;
   participant_id: string;
   checkpoint_id: string;
@@ -159,11 +162,12 @@ export default function ChallengeClient() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedWinners, setSelectedWinners] = useState<Set<string>>(new Set());
   const [verifyError, setVerifyError] = useState<string | null>(null);
-  const [checkpointProofs, setCheckpointProofs] = useState<Record<string, string>>({});
-  const [checkpointImages, setCheckpointImages] = useState<
-    Record<string, BlossomDescriptor>
+  // Per-checkpoint draft state keyed by checkpoint id. Collapses what
+  // used to be three parallel records (proofs / images / errors) into
+  // a single object so every read and write updates the same slot.
+  const [checkpointDrafts, setCheckpointDrafts] = useState<
+    Record<string, CheckpointDraft>
   >({});
-  const [checkpointErrors, setCheckpointErrors] = useState<Record<string, string>>({});
   // Pending checkpoint submissions for the creator — paginated via the
   // dedicated endpoint so the challenge-detail payload stays bounded.
   const [pendingSubmissions, setPendingSubmissions] = useState<
@@ -888,11 +892,8 @@ export default function ChallengeClient() {
   };
 
   const handleCompleteCheckpoint = async (checkpoint: CheckpointItem) => {
-    setCheckpointErrors((prev) => {
-      const next = { ...prev };
-      delete next[checkpoint.id];
-      return next;
-    });
+    // Clear any previous error on this checkpoint draft before retrying.
+    updateCheckpointDraft(setCheckpointDrafts, checkpoint.id, { error: null });
     setActionLoading(`cp_${checkpoint.id}`);
     try {
       const body: Record<string, unknown> = {};
@@ -901,20 +902,18 @@ export default function ChallengeClient() {
       body.method = cpPrimary;
       const needsContent = cpPrimary !== "nostr_action" && cpPrimary !== "nostr_hashtag";
       if (needsContent) {
-        const content = (checkpointProofs[checkpoint.id] ?? "").trim();
-        const image = checkpointImages[checkpoint.id];
+        const content = (checkpointDrafts[checkpoint.id]?.proof ?? "").trim();
+        const image = checkpointDrafts[checkpoint.id]?.image ?? null;
         if (!content && !image) {
-          setCheckpointErrors((prev) => ({
-            ...prev,
-            [checkpoint.id]: t("checkpointProofRequired"),
-          }));
+          updateCheckpointDraft(setCheckpointDrafts, checkpoint.id, {
+            error: t("checkpointProofRequired"),
+          });
           return;
         }
         if (content && content.length < 5) {
-          setCheckpointErrors((prev) => ({
-            ...prev,
-            [checkpoint.id]: t("proofTooShort"),
-          }));
+          updateCheckpointDraft(setCheckpointDrafts, checkpoint.id, {
+            error: t("proofTooShort"),
+          });
           return;
         }
         if (content) body.content = content;
@@ -930,23 +929,19 @@ export default function ChallengeClient() {
       );
       const json = await res.json();
       if (!json.success) {
-        setCheckpointErrors((prev) => ({
-          ...prev,
-          [checkpoint.id]: json.error || t("checkpointError"),
-        }));
+        updateCheckpointDraft(setCheckpointDrafts, checkpoint.id, {
+          error: json.error || t("checkpointError"),
+        });
         return;
       }
       // Snapshot the submitted content + image before the clears below
       // so the Nostr publish below has the real proof to sign.
-      const submittedContent = (checkpointProofs[checkpoint.id] ?? "").trim();
-      const submittedImage = checkpointImages[checkpoint.id];
+      const submittedContent = (
+        checkpointDrafts[checkpoint.id]?.proof ?? ""
+      ).trim();
+      const submittedImage = checkpointDrafts[checkpoint.id]?.image ?? null;
 
-      setCheckpointProofs((prev) => {
-        const next = { ...prev };
-        delete next[checkpoint.id];
-        return next;
-      });
-      setCheckpointImages((prev) => {
+      setCheckpointDrafts((prev) => {
         const next = { ...prev };
         delete next[checkpoint.id];
         return next;
@@ -981,10 +976,9 @@ export default function ChallengeClient() {
 
       await fetchAll();
     } catch {
-      setCheckpointErrors((prev) => ({
-        ...prev,
-        [checkpoint.id]: t("checkpointError"),
-      }));
+      updateCheckpointDraft(setCheckpointDrafts, checkpoint.id, {
+        error: t("checkpointError"),
+      });
     } finally {
       setActionLoading(null);
     }
@@ -1342,118 +1336,20 @@ export default function ChallengeClient() {
           )}
 
         {/* Checkpoints */}
-        {challenge.checkpoint_mode !== "none" && challenge.checkpoints.length > 0 && (
-          <div className={styles.section}>
-            <div className={styles.checkpointsHeader}>
-              <h2 className={styles.sectionTitle}>{t("checkpointsTitle")}</h2>
-              <CheckpointProgress
-                variant="compact"
-                approved={
-                  challenge.my_checkpoint_completions.filter(
-                    (c) => c.status === "approved"
-                  ).length
-                }
-                total={challenge.checkpoints.length}
-              />
-            </div>
-            <p className={styles.emptyText}>
-              {challenge.checkpoint_mode === "sequential"
-                ? t("checkpointModeSequential")
-                : t("checkpointModeParallel")}
-            </p>
-            <div className={styles.checkpointTower}>
-              {challenge.checkpoints.map((cp, idx) => {
-                const completion = challenge.my_checkpoint_completions.find(
-                  (c) => c.checkpoint_id === cp.id
-                );
-                const priorIncomplete =
-                  challenge.checkpoint_mode === "sequential" &&
-                  challenge.checkpoints
-                    .slice(0, idx)
-                    .some(
-                      (earlier) =>
-                        !challenge.my_checkpoint_completions.find(
-                          (c) =>
-                            c.checkpoint_id === earlier.id &&
-                            c.status === "approved"
-                        )
-                    );
-                // `locked` is only meaningful to someone who has joined —
-                // a non-participant can't act on a lock, so we render the
-                // row as a neutral todo until they join.
-                const status: CheckpointItemStatus =
-                  completion?.status === "approved"
-                    ? "done"
-                    : completion?.status === "pending"
-                      ? "awaiting-review"
-                      : completion?.status === "rejected"
-                        ? "rejected"
-                        : isParticipant && priorIncomplete
-                          ? "locked"
-                          : "todo";
-                const canSubmit =
-                  isParticipant &&
-                  status !== "done" &&
-                  status !== "awaiting-review" &&
-                  status !== "locked";
-                return (
-                  <CheckpointItem
-                    key={cp.id}
-                    index={idx + 1}
-                    title={cp.title}
-                    description={cp.description}
-                    status={status}
-                    submittedContent={completion?.content ?? null}
-                    submittedImageUrl={completion?.image_url ?? null}
-                    rejectReason={completion?.reject_reason ?? null}
-                    formSlot={
-                      canSubmit ? (
-                        cp.verification_methods[0] === "nostr_action" ? (
-                          <CheckpointSubmitForm
-                            mode="nostr-action"
-                            checkpointIndex={idx + 1}
-                            nostrActionTargetEventId={
-                              cp.nostr_action_target_event_id
-                            }
-                            error={checkpointErrors[cp.id] ?? null}
-                            loading={actionLoading === `cp_${cp.id}`}
-                            onSubmit={() => handleCompleteCheckpoint(cp)}
-                          />
-                        ) : (
-                          <CheckpointSubmitForm
-                            mode="manual"
-                            checkpointIndex={idx + 1}
-                            content={checkpointProofs[cp.id] ?? ""}
-                            image={checkpointImages[cp.id] ?? null}
-                            error={checkpointErrors[cp.id] ?? null}
-                            loading={actionLoading === `cp_${cp.id}`}
-                            onContentChange={(next) =>
-                              setCheckpointProofs((prev) => {
-                                const updated = { ...prev };
-                                if (next) updated[cp.id] = next;
-                                else delete updated[cp.id];
-                                return updated;
-                              })
-                            }
-                            onImageChange={(next) =>
-                              setCheckpointImages((prev) => {
-                                const updated = { ...prev };
-                                if (next) updated[cp.id] = next;
-                                else delete updated[cp.id];
-                                return updated;
-                              })
-                            }
-                            onSubmit={() => handleCompleteCheckpoint(cp)}
-                          />
-                        )
-                      ) : null
-                    }
-                  />
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <CheckpointCompletionSection
+          checkpointMode={challenge.checkpoint_mode}
+          checkpoints={challenge.checkpoints}
+          myCheckpointCompletions={challenge.my_checkpoint_completions}
+          isParticipant={isParticipant}
+          drafts={checkpointDrafts}
+          onDraftChange={(checkpointId, patch) =>
+            updateCheckpointDraft(setCheckpointDrafts, checkpointId, patch)
+          }
+          onSubmitCheckpoint={handleCompleteCheckpoint}
+          submittingCheckpointId={
+            actionLoading?.startsWith("cp_") ? actionLoading.slice(3) : null
+          }
+        />
 
         {/* Submit proof */}
         {isParticipant && challenge.checkpoint_mode === "none" && (challenge.verification_methods ?? []).includes("nostr_action") && (
@@ -1726,6 +1622,21 @@ export default function ChallengeClient() {
       )}
     </div>
   );
+}
+
+// Merge a partial patch into the per-checkpoint draft at `id`, seeding
+// a default draft when the slot is empty. Declared at module scope so
+// every call site shares one reference — that keeps the inline arrow
+// bindings for React's setState calls short and grep-friendly.
+function updateCheckpointDraft(
+  setDrafts: Dispatch<SetStateAction<Record<string, CheckpointDraft>>>,
+  id: string,
+  patch: Partial<CheckpointDraft>
+) {
+  setDrafts((prev) => ({
+    ...prev,
+    [id]: { ...(prev[id] ?? defaultDraft()), ...patch },
+  }));
 }
 
 function typeVariant(type: string): "purple" | "gold" | "green" | "red" {
