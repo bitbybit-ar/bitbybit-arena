@@ -1,0 +1,22 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/media-mixins" as *;
+
+.section {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  padding: $spacing-24;
+
+  @include mobile {
+    padding: $spacing-16;
+  }
+}
+
+.sectionTitle {
+  font-family: $font-display;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-16;
+}

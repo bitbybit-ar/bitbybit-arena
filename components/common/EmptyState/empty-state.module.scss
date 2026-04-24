@@ -1,0 +1,47 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-8;
+  max-width: 320px;
+  margin: 0 auto;
+  padding: $spacing-16 0;
+  text-align: center;
+  color: $color-text-secondary;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: $spacing-8;
+  color: $color-text-secondary;
+
+  svg {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+.title {
+  font-family: $font-display;
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  margin: 0;
+}
+
+.description {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  margin: 0;
+}
+
+.action {
+  margin-top: $spacing-8;
+}
