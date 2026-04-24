@@ -25,7 +25,7 @@ import { ShareOnNostrModal } from "@/components/share/ShareOnNostrModal";
 import type { VerificationMethod } from "@/lib/types";
 import { slugify } from "@/lib/utils";
 import { CheckpointEditor, type CheckpointDraft } from "./CheckpointEditor";
-import { RewardSection } from "./RewardSection";
+import { RewardSection, type RewardZapMode } from "./RewardSection";
 import { VerificationSection } from "./VerificationSection";
 import styles from "./create-challenge-form.module.scss";
 
@@ -33,7 +33,6 @@ export type { CheckpointDraft } from "./CheckpointEditor";
 
 type ChallengeType = "one_time" | "streak" | "competition" | "race" | "creative";
 type CheckpointMode = "none" | "sequential" | "parallel";
-type RewardZapMode = "first_to_complete" | "split" | "tiered";
 
 const CHALLENGE_TYPES: ChallengeType[] = [
   "one_time",

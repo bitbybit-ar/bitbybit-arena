@@ -7,7 +7,10 @@ import { Tooltip } from "@/components/common/Tooltip";
 import { OptionCard, OptionCardGroup } from "@/components/common/OptionCard";
 import styles from "./reward-section.module.scss";
 
-type RewardZapMode = "first_to_complete" | "split" | "tiered";
+// Source of truth for the prize-distribution modes the form supports.
+// The parent orchestrator imports this instead of redeclaring so the
+// two shapes can't silently drift if a new mode is ever added.
+export type RewardZapMode = "first_to_complete" | "split" | "tiered";
 
 // Small helper: label + optional tooltip rendered as sibling of the <label>,
 // not a child. Avoids the "click tooltip → focus input" side effect caused by
