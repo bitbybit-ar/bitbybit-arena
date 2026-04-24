@@ -149,11 +149,17 @@ export const POST = apiHandler(
     // `*.bitbybit.com.ar` service. Browsers refuse to set the cookie
     // if any of those constraints are violated, so this is a hard
     // guarantee, not just convention.
+    //
+    // sameSite: "strict" — the session cookie never travels on a
+    // top-level cross-site navigation. Nostr auth is all client-side
+    // (NIP-07 extension, NIP-46 bunker, or pasted nsec); there is no
+    // OAuth callback or partner-site form post that needs the looser
+    // "lax" policy. Strict is the tighter default.
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       maxAge: 7 * 24 * 60 * 60, // 7 days
       path: "/",
     });

@@ -89,7 +89,9 @@ export function FundPotModal({
 
   // Poll `/api/zap/status` once we've shown the QR. The hook is a
   // no-op while `invoice` is empty, and tears down automatically on
-  // unmount or when `invoice` changes.
+  // unmount or when `invoice` changes. The mounted-ref guard for
+  // post-unmount fetch resolutions lives inside the hook itself
+  // (see lib/hooks/useZapPolling.ts).
   useZapPolling({ invoice: invoice || null, onSuccess });
 
   const handleFund = useCallback(async () => {

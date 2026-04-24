@@ -71,12 +71,21 @@ export function useZapPolling({
     setLastStatus(null);
     setPolling(true);
 
+    // A poll tick can resolve *after* the caller has unmounted
+    // (modal closed, route changed, etc.). Guard every state update
+    // and the `onSuccess` callback on this flag so a late-resolving
+    // fetch doesn't fire on a disposed component. Today's callers
+    // only flip local state — React 19 tolerates that — but a future
+    // caller routing onSuccess to navigation would hit the classic
+    // setState-after-unmount warning or worse.
+    let mounted = true;
+
     // Fires at most once per invoice — the interval is cleared the
     // moment we call it, and the `fired` guard covers the case
     // where two ticks race before teardown runs.
     let fired = false;
     const fireSuccess = () => {
-      if (fired) return;
+      if (fired || !mounted) return;
       fired = true;
       clearInterval(timer);
       setPolling(false);
@@ -90,8 +99,10 @@ export function useZapPolling({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoice }),
         });
+        if (!mounted) return;
         if (!res.ok) return;
         const body: unknown = await res.json();
+        if (!mounted) return;
         if (
           body &&
           typeof body === "object" &&
@@ -123,6 +134,7 @@ export function useZapPolling({
     signal?.addEventListener("abort", onAbort);
 
     return () => {
+      mounted = false;
       clearInterval(timer);
       signal?.removeEventListener("abort", onAbort);
       setPolling(false);

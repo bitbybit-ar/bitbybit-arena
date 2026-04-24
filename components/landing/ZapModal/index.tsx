@@ -65,7 +65,9 @@ export function ZapModal({ onClose }: ZapModalProps) {
 
   // Poll for payment confirmation when showing QR. The hook only
   // polls while `invoice` is non-empty, so passing it unconditionally
-  // is safe — no polling happens before the invoice is set.
+  // is safe — no polling happens before the invoice is set. The
+  // mounted-ref guard for post-unmount fetch resolutions lives inside
+  // the hook itself (see lib/hooks/useZapPolling.ts).
   useZapPolling({ invoice, onSuccess: triggerSuccess });
 
   useEffect(() => {
