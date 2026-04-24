@@ -4,10 +4,15 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { PixelIcon } from "@/components/common/PixelIcon";
+import { EmptyState } from "@/components/common/EmptyState";
 import { BlockLoader } from "@/components/ui/block-loader";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { CheckpointProgress } from "@/components/challenges/CheckpointProgress";
+import {
+  AchievementCard,
+  type AchievementItem,
+} from "@/components/challenges/AchievementCard";
 import { Tabs, panelIdFor } from "@/components/ui/tabs";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { useRouter } from "@/i18n/routing";
@@ -39,27 +44,6 @@ interface MyChallengeItem {
   checkpoints_approved: number;
   checkpoints_pending: number;
   participation?: { progress: number; status: string } | null;
-}
-
-interface AchievementItem {
-  id: string;
-  badge_name: string;
-  badge_image_url: string | null;
-  nostr_event_id: string | null;
-  awarded_at: string;
-  accepted_at: string | null;
-  challenge: {
-    id: string;
-    slug: string;
-    title: string;
-    badge_nostr_event_id: string | null;
-  };
-  issuer: {
-    id: string;
-    display_name: string;
-    username: string;
-    nostr_pubkey: string;
-  };
 }
 
 export default function MyChallengesPage() {
@@ -314,64 +298,21 @@ export default function MyChallengesPage() {
       <div {...{ id: panelIdFor(TABS_ID, tab), role: "tabpanel" as const, "aria-labelledby": `${TABS_ID}-tab-${tab}` }}>
         {showAchievements ? (
           !achievements || achievements.length === 0 ? (
-            <div className={styles.emptyState}>
-              <PixelIcon shape="flag" blockSize={8} />
-              <p>{t("emptyAchievements")}</p>
-            </div>
+            <EmptyState
+              icon={<PixelIcon shape="flag" blockSize={8} />}
+              title={t("emptyAchievements")}
+            />
           ) : (
             <>
             <div className={styles.achievementGrid}>
               {achievements.map((badge) => (
-                <div key={badge.id} className={styles.achievementCard}>
-                  <Link
-                    href={`/explore/${badge.challenge.id}`}
-                    className={styles.achievementLink}
-                  >
-                    <div className={styles.achievementImageWrapper}>
-                      {badge.badge_image_url ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={badge.badge_image_url}
-                          alt={badge.badge_name}
-                          className={styles.achievementImage}
-                        />
-                      ) : (
-                        <div className={styles.achievementImagePlaceholder}>
-                          <PixelIcon shape="sword" blockSize={8} />
-                        </div>
-                      )}
-                    </div>
-                    <div className={styles.achievementBody}>
-                      <h3 className={styles.achievementName}>
-                        {badge.badge_name}
-                      </h3>
-                      <p className={styles.achievementChallenge}>
-                        {badge.challenge.title}
-                      </p>
-                      <p className={styles.achievementDate}>
-                        {new Date(badge.awarded_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </Link>
-                  {badge.accepted_at ? (
-                    <span className={styles.acceptedPill}>
-                      {t("acceptedOnNostr")}
-                    </span>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleAcceptBadge(badge)}
-                      // Disable all accept buttons while any one is in
-                      // flight: concurrent accepts race on the latest
-                      // kind:30008 and can drop previously-merged pairs
-                      // because neither publish has hit relays yet.
-                      disabled={accepting !== null}
-                    >
-                      {accepting === badge.id ? t("accepting") : t("acceptBadge")}
-                    </Button>
-                  )}
-                </div>
+                <AchievementCard
+                  key={badge.id}
+                  achievement={badge}
+                  onAccept={handleAcceptBadge}
+                  accepting={accepting !== null}
+                  acceptingThis={accepting === badge.id}
+                />
               ))}
             </div>
             {achievementsCursor && (
@@ -391,10 +332,10 @@ export default function MyChallengesPage() {
             </>
           )
         ) : !items || items.length === 0 ? (
-          <div className={styles.emptyState}>
-            <PixelIcon shape="flag" blockSize={8} />
-            <p>{tab === "created" ? t("emptyCreated") : t("emptyJoined")}</p>
-          </div>
+          <EmptyState
+            icon={<PixelIcon shape="flag" blockSize={8} />}
+            title={tab === "created" ? t("emptyCreated") : t("emptyJoined")}
+          />
         ) : (
           <div className={styles.list}>
             {items.map((item) => {

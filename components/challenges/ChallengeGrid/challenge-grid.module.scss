@@ -1,0 +1,28 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.loadingState {
+  display: flex;
+  justify-content: center;
+  padding: $spacing-80 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: $spacing-20;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.scrollSentinel {
+  display: flex;
+  justify-content: center;
+  padding: $spacing-32 0;
+  min-height: $spacing-32;
+}
