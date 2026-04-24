@@ -7,6 +7,7 @@ import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { ExploreFilters } from "@/components/challenges/ExploreFilters";
 import { ChallengeGrid } from "@/components/challenges/ChallengeGrid";
 import type { ChallengeItem } from "@/components/challenges/ChallengeCard";
+import type { ZapGoalProgressData } from "@/app/api/challenges/[id]/zap-goal-progress/route";
 import { useRouter } from "@/i18n/routing";
 import { useSignerContext } from "@/lib/signer-context";
 import { useFollowList } from "@/lib/hooks/useFollowList";
@@ -30,6 +31,15 @@ export default function ExplorePage() {
   const [popularTags, setPopularTags] = useState<{ tag: string; count: number }[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [source, setSource] = useState<"everyone" | "following">("everyone");
+  // Parent-fetched zap-goal progress keyed by challenge id. Populated
+  // in one /api/challenges/zap-goal-progress POST per page instead of
+  // 20 /api/challenges/[id]/zap-goal-progress GETs from the cards.
+  // Threaded down through <ChallengeGrid> into <ChallengeCard>'s
+  // optional `zapGoalData` prop, which short-circuits the card's
+  // per-mount fetch when a value is present.
+  const [zapGoalDataMap, setZapGoalDataMap] = useState<
+    Record<string, ZapGoalProgressData | null>
+  >({});
 
   // Tracks the request id for the most recent first-page fetch so an
   // older request that resolves late (slow relay, slow DB) can't clobber
@@ -61,6 +71,62 @@ export default function ExplorePage() {
     [search, types, selectedTags, sort, followPubkeys, followBoostActive, source]
   );
 
+  /**
+   * Fire one POST /api/challenges/zap-goal-progress for the subset of
+   * `items` that advertise a `zap_goal_event_id`, then merge the
+   * response into `zapGoalDataMap`. `requestId` matches the filter
+   * generation that kicked off this fetch — if the user flipped
+   * filters mid-flight the stale batch is dropped on the floor so it
+   * can't clobber the new map. Errors stay silent: cards fall back to
+   * their self-fetch / no-bar rendering just like today when the
+   * per-card fetch errors.
+   *
+   * This is hydration data — not blocking — so the caller doesn't
+   * await it. Cards render immediately with their goal bar in the
+   * loading skeleton state and swap to real numbers when this
+   * resolves.
+   */
+  const fetchZapGoalProgressBatch = useCallback(
+    (items: ChallengeItem[], requestId: number) => {
+      const ids = items
+        .filter((c) => !!c.zap_goal_event_id)
+        .map((c) => c.id);
+      if (ids.length === 0) return;
+      // Seed the map with `null` placeholders so the cards see a
+      // defined-but-empty entry and skip their own self-fetch while
+      // the batch is in flight. ChallengeCard treats `null` as
+      // "parent owns this, render skeleton until real data lands".
+      setZapGoalDataMap((prev) => {
+        const next = { ...prev };
+        for (const id of ids) {
+          if (!(id in next)) next[id] = null;
+        }
+        return next;
+      });
+      void fetch("/api/challenges/zap-goal-progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      })
+        .then((res) => res.json())
+        .then((json) => {
+          if (requestIdRef.current !== requestId) return;
+          if (!json?.success || !json.data) return;
+          const incoming = json.data as Record<
+            string,
+            ZapGoalProgressData | null
+          >;
+          setZapGoalDataMap((prev) => ({ ...prev, ...incoming }));
+        })
+        .catch(() => {
+          /* ignore — cards keep their null placeholder and render the
+             loading-skeleton variant of the zap bar, same as today
+             when the per-card fetch errors. */
+        });
+    },
+    []
+  );
+
   const fetchPage = useCallback(async () => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
@@ -71,30 +137,48 @@ export default function ExplorePage() {
       if (json.success) {
         setChallenges(json.data.items);
         setNextCursor(json.data.nextCursor ?? null);
+        // Reset the map on a fresh page — the previous filter may have
+        // surfaced a different slice of challenges and we don't want
+        // stale entries leaking into the new grid.
+        setZapGoalDataMap({});
+        fetchZapGoalProgressBatch(json.data.items, requestId);
       }
     } catch {
       // silently fail
     } finally {
       if (requestIdRef.current === requestId) setLoading(false);
     }
-  }, [buildParams]);
+  }, [buildParams, fetchZapGoalProgressBatch]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
+    const requestId = requestIdRef.current;
     try {
       const res = await fetch(`/api/challenges?${buildParams(nextCursor)}`);
       const json = await res.json();
       if (json.success) {
-        setChallenges((prev) => [...prev, ...json.data.items]);
+        const newItems = json.data.items as ChallengeItem[];
+        setChallenges((prev) => [...prev, ...newItems]);
         setNextCursor(json.data.nextCursor ?? null);
+        // Only fetch progress for ids we don't already have — cached
+        // entries from the first page (or earlier load-mores) stay put.
+        setZapGoalDataMap((prev) => {
+          const missing = newItems.filter(
+            (c) => c.zap_goal_event_id && !(c.id in prev)
+          );
+          if (missing.length > 0) {
+            fetchZapGoalProgressBatch(missing, requestId);
+          }
+          return prev;
+        });
       }
     } catch {
       // silently fail; user can scroll again to retry
     } finally {
       setLoadingMore(false);
     }
-  }, [buildParams, nextCursor, loadingMore]);
+  }, [buildParams, nextCursor, loadingMore, fetchZapGoalProgressBatch]);
 
   useEffect(() => {
     fetchPage();
@@ -187,6 +271,7 @@ export default function ExplorePage() {
         hasMore={nextCursor !== null}
         onLoadMore={loadMore}
         emptyMessage={emptyMessage}
+        zapGoalDataMap={zapGoalDataMap}
       />
     </div>
   );
