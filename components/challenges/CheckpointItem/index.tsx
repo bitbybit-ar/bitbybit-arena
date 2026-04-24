@@ -23,6 +23,8 @@ interface CheckpointItemProps {
   submittedContent?: string | null;
   /** The submitted photo — shown on awaiting-review (and later, on done). */
   submittedImageUrl?: string | null;
+  /** Creator's reason for rejection — rendered on the rejected state. */
+  rejectReason?: string | null;
   /**
    * Slot for the per-checkpoint submission form. Caller decides when
    * to render it (e.g. only when isParticipant && !done && !awaiting-
@@ -46,6 +48,7 @@ export function CheckpointItem({
   status,
   submittedContent,
   submittedImageUrl,
+  rejectReason,
   formSlot,
 }: CheckpointItemProps) {
   const t = useTranslations("challenge");
@@ -82,6 +85,11 @@ export function CheckpointItem({
         )}
         {status === "awaiting-review" && (
           <p className={styles.hint}>{t("checkpointPendingReviewHint")}</p>
+        )}
+        {status === "rejected" && rejectReason && (
+          <p className={styles.rejectReason}>
+            <strong>{t("checkpointRejectReasonLabel")}:</strong> {rejectReason}
+          </p>
         )}
         {status === "rejected" && (
           <p className={styles.hint}>{t("checkpointResubmitHint")}</p>

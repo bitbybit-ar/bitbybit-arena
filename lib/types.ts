@@ -126,6 +126,7 @@ export interface CheckpointCompletion {
   content: string | null;
   image_url: string | null;
   status: CompletionStatus;
+  reject_reason: string | null;
   completed_at: string | null;
 }
 
@@ -148,6 +149,15 @@ export interface PendingCheckpointSubmission {
       nostr_pubkey: string;
     };
   };
+}
+
+/**
+ * Paged list returned by GET /api/challenges/[id]/pending-checkpoint-submissions.
+ * `nextCursor` is the ISO `created_at` of the last row in the current page.
+ */
+export interface PendingCheckpointSubmissionsPage {
+  items: PendingCheckpointSubmission[];
+  nextCursor: string | null;
 }
 
 export interface Participant {

@@ -212,6 +212,10 @@ export const checkpoint_completions = pgTable(
     content: text("content"),
     image_url: text("image_url"), // optional Blossom-hosted photo proof, mirrors completions.image_url
     status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, rejected
+    // Creator's note attached to a `rejected` verdict — shown to the
+    // participant on the rejected state so they know what to fix on
+    // retry. Cleared when a rejected row is re-approved.
+    reject_reason: text("reject_reason"),
     completed_at: timestamp("completed_at"),
     created_at: timestamp("created_at").notNull().defaultNow(),
   },

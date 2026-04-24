@@ -451,4 +451,84 @@ describe("Integration: Checkpoint creator-approval verify flow", () => {
     );
     expect(second.status).toBe(400);
   });
+
+  it("persists reject_reason on rejection and clears it when the participant resubmits", async () => {
+    const { challenge, checkpoints } =
+      await seedChallengeWithCreatorApprovalCheckpoints(creator.id, ["Only"]);
+    await seedParticipant(challenge.id, participant.id, { status: "active" });
+
+    setSession(makeSession(participant.id, { nostr_pubkey: "doer_pubkey" }));
+    const submitRes = await completeRoute.POST(
+      buildRequest(
+        "POST",
+        `/api/challenges/${challenge.id}/checkpoints/${checkpoints[0].id}/complete`,
+        { content: "First attempt" }
+      ),
+      {
+        params: Promise.resolve({
+          id: challenge.id,
+          checkpointId: checkpoints[0].id,
+        }),
+      }
+    );
+    const submitted = await parseResponse(submitRes);
+    expect(submitted.status).toBe(201);
+
+    setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+    const rejectRes = await verifyRoute.POST(
+      buildRequest(
+        "POST",
+        `/api/checkpoint-completions/${submitted.body.data.id}/verify`,
+        { status: "rejected", reject_reason: "  needs a photo of the result  " }
+      ),
+      { params: Promise.resolve({ id: submitted.body.data.id }) }
+    );
+    const rejected = await parseResponse(rejectRes);
+    expect(rejected.status).toBe(200);
+    // Trimmed on the way in.
+    expect(rejected.body.data.reject_reason).toBe(
+      "needs a photo of the result"
+    );
+
+    // Participant retries — row upserts and the stale reason must go.
+    setSession(makeSession(participant.id, { nostr_pubkey: "doer_pubkey" }));
+    const retryRes = await completeRoute.POST(
+      buildRequest(
+        "POST",
+        `/api/challenges/${challenge.id}/checkpoints/${checkpoints[0].id}/complete`,
+        { content: "Second attempt with the photo" }
+      ),
+      {
+        params: Promise.resolve({
+          id: challenge.id,
+          checkpointId: checkpoints[0].id,
+        }),
+      }
+    );
+    expect(retryRes.status).toBe(201);
+    const [row] = await testDb
+      .select()
+      .from(checkpoint_completions)
+      .where(eq(checkpoint_completions.id, submitted.body.data.id));
+    expect(row.reject_reason).toBeNull();
+    expect(row.status).toBe("pending");
+
+    // Creator approves — reject_reason stays cleared.
+    setSession(makeSession(creator.id, { nostr_pubkey: creator.nostr_pubkey }));
+    const approveRes = await verifyRoute.POST(
+      buildRequest(
+        "POST",
+        `/api/checkpoint-completions/${submitted.body.data.id}/verify`,
+        { status: "approved", reject_reason: "should be ignored" }
+      ),
+      { params: Promise.resolve({ id: submitted.body.data.id }) }
+    );
+    expect(approveRes.status).toBe(200);
+    const [approved] = await testDb
+      .select()
+      .from(checkpoint_completions)
+      .where(eq(checkpoint_completions.id, submitted.body.data.id));
+    expect(approved.status).toBe("approved");
+    expect(approved.reject_reason).toBeNull();
+  });
 });

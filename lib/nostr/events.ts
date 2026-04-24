@@ -152,6 +152,68 @@ export function buildCompletionEvent(params: {
 }
 
 /**
+ * Build a checkpoint-submission event. Reuses kind 7101 (same as the
+ * challenge-level completion) but adds:
+ *
+ *   - a `step` tag carrying the checkpoint's 1-based order, matching
+ *     the convention the regular completion uses for streak/multi-
+ *     step challenges;
+ *   - a `checkpoint` tag carrying the checkpoint's title, so Nostr
+ *     clients that don't know Arena's schema can still display
+ *     something meaningful next to the note.
+ *
+ * Checkpoints have no Nostr-native identifier (they're a server-side
+ * decomposition of one 30100 challenge event), so this is best-effort
+ * — Arena can reconstruct which checkpoint the event refers to via
+ * the step + challenge `a`-tag pair.
+ */
+export function buildCheckpointCompletionEvent(params: {
+  creatorPubkey: string;
+  challengeSlug: string;
+  checkpointOrder: number;
+  checkpointTitle: string;
+  content: string;
+  imageDescriptor?: { url: string } & Partial<
+    Pick<BlossomDescriptor, "sha256" | "size" | "type">
+  >;
+}): UnsignedNostrEvent {
+  const tags: string[][] = [
+    ["a", `30100:${params.creatorPubkey}:${params.challengeSlug}`],
+    ["p", params.creatorPubkey],
+    ["step", String(params.checkpointOrder)],
+    ["checkpoint", params.checkpointTitle],
+  ];
+
+  const imageUrl = params.imageDescriptor?.url;
+  if (imageUrl) {
+    const imeta = ["imeta", `url ${imageUrl}`];
+    if (params.imageDescriptor?.type) {
+      imeta.push(`m ${params.imageDescriptor.type}`);
+    }
+    if (params.imageDescriptor?.sha256) {
+      imeta.push(`x ${params.imageDescriptor.sha256}`);
+    }
+    if (params.imageDescriptor?.size !== undefined) {
+      imeta.push(`size ${params.imageDescriptor.size}`);
+    }
+    tags.push(imeta);
+  }
+
+  const content = imageUrl
+    ? params.content
+      ? `${params.content}\n\n${imageUrl}`
+      : imageUrl
+    : params.content;
+
+  return {
+    kind: 7101,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content,
+  };
+}
+
+/**
  * Build a Badge Definition event (kind 30009, NIP-58).
  *
  * Parameterized replaceable — the `d` tag is the badge's unique identifier

@@ -22,7 +22,7 @@ challenges
 
 - `challenges.checkpoint_mode`: `"none" | "sequential" | "parallel"`. When the mode is set, `goal` is auto-calculated as the checkpoint count and `unit` is forced to `"checkpoints"`.
 - `challenge_checkpoints`: `(challenge_id, order)` is unique; `ON DELETE CASCADE` from the challenge.
-- `checkpoint_completions`: `(participant_id, checkpoint_id)` is unique. The row upserts on retry after rejection — see [State machine](#state-machine) below.
+- `checkpoint_completions`: `(participant_id, checkpoint_id)` is unique. The row upserts on retry after rejection — see [State machine](#state-machine) below. `reject_reason` stores the creator's optional note attached to a `rejected` verdict; cleared when the row re-approves or the participant resubmits.
 
 See `lib/db/schema.ts:166-220` for the full Drizzle definition.
 
@@ -71,9 +71,10 @@ Participants on a sequential challenge with a rejected step 2 cannot submit step
 ## API surfaces
 
 - **`POST /api/challenges` / `PUT /api/challenges/[id]`** — create / update. Body accepts `checkpoint_mode` and a `checkpoints[]` array validated by `CheckpointInputSchema` (1-20 items, per-method field requirements).
-- **`GET /api/challenges/[id]`** — returns the `checkpoints` array, the caller's own `my_checkpoint_completions`, and for the creator only, `pending_checkpoint_submissions` (joined with the participant user row).
-- **`POST /api/challenges/[id]/checkpoints/[checkpointId]/complete`** — participant submits a proof. Validates `content` (≥ 5 chars when non-empty) and `image_url` (HTTP(S) URL); requires one of them for manual methods. Upserts on retry.
-- **`POST /api/checkpoint-completions/[id]/verify`** — creator approves or rejects a pending row. Authz-first (non-creator → 403 regardless of row status), then the status guard (already-reviewed → 400). On approve, recomputes progress and pings the participant via `createNotification`.
+- **`GET /api/challenges/[id]`** — returns the `checkpoints` array and the caller's own `my_checkpoint_completions`.
+- **`GET /api/challenges/[id]/pending-checkpoint-submissions`** — creator-only, cursor-paginated list (default 20, max 50) of pending `checkpoint_completions` rows for this challenge, joined with the participant user row. Cursor is the last row's UUID; the route self-joins back to that row so the `(created_at, id)` tuple used for ordering stays inside Postgres at microsecond precision. (Piping the timestamp through JavaScript would truncate to milliseconds and let the cursor row bleed back onto the next page whenever two submissions arrive in the same ms.) Replaces the older inline payload on the challenge detail endpoint.
+- **`POST /api/challenges/[id]/checkpoints/[checkpointId]/complete`** — participant submits a proof. Validates `content` (≥ 5 chars when non-empty) and `image_url` (HTTP(S) URL); requires one of them for manual methods. Upserts on retry and clears any old `reject_reason`. After a successful response the client publishes a kind 7101 Nostr note with `step` + `checkpoint` tags so off-Arena clients can render the submission.
+- **`POST /api/checkpoint-completions/[id]/verify`** — creator approves or rejects a pending row. Body accepts `{ status: "approved" | "rejected", reject_reason?: string }`; the reason is persisted only when `status === "rejected"` (cleared on approve). Authz-first (non-creator → 403 regardless of row status), then the status guard (already-reviewed → 400). On approve, recomputes progress and pings the participant via `createNotification`.
 - **`GET /api/my-challenges`** — returns per-participant `checkpoints_total / _approved / _pending` counts for every joined challenge, computed via pre-aggregated CTEs (see `app/api/my-challenges/route.ts`). Cursor-paginated; the `my-challenges` list card renders the `CheckpointProgress` dot indicator from these counts.
 
 ## Notifications
@@ -87,11 +88,8 @@ Both types have settings-page toggles and live fallback strings in `messages/es.
 
 ## Known limitations
 
-- **No reject reason field.** The participant sees "your proof was rejected" but no explanation. A `reject_reason text` column on `checkpoint_completions` + a textarea on the creator review card is the shortest fix.
 - **No checkpoint reordering after create.** The `(challenge_id, order)` unique index makes a reorder UI painful; once participants have submitted, we'd also need to renumber their checkpoint_completions.
-- **No per-checkpoint badges.** NIP-58 kind:8 badges award on challenge completion, not per step. Tier-3 polish.
-- **No pagination on `pending_checkpoint_submissions`.** Fine at hackathon scale; revisit if a creator's review queue grows past ~50 rows.
-- **No NIP-95 completion event for checkpoint submissions.** Regular completions emit a kind 7101 event via `buildCompletionEvent`; checkpoint submissions don't publish anything to Nostr (the API insert is the only source of truth).
+- **No per-checkpoint badges by design.** NIP-58 kind:8 badges award on full-challenge completion, not per step. The badge is the end-state reward for finishing every checkpoint.
 
 ## Files
 
