@@ -197,7 +197,9 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
         "You already submitted this checkpoint — waiting for review"
       );
     }
-    // rejected — rewrite the row with the fresh proof.
+    // rejected — rewrite the row with the fresh proof, clear the
+    // creator's old reject_reason so the retry doesn't carry a stale
+    // note from the previous rejection.
     [completion] = await db
       .update(checkpoint_completions)
       .set({
@@ -205,6 +207,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
         image_url: resolvedImageUrl,
         proof_event_id: proofEventId,
         status: autoApprove ? "approved" : "pending",
+        reject_reason: null,
         completed_at: autoApprove ? new Date() : null,
       })
       .where(eq(checkpoint_completions.id, existing.id))

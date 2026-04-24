@@ -18,12 +18,42 @@ import { HttpUrlSchema } from "./primitives";
 
 const ApprovalStatusSchema = z.enum(["approved", "rejected"]);
 
+const MAX_REJECT_REASON_LEN = 500;
+
 /** POST /api/completions/[id]/verify — creator approves or rejects. */
 export const VerifyCompletionBodySchema = z.object({
   status: ApprovalStatusSchema,
 });
 
 export type VerifyCompletionBody = z.infer<typeof VerifyCompletionBodySchema>;
+
+/**
+ * POST /api/checkpoint-completions/[id]/verify — the checkpoint
+ * version also accepts an optional `reject_reason` the creator can
+ * show the participant on the rejected state. The field is ignored
+ * when `status === "approved"` (cleared on the update) and only
+ * required strings are persisted — empty / whitespace normalises
+ * to null.
+ */
+export const VerifyCheckpointCompletionBodySchema = z.object({
+  status: ApprovalStatusSchema,
+  reject_reason: z
+    .string()
+    .max(
+      MAX_REJECT_REASON_LEN,
+      `reject_reason must be at most ${MAX_REJECT_REASON_LEN} characters`
+    )
+    .nullish()
+    .transform((v) => {
+      if (v == null) return null;
+      const trimmed = v.trim();
+      return trimmed.length === 0 ? null : trimmed;
+    }),
+});
+
+export type VerifyCheckpointCompletionBody = z.infer<
+  typeof VerifyCheckpointCompletionBodySchema
+>;
 
 /**
  * POST /api/challenges/[id]/completions — submit a proof.

@@ -45,6 +45,18 @@
   margin: 0;
 }
 
+.rejectReason {
+  color: $color-error;
+  font-size: $font-size-sm;
+  line-height: $line-height-base;
+  white-space: pre-line;
+  margin: 0;
+
+  strong {
+    font-weight: $font-weight-semibold;
+  }
+}
+
 .submittedContent {
   font-size: $font-size-sm;
   line-height: $line-height-base;

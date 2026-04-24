@@ -7,7 +7,7 @@ import {
   BadRequestError,
   ForbiddenError,
 } from "@/lib/api/errors";
-import { VerifyCompletionBodySchema } from "@/lib/schemas/completions";
+import { VerifyCheckpointCompletionBodySchema } from "@/lib/schemas/completions";
 import {
   challenges,
   challenge_checkpoints,
@@ -21,7 +21,10 @@ import { createNotification } from "@/lib/notifications";
 // rejects a pending checkpoint_completions row. Mirrors
 // /api/completions/[id]/verify but operates on the per-checkpoint table.
 export const POST = apiHandler(async (req: NextRequest, { session, db, params }) => {
-  const { status } = await parseBody(req, VerifyCompletionBodySchema);
+  const { status, reject_reason } = await parseBody(
+    req,
+    VerifyCheckpointCompletionBodySchema
+  );
 
   const [row] = await db
     .select({
@@ -63,6 +66,10 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     .update(checkpoint_completions)
     .set({
       status,
+      // reject_reason is only meaningful for rejections; cleared on
+      // approve so a retry that gets re-approved doesn't carry the
+      // stale note.
+      reject_reason: status === "rejected" ? reject_reason : null,
       completed_at: status === "approved" ? new Date() : null,
     })
     .where(eq(checkpoint_completions.id, params.id))
@@ -92,6 +99,7 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
           checkpoint_id: row.checkpoint.id,
           checkpoint_title: row.checkpoint.title,
           checkpoint_completion_id: row.completion.id,
+          reject_reason: status === "rejected" ? reject_reason : null,
         }
       );
     } catch (err) {

@@ -13,11 +13,13 @@ import { BlockLoader } from "@/components/ui/block-loader";
 import { ImageUpload } from "@/components/common/ImageUpload";
 import { CheckpointItem, type CheckpointItemStatus } from "@/components/challenges/CheckpointItem";
 import { CheckpointProgress } from "@/components/challenges/CheckpointProgress";
+import { CheckpointSubmissionCard } from "@/components/challenges/CheckpointSubmissionCard";
 import { CheckpointSubmitForm } from "@/components/challenges/CheckpointSubmitForm";
 import { useClipboard } from "@/lib/hooks/useClipboard";
 import { fetchNostrMetadata } from "@/lib/nostr/metadata";
 import {
   buildJoinEvent,
+  buildCheckpointCompletionEvent,
   buildCompletionEvent,
   buildBadgeAwardEvent,
   buildBadgeDefinitionEvent,
@@ -72,6 +74,7 @@ interface CheckpointCompletionItem {
   content: string | null;
   image_url: string | null;
   status: CompletionStatus;
+  reject_reason: string | null;
   completed_at: string | null;
 }
 
@@ -105,7 +108,6 @@ interface ChallengeDetail {
   creator: { id: string; display_name: string; username: string; nostr_pubkey: string; lightning_address?: string };
   checkpoints: CheckpointItem[];
   my_checkpoint_completions: CheckpointCompletionItem[];
-  pending_checkpoint_submissions?: PendingCheckpointSubmission[];
 }
 
 interface RewardWinner {
@@ -168,6 +170,16 @@ export default function ChallengeClient() {
     Record<string, BlossomDescriptor>
   >({});
   const [checkpointErrors, setCheckpointErrors] = useState<Record<string, string>>({});
+  // Pending checkpoint submissions for the creator — paginated via the
+  // dedicated endpoint so the challenge-detail payload stays bounded.
+  const [pendingSubmissions, setPendingSubmissions] = useState<
+    PendingCheckpointSubmission[]
+  >([]);
+  const [pendingCursor, setPendingCursor] = useState<string | null>(null);
+  const [loadingMorePending, setLoadingMorePending] = useState(false);
+  const [rejectReasons, setRejectReasons] = useState<Record<string, string>>(
+    {}
+  );
   const [rewardError, setRewardError] = useState<string | null>(null);
   const [rewardStatus, setRewardStatus] = useState<string | null>(null);
   const [shareContext, setShareContext] = useState<ShareContext | null>(null);
@@ -212,8 +224,10 @@ export default function ChallengeClient() {
 
       // Creator/participant flags are derived from the authoritative
       // session in SessionProvider, not from an extra fetch here.
+      const viewerIsCreator =
+        !!sessionUser && cJson.success && cJson.data.creator_id === sessionUser.user_id;
       if (sessionUser && cJson.success) {
-        setIsCreator(cJson.data.creator_id === sessionUser.user_id);
+        setIsCreator(viewerIsCreator);
         setIsParticipant(
           partJson.success &&
             partJson.data.some(
@@ -225,12 +239,52 @@ export default function ChallengeClient() {
         setIsCreator(false);
         setIsParticipant(false);
       }
+
+      // Creator-only: first page of pending checkpoint submissions.
+      // Kept off the challenge-detail payload so that list can grow
+      // without bloating the primary response.
+      if (viewerIsCreator && cJson.success && cJson.data.checkpoint_mode !== "none") {
+        try {
+          const pendingRes = await fetch(
+            `/api/challenges/${challengeId}/pending-checkpoint-submissions`
+          );
+          const pendingJson = await pendingRes.json();
+          if (pendingJson.success) {
+            setPendingSubmissions(pendingJson.data.items);
+            setPendingCursor(pendingJson.data.nextCursor);
+          }
+        } catch {
+          /* non-blocking — the review list just renders empty */
+        }
+      } else {
+        setPendingSubmissions([]);
+        setPendingCursor(null);
+      }
     } catch {
       // silently fail
     } finally {
       setLoading(false);
     }
   }, [challengeId, sessionUser]);
+
+  const loadMorePendingSubmissions = useCallback(async () => {
+    if (!pendingCursor || loadingMorePending) return;
+    setLoadingMorePending(true);
+    try {
+      const res = await fetch(
+        `/api/challenges/${challengeId}/pending-checkpoint-submissions?cursor=${encodeURIComponent(pendingCursor)}`
+      );
+      const json = await res.json();
+      if (json.success) {
+        setPendingSubmissions((prev) => [...prev, ...json.data.items]);
+        setPendingCursor(json.data.nextCursor);
+      }
+    } catch {
+      /* ignore — user can retry */
+    } finally {
+      setLoadingMorePending(false);
+    }
+  }, [challengeId, pendingCursor, loadingMorePending]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -888,6 +942,11 @@ export default function ChallengeClient() {
         }));
         return;
       }
+      // Snapshot the submitted content + image before the clears below
+      // so the Nostr publish below has the real proof to sign.
+      const submittedContent = (checkpointProofs[checkpoint.id] ?? "").trim();
+      const submittedImage = checkpointImages[checkpoint.id];
+
       setCheckpointProofs((prev) => {
         const next = { ...prev };
         delete next[checkpoint.id];
@@ -898,6 +957,34 @@ export default function ChallengeClient() {
         delete next[checkpoint.id];
         return next;
       });
+
+      // Publish a Nostr note mirroring the submission, matching what
+      // handleSubmitProof does for challenge-level completions. Uses
+      // kind 7101 with a `step` + `checkpoint` tag so off-Arena
+      // clients render something meaningful. Fire-and-forget: the API
+      // insert is the authoritative source of truth.
+      if (needsContent && challenge) {
+        const checkpointOrder =
+          challenge.checkpoints.findIndex((c) => c.id === checkpoint.id) + 1;
+        if (checkpointOrder > 0) {
+          try {
+            const signed = await signWithPrompt(
+              buildCheckpointCompletionEvent({
+                creatorPubkey: challenge.creator.nostr_pubkey,
+                challengeSlug: challenge.slug,
+                checkpointOrder,
+                checkpointTitle: checkpoint.title,
+                content: submittedContent,
+                imageDescriptor: submittedImage ?? undefined,
+              })
+            );
+            await publishSignedEvent(signed);
+          } catch {
+            /* non-blocking — submission already persisted in the API */
+          }
+        }
+      }
+
       await fetchAll();
     } catch {
       setCheckpointErrors((prev) => ({
@@ -926,12 +1013,19 @@ export default function ChallengeClient() {
   ) => {
     setActionLoading(`cpv_${submissionId}`);
     try {
+      const body: Record<string, unknown> = { status };
+      // Only send reject_reason on rejections; the server ignores it
+      // on approval but we don't need to round-trip useless bytes.
+      if (status === "rejected") {
+        const reason = (rejectReasons[submissionId] ?? "").trim();
+        if (reason) body.reject_reason = reason;
+      }
       const res = await fetch(
         `/api/checkpoint-completions/${submissionId}/verify`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status }),
+          body: JSON.stringify(body),
         }
       );
       const json = await res.json().catch(() => ({ success: false }));
@@ -942,6 +1036,13 @@ export default function ChallengeClient() {
         );
         return;
       }
+      // Drop the per-submission reject-reason input — the row is
+      // leaving the pending list so the textarea is about to unmount.
+      setRejectReasons((prev) => {
+        const next = { ...prev };
+        delete next[submissionId];
+        return next;
+      });
       await fetchAll();
     } catch {
       showToast(t("checkpointReviewError"), "error");
@@ -1193,88 +1294,56 @@ export default function ChallengeClient() {
         {/* Creator review — pending checkpoint submissions */}
         {isCreator &&
           challenge.checkpoint_mode !== "none" &&
-          (challenge.pending_checkpoint_submissions?.length ?? 0) > 0 && (
+          pendingSubmissions.length > 0 && (
             <div className={styles.section}>
               <h2 className={styles.sectionTitle}>
-                {t("reviewCheckpointsTitle")} (
-                {challenge.pending_checkpoint_submissions!.length})
+                {t("reviewCheckpointsTitle")} ({pendingSubmissions.length}
+                {pendingCursor ? "+" : ""})
               </h2>
               <div className={styles.completionList}>
-                {challenge.pending_checkpoint_submissions!.map((sub) => {
-                  const cp = challenge.checkpoints.find(
+                {pendingSubmissions.map((sub) => {
+                  const cpIndex = challenge.checkpoints.findIndex(
                     (c) => c.id === sub.checkpoint_id
                   );
-                  const cpOrder = cp
-                    ? challenge.checkpoints.findIndex((c) => c.id === cp.id) + 1
-                    : null;
-                  const loadingKey = `cpv_${sub.id}`;
+                  const cp = cpIndex >= 0 ? challenge.checkpoints[cpIndex] : null;
                   return (
-                    <div key={sub.id} className={styles.completionCard}>
-                      <div className={styles.completionHeader}>
-                        <span className={styles.completionUser}>
-                          {sub.participant.user.display_name}
-                        </span>
-                        <Tag variant="gold">{tCommon("pending")}</Tag>
-                      </div>
-                      {cp && (
-                        <p className={styles.checkpointDescription}>
-                          {cpOrder !== null && (
-                            <span className={styles.checkpointOrder}>
-                              {cpOrder}.{" "}
-                            </span>
-                          )}
-                          <strong>{cp.title}</strong>
-                        </p>
-                      )}
-                      {sub.content && (
-                        <p className={styles.completionContent}>{sub.content}</p>
-                      )}
-                      {sub.image_url && (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={sub.image_url}
-                          alt={sub.content ?? t("proofImageAlt")}
-                          className={styles.completionImage}
-                        />
-                      )}
-                      {sub.proof_event_id && (
-                        <p className={styles.completionContent}>
-                          <a
-                            href={`https://njump.me/${sub.proof_event_id}`}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                          >
-                            {t("proofFound")}: {sub.proof_event_id.slice(0, 16)}…
-                          </a>
-                        </p>
-                      )}
-                      <div className={styles.verifyActions}>
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            handleVerifyCheckpoint(sub.id, "approved")
-                          }
-                          disabled={actionLoading === loadingKey}
-                        >
-                          {actionLoading === loadingKey
-                            ? t("approving")
-                            : tCommon("approve")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            handleVerifyCheckpoint(sub.id, "rejected")
-                          }
-                          disabled={actionLoading === loadingKey}
-                        >
-                          {tCommon("reject")}
-                        </Button>
-                      </div>
-                    </div>
+                    <CheckpointSubmissionCard
+                      key={sub.id}
+                      submission={sub}
+                      checkpoint={cp}
+                      checkpointOrder={cp ? cpIndex + 1 : null}
+                      loading={actionLoading === `cpv_${sub.id}`}
+                      rejectReason={rejectReasons[sub.id] ?? ""}
+                      onRejectReasonChange={(next) =>
+                        setRejectReasons((prev) => {
+                          const updated = { ...prev };
+                          if (next) updated[sub.id] = next;
+                          else delete updated[sub.id];
+                          return updated;
+                        })
+                      }
+                      onApprove={() =>
+                        handleVerifyCheckpoint(sub.id, "approved")
+                      }
+                      onReject={() =>
+                        handleVerifyCheckpoint(sub.id, "rejected")
+                      }
+                    />
                   );
                 })}
               </div>
+              {pendingCursor && (
+                <div className={styles.loadMoreRow}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={loadMorePendingSubmissions}
+                    disabled={loadingMorePending}
+                  >
+                    {loadingMorePending ? tCommon("loading") : t("loadMore")}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1342,6 +1411,7 @@ export default function ChallengeClient() {
                     status={status}
                     submittedContent={completion?.content ?? null}
                     submittedImageUrl={completion?.image_url ?? null}
+                    rejectReason={completion?.reject_reason ?? null}
                     formSlot={
                       canSubmit ? (
                         cp.verification_methods[0] === "nostr_action" ? (

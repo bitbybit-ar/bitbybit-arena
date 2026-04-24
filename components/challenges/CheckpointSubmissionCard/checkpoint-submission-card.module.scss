@@ -1,0 +1,93 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+
+.card {
+  padding: $spacing-16;
+  background: alpha($color-text-primary, 3%);
+  border-radius: $border-radius-md;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-8;
+}
+
+.user {
+  font-weight: $font-weight-semibold;
+  font-size: $font-size-sm;
+}
+
+.checkpointLabel {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  margin: 0 0 $spacing-8;
+}
+
+.order {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+}
+
+.content {
+  font-size: $font-size-sm;
+  line-height: $line-height-base;
+  color: $color-text-secondary;
+  white-space: pre-line;
+}
+
+.image {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  margin-top: $spacing-8;
+  object-fit: cover;
+  border-radius: $border-radius-md;
+  background: color-mix(in srgb, $color-border 30%, transparent);
+}
+
+.rejectReasonRow {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+  margin-top: $spacing-12;
+}
+
+.rejectReasonLabel {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.rejectReasonInput {
+  width: 100%;
+  padding: $spacing-8 $spacing-12;
+  border-radius: $border-radius-md;
+  border: 1px solid $color-border;
+  background: alpha($color-text-primary, 4%);
+  color: $color-text-primary;
+  font-size: $font-size-sm;
+  font-family: $font-body;
+  resize: vertical;
+  min-height: 60px;
+  outline: none;
+  @include transition;
+
+  &:focus {
+    border-color: $color-primary;
+    box-shadow: 0 0 0 2px alpha($color-primary, 15%);
+  }
+
+  &::placeholder {
+    color: $color-text-secondary;
+    opacity: 0.5;
+  }
+}
+
+.actions {
+  display: flex;
+  gap: $spacing-8;
+  margin-top: $spacing-12;
+}
