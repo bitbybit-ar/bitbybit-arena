@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { eq, sql, and, asc } from "drizzle-orm";
 import { apiHandler } from "@/lib/api/handler";
 import { parseBody } from "@/lib/api/parse";
-import { NotFoundError, ForbiddenError, BadRequestError } from "@/lib/api/errors";
+import { NotFoundError, BadRequestError } from "@/lib/api/errors";
+import { findResourceOrOwn, findParticipation } from "@/lib/api/db-helpers";
 import { UpdateChallengeBodySchema } from "@/lib/schemas/challenges";
 import {
   challenges,
@@ -54,16 +55,7 @@ export const GET = apiHandler(
     const session = await getSession();
     let myCheckpointCompletions: (typeof checkpoint_completions.$inferSelect)[] = [];
     if (session && checkpoints.length > 0) {
-      const [myParticipation] = await db
-        .select({ id: participants.id })
-        .from(participants)
-        .where(
-          and(
-            eq(participants.challenge_id, params.id),
-            eq(participants.user_id, session.user_id)
-          )
-        )
-        .limit(1);
+      const myParticipation = await findParticipation(db, params.id, session.user_id);
       if (myParticipation) {
         myCheckpointCompletions = await db
           .select()
@@ -86,14 +78,12 @@ export const GET = apiHandler(
 
 // PUT /api/challenges/[id] — update (creator only)
 export const PUT = apiHandler(async (req: NextRequest, { session, db, params }) => {
-  const [existing] = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.id, params.id))
-    .limit(1);
-
-  if (!existing) throw new NotFoundError("Challenge");
-  if (existing.creator_id !== session!.user_id) throw new ForbiddenError("Only the creator can edit this challenge");
+  await findResourceOrOwn(db, challenges, params.id, {
+    resourceName: "Challenge",
+    ownerField: "creator_id",
+    session: session!,
+    forbiddenMessage: "Only the creator can edit this challenge",
+  });
 
   // Parsed body only contains the keys the client actually sent —
   // Zod strips missing optionals — so spreading directly into the
@@ -113,14 +103,12 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db, params }) 
 
 // DELETE /api/challenges/[id] — delete (creator only, no active participants)
 export const DELETE = apiHandler(async (_req: NextRequest, { session, db, params }) => {
-  const [existing] = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.id, params.id))
-    .limit(1);
-
-  if (!existing) throw new NotFoundError("Challenge");
-  if (existing.creator_id !== session!.user_id) throw new ForbiddenError("Only the creator can delete this challenge");
+  await findResourceOrOwn(db, challenges, params.id, {
+    resourceName: "Challenge",
+    ownerField: "creator_id",
+    session: session!,
+    forbiddenMessage: "Only the creator can delete this challenge",
+  });
 
   const [activeCount] = await db
     .select({ count: sql<number>`COUNT(*)::int` })

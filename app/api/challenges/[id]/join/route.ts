@@ -1,34 +1,23 @@
 import { NextRequest } from "next/server";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { NotFoundError, ConflictError, BadRequestError } from "@/lib/api/errors";
+import { findResourceOrOwn, findParticipation } from "@/lib/api/db-helpers";
 import { challenges, participants } from "@/lib/db/schema";
-import { createNotification } from "@/lib/notifications";
+import { notifyUser } from "@/lib/notifications";
 
 // POST /api/challenges/[id]/join — join a challenge
 export const POST = apiHandler(async (_req: NextRequest, { session, db, params }) => {
-  const [challenge] = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.id, params.id))
-    .limit(1);
+  const challenge = await findResourceOrOwn(db, challenges, params.id, {
+    resourceName: "Challenge",
+  });
 
-  if (!challenge) throw new NotFoundError("Challenge");
   if (challenge.status !== "open" && challenge.status !== "in_progress") {
     throw new BadRequestError("This challenge is not accepting participants");
   }
 
   // Check if already joined (including withdrawn — allow rejoin)
-  const [existing] = await db
-    .select()
-    .from(participants)
-    .where(
-      and(
-        eq(participants.challenge_id, params.id),
-        eq(participants.user_id, session!.user_id)
-      )
-    )
-    .limit(1);
+  const existing = await findParticipation(db, params.id, session!.user_id);
 
   if (existing && existing.status !== "withdrawn") {
     throw new ConflictError("You have already joined this challenge");
@@ -55,17 +44,13 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
   // Notify the creator that someone joined — but not when the creator
   // joins their own challenge (that's not signal, it's self-talk).
   if (challenge.creator_id !== session!.user_id) {
-    try {
-      await createNotification(
-        challenge.creator_id,
-        "challenge_joined",
-        "New participant",
-        `${session!.display_name} joined your challenge "${challenge.title}".`,
-        { name: session!.display_name, challenge: challenge.title, challenge_id: challenge.id }
-      );
-    } catch (err) {
-      console.error("notification:challenge_joined failed", err);
-    }
+    await notifyUser(
+      challenge.creator_id,
+      "challenge_joined",
+      "New participant",
+      `${session!.display_name} joined your challenge "${challenge.title}".`,
+      { name: session!.display_name, challenge: challenge.title, challenge_id: challenge.id }
+    );
   }
 
   return new CreatedResponse(participant);
@@ -73,16 +58,7 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
 
 // DELETE /api/challenges/[id]/join — withdraw from a challenge
 export const DELETE = apiHandler(async (_req: NextRequest, { session, db, params }) => {
-  const [existing] = await db
-    .select()
-    .from(participants)
-    .where(
-      and(
-        eq(participants.challenge_id, params.id),
-        eq(participants.user_id, session!.user_id)
-      )
-    )
-    .limit(1);
+  const existing = await findParticipation(db, params.id, session!.user_id);
 
   if (!existing) throw new NotFoundError("Participation");
   if (existing.status === "withdrawn") throw new BadRequestError("Already withdrawn");

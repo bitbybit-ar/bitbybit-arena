@@ -44,3 +44,24 @@ export async function createNotification(
     metadata: metadata ?? null,
   });
 }
+
+// Fire-and-forget wrapper around `createNotification`. Every API route
+// that emits a notification already hand-rolled this try/catch — the
+// bell is cosmetic, a notification failure must never roll back the
+// domain mutation that came before it. `context` is appended to the
+// console.error tag so a log line tells you which route path failed
+// (useful when several routes emit the same `type`).
+export async function notifyUser(
+  userId: string,
+  type: NotificationType,
+  title: string,
+  body: string,
+  metadata?: Record<string, unknown>,
+  context?: string
+): Promise<void> {
+  try {
+    await createNotification(userId, type, title, body, metadata);
+  } catch (err) {
+    console.error(`notification:${context ?? type} failed`, err);
+  }
+}

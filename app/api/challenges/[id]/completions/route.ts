@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { eq, and } from "drizzle-orm";
 import { apiHandler, CreatedResponse } from "@/lib/api/handler";
 import { parseBody, parseQuery } from "@/lib/api/parse";
-import { NotFoundError, BadRequestError, ForbiddenError } from "@/lib/api/errors";
+import { BadRequestError, ForbiddenError } from "@/lib/api/errors";
+import { findResourceOrOwn } from "@/lib/api/db-helpers";
 import {
   ListCompletionsQuerySchema,
   SubmitCompletionBodySchema,
@@ -12,7 +13,7 @@ import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
 import { verifyHashtagPost } from "@/lib/nostr/verify-hashtag-post";
 import { pickVerificationMethod, shouldAutoApprove } from "@/lib/api/verification-methods";
 import type { VerificationMethod } from "@/lib/types";
-import { createNotification } from "@/lib/notifications";
+import { notifyUser } from "@/lib/notifications";
 
 function isUniqueViolation(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
@@ -59,13 +60,10 @@ export const GET = apiHandler(
 
 // POST /api/challenges/[id]/completions — submit text proof
 export const POST = apiHandler(async (req: NextRequest, { session, db, params }) => {
-  const [challenge] = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.id, params.id))
-    .limit(1);
+  const challenge = await findResourceOrOwn(db, challenges, params.id, {
+    resourceName: "Challenge",
+  });
 
-  if (!challenge) throw new NotFoundError("Challenge");
   if (challenge.status === "cancelled") throw new BadRequestError("This challenge has been cancelled");
   if (challenge.status === "completed") throw new BadRequestError("This challenge is already completed");
 
@@ -187,22 +185,18 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
   // need no human action, so pinging the creator there is pure noise.
   // Also skip when the creator submitted their own proof.
   if (!autoApprove && challenge.creator_id !== session!.user_id) {
-    try {
-      await createNotification(
-        challenge.creator_id,
-        "completion_submitted",
-        "New proof to review",
-        `${session!.display_name} submitted a proof on "${challenge.title}".`,
-        {
-          name: session!.display_name,
-          challenge: challenge.title,
-          challenge_id: challenge.id,
-          completion_id: completion.id,
-        }
-      );
-    } catch (err) {
-      console.error("notification:completion_submitted failed", err);
-    }
+    await notifyUser(
+      challenge.creator_id,
+      "completion_submitted",
+      "New proof to review",
+      `${session!.display_name} submitted a proof on "${challenge.title}".`,
+      {
+        name: session!.display_name,
+        challenge: challenge.title,
+        challenge_id: challenge.id,
+        completion_id: completion.id,
+      }
+    );
   }
 
   return new CreatedResponse(completion);

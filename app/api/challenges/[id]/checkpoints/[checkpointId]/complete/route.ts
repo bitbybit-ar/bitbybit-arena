@@ -7,6 +7,7 @@ import {
   BadRequestError,
   ForbiddenError,
 } from "@/lib/api/errors";
+import { findResourceOrOwn } from "@/lib/api/db-helpers";
 import { CompleteCheckpointBodySchema } from "@/lib/schemas/completions";
 import {
   challenges,
@@ -18,7 +19,7 @@ import { recomputeCheckpointProgress } from "@/lib/db/checkpoints";
 import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
 import { verifyHashtagPost } from "@/lib/nostr/verify-hashtag-post";
 import { pickVerificationMethod, shouldAutoApprove } from "@/lib/api/verification-methods";
-import { createNotification } from "@/lib/notifications";
+import { notifyUser } from "@/lib/notifications";
 import type { VerificationMethod } from "@/lib/types";
 
 function isUniqueViolation(err: unknown): boolean {
@@ -39,12 +40,9 @@ function isUniqueViolation(err: unknown): boolean {
 export const POST = apiHandler(async (req: NextRequest, { session, db, params }) => {
   const checkpointId = params.checkpointId;
 
-  const [challenge] = await db
-    .select()
-    .from(challenges)
-    .where(eq(challenges.id, params.id))
-    .limit(1);
-  if (!challenge) throw new NotFoundError("Challenge");
+  const challenge = await findResourceOrOwn(db, challenges, params.id, {
+    resourceName: "Challenge",
+  });
   if (challenge.status === "cancelled")
     throw new BadRequestError("This challenge has been cancelled");
   if (challenge.status === "completed")
@@ -243,23 +241,19 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     // submission waiting. Notification failures must not roll back the
     // insert — bell is cosmetic.
     if (challenge.creator_id !== session!.user_id) {
-      try {
-        await createNotification(
-          challenge.creator_id,
-          "checkpoint_submitted",
-          "New checkpoint proof to review",
-          `A participant submitted proof for "${checkpoint.title}" on "${challenge.title}".`,
-          {
-            challenge_id: challenge.id,
-            challenge_title: challenge.title,
-            checkpoint_id: checkpoint.id,
-            checkpoint_title: checkpoint.title,
-            checkpoint_completion_id: completion.id,
-          }
-        );
-      } catch (err) {
-        console.error("notification:checkpoint_submitted failed", err);
-      }
+      await notifyUser(
+        challenge.creator_id,
+        "checkpoint_submitted",
+        "New checkpoint proof to review",
+        `A participant submitted proof for "${checkpoint.title}" on "${challenge.title}".`,
+        {
+          challenge_id: challenge.id,
+          challenge_title: challenge.title,
+          checkpoint_id: checkpoint.id,
+          checkpoint_title: checkpoint.title,
+          checkpoint_completion_id: completion.id,
+        }
+      );
     }
   }
 
