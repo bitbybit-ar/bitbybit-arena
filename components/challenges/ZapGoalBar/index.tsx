@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { BoltIcon } from "@/components/icons";
 import styles from "./zap-goal-bar.module.scss";
@@ -67,7 +68,10 @@ export function ZapGoalBar({
           goal: goalSats,
         })}
       >
-        <div className={styles.fill} style={{ width: `${percent}%` }} />
+        <div
+          className={styles.fill}
+          style={{ "--fill-width": `${percent}%` } as CSSProperties}
+        />
       </div>
       <div className={styles.label}>
         <span className={styles.raised}>

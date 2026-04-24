@@ -2,6 +2,7 @@
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
 @use "@/styles/media-mixins" as *;
+@use "@/styles/z-index" as *;
 
 @keyframes slideIn {
   from {
@@ -29,7 +30,7 @@
   position: fixed;
   bottom: $spacing-24;
   right: $spacing-24;
-  z-index: 9999;
+  z-index: $z-index-toast;
   display: flex;
   flex-direction: column-reverse;
   gap: $spacing-8;

@@ -1,4 +1,7 @@
+"use client";
+
 import { type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { ArrowLeftIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
@@ -24,6 +27,7 @@ export function AppPageHeader({
   actions,
   sticky = true,
 }: AppPageHeaderProps) {
+  const t = useTranslations("common");
   return (
     <div className={cn(styles.header, sticky && styles.headerSticky)}>
       <div className={styles.left}>
@@ -31,7 +35,7 @@ export function AppPageHeader({
           <Link
             href={backHref}
             className={styles.back}
-            aria-label={backLabel ?? "Back"}
+            aria-label={backLabel ?? t("back")}
           >
             <ArrowLeftIcon size={18} />
           </Link>

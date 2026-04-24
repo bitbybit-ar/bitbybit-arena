@@ -103,7 +103,7 @@
 @mixin method-button-stack {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: $spacing-2;
   min-width: 0;
 }
 
