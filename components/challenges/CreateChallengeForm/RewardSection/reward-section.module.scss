@@ -1,0 +1,41 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  font-family: $font-family-base;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-4;
+    cursor: pointer;
+  }
+}
+
+.required {
+  color: $color-accent;
+}
+
+.zapGoalNote {
+  margin: 0;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  line-height: 1.5;
+  padding: $spacing-8 $spacing-12;
+  background: $color-bg;
+  border-left: 2px solid $color-secondary;
+  border-radius: $border-radius-sm;
+}

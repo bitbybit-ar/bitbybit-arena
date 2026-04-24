@@ -8,7 +8,6 @@ import { Tooltip } from "@/components/common/Tooltip";
 import { FormDivider } from "@/components/common/FormDivider";
 import { OptionCard, OptionCardGroup } from "@/components/common/OptionCard";
 import { TagInput } from "@/components/common/TagInput";
-import { ImageUpload } from "@/components/common/ImageUpload";
 import type { BlossomDescriptor } from "@/lib/nostr/blossom";
 import { CreateChallengeBodySchema } from "@/lib/schemas/challenges";
 import { validateForm } from "@/lib/schemas/validate-form";
@@ -25,18 +24,17 @@ import { useSignerContext } from "@/lib/signer-context";
 import { ShareOnNostrModal } from "@/components/share/ShareOnNostrModal";
 import type { VerificationMethod } from "@/lib/types";
 import { slugify } from "@/lib/utils";
+import { CheckpointEditor, type CheckpointDraft } from "./CheckpointEditor";
+import { RewardSection } from "./RewardSection";
+import { VerificationSection } from "./VerificationSection";
 import styles from "./create-challenge-form.module.scss";
+
+export type { CheckpointDraft } from "./CheckpointEditor";
 
 type ChallengeType = "one_time" | "streak" | "competition" | "race" | "creative";
 type CheckpointMode = "none" | "sequential" | "parallel";
 type RewardZapMode = "first_to_complete" | "split" | "tiered";
 
-const VERIFICATION_METHODS: VerificationMethod[] = [
-  "creator_approval",
-  "automatic",
-  "nostr_action",
-  "nostr_hashtag",
-];
 const CHALLENGE_TYPES: ChallengeType[] = [
   "one_time",
   "streak",
@@ -72,14 +70,6 @@ function FieldLabel({
       {tooltip && <Tooltip text={tooltip.text} example={tooltip.example} />}
     </div>
   );
-}
-
-interface CheckpointDraft {
-  title: string;
-  description: string;
-  verification_methods: VerificationMethod[];
-  nostr_action_target_event_id: string;
-  nostr_hashtag: string;
 }
 
 interface RenderHeaderContext {
@@ -134,24 +124,6 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
       prev.includes(method)
         ? prev.filter((m) => m !== method)
         : [...prev, method]
-    );
-  };
-
-  const toggleCheckpointVerification = (
-    idx: number,
-    method: VerificationMethod
-  ) => {
-    setCheckpoints((prev) =>
-      prev.map((cp, i) => {
-        if (i !== idx) return cp;
-        const has = cp.verification_methods.includes(method);
-        return {
-          ...cp,
-          verification_methods: has
-            ? cp.verification_methods.filter((m) => m !== method)
-            : [...cp.verification_methods, method],
-        };
-      })
     );
   };
 
@@ -352,19 +324,6 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
     if (target) router.push(`/explore/${target.id}`);
   };
 
-  const addCheckpoint = () => {
-    setCheckpoints((prev) => [
-      ...prev,
-      {
-        title: "",
-        description: "",
-        verification_methods: ["creator_approval"],
-        nostr_action_target_event_id: "",
-        nostr_hashtag: "",
-      },
-    ]);
-  };
-
   return (
     <form onSubmit={handleSubmit} className={styles.form}>
       {renderHeader({ loading })}
@@ -464,30 +423,6 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
         </OptionCardGroup>
       </div>
 
-      {showGoal && (
-        <div className={styles.row}>
-          <div className={styles.fieldGroup}>
-            <FieldLabel htmlFor="cc-goal">{t("goalLabel")}</FieldLabel>
-            <FormInput
-              id="cc-goal"
-              type="number"
-              placeholder={t("goalPlaceholder")}
-              value={goal}
-              onChange={setGoal}
-            />
-          </div>
-          <div className={styles.fieldGroup}>
-            <FieldLabel htmlFor="cc-unit">{t("unitLabel")}</FieldLabel>
-            <FormInput
-              id="cc-unit"
-              placeholder={t("unitPlaceholder")}
-              value={unit}
-              onChange={setUnit}
-            />
-          </div>
-        </div>
-      )}
-
       <div className={styles.fieldGroup}>
         <FieldLabel
           htmlFor="cc-tags"
@@ -510,55 +445,23 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
       {/* ─────────────── Section 2: Details ─────────────── */}
       <FormDivider label={t("sections.details")} />
 
-      <div className={styles.fieldGroup}>
-        <FieldLabel
-          required
-          tooltip={{
-            text: t("tooltips.verification.text"),
-            example: t("tooltips.verification.example"),
-          }}
-        >
-          {t("verificationLabel")}
-        </FieldLabel>
-        <OptionCardGroup label={t("verificationLabel")}>
-          {VERIFICATION_METHODS.map((method) => (
-            <OptionCard
-              key={method}
-              multi
-              title={t(`verificationTypes.${method}`)}
-              description={t(`verificationDescriptions.${method}`)}
-              selected={verification.includes(method)}
-              onToggle={() => toggleVerification(method)}
-            />
-          ))}
-        </OptionCardGroup>
-      </div>
-
-      {verification.includes("nostr_action") && (
-        <div className={styles.fieldGroup}>
-          <FieldLabel htmlFor="cc-action-target">
-            {t("nostrActionTargetLabel")}
-          </FieldLabel>
-          <FormInput
-            id="cc-action-target"
-            placeholder={t("nostrActionTargetPlaceholder")}
-            value={nostrActionTarget}
-            onChange={setNostrActionTarget}
-          />
-        </div>
-      )}
-
-      {verification.includes("nostr_hashtag") && (
-        <div className={styles.fieldGroup}>
-          <FieldLabel htmlFor="cc-hashtag">{t("nostrHashtagLabel")}</FieldLabel>
-          <FormInput
-            id="cc-hashtag"
-            placeholder={t("nostrHashtagPlaceholder")}
-            value={nostrHashtag}
-            onChange={setNostrHashtag}
-          />
-        </div>
-      )}
+      <VerificationSection
+        verification={verification}
+        onToggleVerification={toggleVerification}
+        nostrActionTarget={nostrActionTarget}
+        onNostrActionTargetChange={setNostrActionTarget}
+        nostrHashtag={nostrHashtag}
+        onNostrHashtagChange={setNostrHashtag}
+        showGoal={showGoal}
+        goal={goal}
+        onGoalChange={setGoal}
+        unit={unit}
+        onUnitChange={setUnit}
+        badgeName={badgeName}
+        onBadgeNameChange={setBadgeName}
+        badgeImage={badgeImage}
+        onBadgeImageChange={setBadgeImage}
+      />
 
       <div className={styles.fieldGroup}>
         <FieldLabel
@@ -583,182 +486,18 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
       </div>
 
       {checkpointMode !== "none" && (
-        <div className={styles.checkpointsSection}>
-          <span className={styles.hint}>{t("checkpointsHint")}</span>
-          {checkpoints.map((cp, idx) => (
-            <div key={idx} className={styles.checkpointRow}>
-              <div className={styles.checkpointHeader}>
-                <span className={styles.checkpointIndex}>
-                  {t("checkpointIndex", { index: idx + 1 })}
-                </span>
-                <button
-                  type="button"
-                  className={styles.checkpointRemove}
-                  onClick={() =>
-                    setCheckpoints((prev) => prev.filter((_, i) => i !== idx))
-                  }
-                >
-                  {t("removeCheckpoint")}
-                </button>
-              </div>
-              <FormInput
-                label={t("checkpointTitleLabel")}
-                value={cp.title}
-                onChange={(v) =>
-                  setCheckpoints((prev) =>
-                    prev.map((c, i) => (i === idx ? { ...c, title: v } : c))
-                  )
-                }
-                required
-              />
-              <FormTextarea
-                label={t("checkpointDescriptionLabel")}
-                value={cp.description}
-                onChange={(v) =>
-                  setCheckpoints((prev) =>
-                    prev.map((c, i) =>
-                      i === idx ? { ...c, description: v } : c
-                    )
-                  )
-                }
-                rows={2}
-              />
-              <OptionCardGroup label={t("verificationLabel")}>
-                {VERIFICATION_METHODS.map((method) => (
-                  <OptionCard
-                    key={method}
-                    multi
-                    title={t(`verificationTypes.${method}`)}
-                    selected={cp.verification_methods.includes(method)}
-                    onToggle={() => toggleCheckpointVerification(idx, method)}
-                  />
-                ))}
-              </OptionCardGroup>
-              {cp.verification_methods.includes("nostr_action") && (
-                <FormInput
-                  label={t("nostrActionTargetLabel")}
-                  placeholder={t("nostrActionTargetPlaceholder")}
-                  value={cp.nostr_action_target_event_id}
-                  onChange={(v) =>
-                    setCheckpoints((prev) =>
-                      prev.map((c, i) =>
-                        i === idx
-                          ? { ...c, nostr_action_target_event_id: v }
-                          : c
-                      )
-                    )
-                  }
-                />
-              )}
-              {cp.verification_methods.includes("nostr_hashtag") && (
-                <FormInput
-                  label={t("nostrHashtagLabel")}
-                  placeholder={t("nostrHashtagPlaceholder")}
-                  value={cp.nostr_hashtag}
-                  onChange={(v) =>
-                    setCheckpoints((prev) =>
-                      prev.map((c, i) =>
-                        i === idx ? { ...c, nostr_hashtag: v } : c
-                      )
-                    )
-                  }
-                />
-              )}
-            </div>
-          ))}
-          <button type="button" className={styles.addCheckpoint} onClick={addCheckpoint}>
-            + {t("addCheckpoint")}
-          </button>
-        </div>
+        <CheckpointEditor
+          checkpoints={checkpoints}
+          onChange={setCheckpoints}
+        />
       )}
 
-      <div className={styles.fieldGroup}>
-        <FieldLabel
-          htmlFor="cc-prize"
-          tooltip={{
-            text: t("tooltips.prize.text"),
-            example: t("tooltips.prize.example"),
-          }}
-        >
-          {t("prizeAmountLabel")}
-        </FieldLabel>
-        <FormInput
-          id="cc-prize"
-          type="number"
-          placeholder={t("prizeAmountPlaceholder")}
-          value={prizeAmountSats}
-          onChange={setPrizeAmountSats}
-        />
-      </div>
-
-      {prizeAmountSats && Number(prizeAmountSats) > 0 && (
-        <>
-          <div className={styles.fieldGroup}>
-            <FieldLabel
-              tooltip={{
-                text: t("tooltips.rewardZapMode.text"),
-                example: t("tooltips.rewardZapMode.example"),
-              }}
-            >
-              {t("rewardZapModeLabel")}
-            </FieldLabel>
-            <OptionCardGroup label={t("rewardZapModeLabel")}>
-              {(["first_to_complete", "split", "tiered"] as RewardZapMode[]).map(
-                (mode) => (
-                  <OptionCard
-                    key={mode}
-                    title={t(`rewardZapModes.${mode}`)}
-                    description={t(`rewardZapModeDescriptions.${mode}`)}
-                    selected={rewardZapMode === mode}
-                    onToggle={() => setRewardZapMode(mode)}
-                  />
-                )
-              )}
-            </OptionCardGroup>
-          </div>
-          <p className={styles.zapGoalNote}>{t("zapGoalAutoNote")}</p>
-        </>
-      )}
-
-      {/* ─────────────── Section 3: Badge ─────────────── */}
-      <FormDivider label={t("sections.badge")} />
-
-      <div className={styles.fieldGroup}>
-        <FieldLabel
-          htmlFor="cc-badge-name"
-          tooltip={{
-            text: t("tooltips.badgeName.text"),
-            example: t("tooltips.badgeName.example"),
-          }}
-        >
-          {t("badgeNameLabel")}
-        </FieldLabel>
-        <FormInput
-          id="cc-badge-name"
-          placeholder={t("badgeNamePlaceholder")}
-          value={badgeName}
-          onChange={setBadgeName}
-        />
-      </div>
-
-      <div className={styles.fieldGroup}>
-        <FieldLabel
-          htmlFor="cc-badge-image"
-          tooltip={{
-            text: t("tooltips.badgeImage.text"),
-            example: t("tooltips.badgeImage.example"),
-          }}
-        >
-          {t("badgeImageLabel")}
-        </FieldLabel>
-        <ImageUpload
-          id="cc-badge-image"
-          value={badgeImage}
-          onChange={setBadgeImage}
-          alt={badgeName || t("badgeImageLabel")}
-          maxSizeMB={2}
-        />
-      </div>
+      <RewardSection
+        prizeAmountSats={prizeAmountSats}
+        onPrizeAmountChange={setPrizeAmountSats}
+        prizeDistribution={rewardZapMode}
+        onPrizeDistributionChange={setRewardZapMode}
+      />
 
       {error && <p className={styles.error}>{error}</p>}
       {warning && <p className={styles.warning}>{warning}</p>}
