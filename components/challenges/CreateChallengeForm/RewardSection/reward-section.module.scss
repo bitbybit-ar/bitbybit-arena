@@ -8,27 +8,6 @@
   gap: $spacing-8;
 }
 
-.labelRow {
-  display: flex;
-  align-items: center;
-  gap: $spacing-8;
-  font-family: $font-family-base;
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
-  color: $color-text-primary;
-
-  label {
-    display: inline-flex;
-    align-items: center;
-    gap: $spacing-4;
-    cursor: pointer;
-  }
-}
-
-.required {
-  color: $color-accent;
-}
-
 .zapGoalNote {
   margin: 0;
   font-size: $font-size-xs;

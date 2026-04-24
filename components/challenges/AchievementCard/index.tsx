@@ -4,28 +4,8 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { PixelIcon } from "@/components/common/PixelIcon";
 import { Button } from "@/components/ui/button";
+import type { AchievementItem } from "@/lib/types";
 import styles from "./achievement-card.module.scss";
-
-export interface AchievementItem {
-  id: string;
-  badge_name: string;
-  badge_image_url: string | null;
-  nostr_event_id: string | null;
-  awarded_at: string;
-  accepted_at: string | null;
-  challenge: {
-    id: string;
-    slug: string;
-    title: string;
-    badge_nostr_event_id: string | null;
-  };
-  issuer: {
-    id: string;
-    display_name: string;
-    username: string;
-    nostr_pubkey: string;
-  };
-}
 
 interface AchievementCardProps {
   achievement: AchievementItem;

@@ -4,9 +4,14 @@
   width: fit-content;
 }
 
-.pixel {
-  width: 100% !important;
-  height: auto !important;
+// `:where(.pixel)` keeps the selector at specificity 0 so the sizing
+// overrides defer to any local class on the Block instead of fighting
+// it with `!important`. The rules still apply because nothing inside
+// PixelIcon sets width/height on these blocks otherwise — we just want
+// the inline grid-driven sizing to propagate to the Block wrapper.
+:where(.pixel) {
+  width: 100%;
+  height: auto;
   aspect-ratio: 1;
   border-radius: $border-radius-xs;
 }
