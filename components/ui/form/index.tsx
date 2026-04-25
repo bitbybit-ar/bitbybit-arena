@@ -186,7 +186,7 @@ export function FormTextarea({
 interface FormButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
   loadingText?: string;
-  variant?: "primary" | "outline";
+  variant?: "primary" | "outline" | "ghost";
 }
 
 export function FormButton({

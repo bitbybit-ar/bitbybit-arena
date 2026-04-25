@@ -2,11 +2,10 @@
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
 @use "@/styles/media-mixins" as *;
+@use "@/styles/common-mixins" as *;
 
 .section {
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-lg;
+  @include ceramic-card;
   padding: $spacing-24;
 
   @include mobile {
