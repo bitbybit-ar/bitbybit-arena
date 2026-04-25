@@ -700,6 +700,8 @@
     "lightningPlaceholder": "user@getalby.com",
     "saving": "Saving...",
     "saved": "Profile saved!",
+    "preferencesSaved": "Preferences saved",
+    "notificationsSaved": "Notifications saved",
     "syncFromRelays": "Sync from relays",
     "syncing": "Syncing...",
     "syncSuccess": "Profile synced from Nostr",
