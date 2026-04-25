@@ -5,7 +5,9 @@
 @use "@/styles/media-mixins" as *;
 
 .page {
-  max-width: 600px;
+  // Inherits the shared platform container so the page lines up with
+  // the Navbar's inner column on every breakpoint.
+  max-width: $container-max-width;
   margin: 0 auto;
   padding: $spacing-32 $container-padding;
   padding-top: calc($navbar-height + #{$spacing-32});
@@ -18,9 +20,71 @@
   }
 }
 
+// Two-column grid on tablet+. Areas: Profile owns the full left
+// column; Preferences and Notifications stack in the right column;
+// Privacy (danger zone) spans both columns at the bottom. On mobile
+// the area names are dropped and the grid auto-flows into a single
+// vertical stack — order in the JSX is profile → preferences →
+// notifications → privacy, which matches the desktop reading order.
+.grid {
+  display: grid;
+  gap: $spacing-20;
+
+  @include tabletAndUp {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "profile preferences"
+      "profile notifications"
+      "privacy privacy";
+    align-items: start;
+  }
+}
+
+.areaProfile {
+  @include tabletAndUp {
+    grid-area: profile;
+  }
+}
+
+.areaPreferences {
+  @include tabletAndUp {
+    grid-area: preferences;
+  }
+}
+
+.areaNotifications {
+  @include tabletAndUp {
+    grid-area: notifications;
+    // Stretch the card vertically to consume the right-column space
+    // left over after Preferences. Without this the row sized to the
+    // toggle list and a tall Profile card on the left created an
+    // awkward gap between Preferences and Notifications.
+    align-self: stretch;
+    // Extra bottom breathing room inside the now-taller card so the
+    // last toggle row doesn't sit flush against the bottom edge.
+    padding-bottom: $spacing-32;
+  }
+}
+
+.areaPrivacy {
+  @include tabletAndUp {
+    grid-area: privacy;
+  }
+}
+
+.panelHidden {
+  @include mobile {
+    display: none;
+  }
+}
+
 .title {
   font-family: $font-display;
-  font-size: $font-size-2xl;
+  // Hard-pinned to 2rem to keep the page header in proportion with
+  // section titles (1.1rem) — the previous $font-size-2xl token
+  // (≈2.5rem) towered over the rest of the column on mobile and
+  // pushed the first card too far down.
+  font-size: 2rem;
   font-weight: $font-weight-extrabold;
   margin-bottom: $spacing-24;
 }
@@ -39,7 +103,6 @@
   display: flex;
   flex-direction: column;
   gap: $spacing-16;
-  margin-bottom: $spacing-20;
 
   @include mobile {
     padding: $spacing-20;
@@ -48,6 +111,53 @@
 
 .dangerCard {
   border-color: alpha($color-accent, 40%);
+}
+
+// Side-by-side layout for the danger zone: explanatory copy on the
+// left fills the row, the destructive Button sits on the right and
+// stays vertically centered with the text. Stacks on mobile so the
+// button stays full-width-tappable.
+// Footer slot at the bottom-right of a section card. Pushes the
+// Save button to the right edge while the rest of the card content
+// (toggles, dropdowns) keeps its natural width. `margin-top: auto`
+// also keeps the button at the very bottom when the card stretches
+// (e.g. Notifications when the right column is taller than its
+// content).
+.sectionFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+// Side-by-side layout for the danger zone: title + description stack
+// in a single left-hand block, the destructive Button sits on the
+// right and stays vertically centered against the whole left block
+// (not just one line of copy). Stacks on mobile so the button stays
+// full-width-tappable.
+.dangerRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-16;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.dangerText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+
+  > p {
+    margin: 0;
+    // 14px reads as the body-copy size for a section description and
+    // sits between $font-size-xs (12px) and $font-size-base (16px) —
+    // neither of those tokens hit the requested 14px exactly.
+    font-size: 0.875rem;
+  }
 }
 
 .actionsRow {
@@ -64,16 +174,6 @@
   font-size: $font-size-xs;
   color: $color-text-secondary;
   margin: 0;
-}
-
-.dangerButton {
-  color: $color-accent;
-  border-color: alpha($color-accent, 60%);
-
-  &:hover:not(:disabled) {
-    background: alpha($color-accent, 10%);
-    border-color: $color-accent;
-  }
 }
 
 .modalBody {
