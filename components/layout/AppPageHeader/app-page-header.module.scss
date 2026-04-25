@@ -17,13 +17,15 @@
   }
 }
 
-// Opt-in via the `sticky` prop — pins the header below the navbar
-// while the page scrolls so the primary action (Save) stays reachable
-// on long forms. Solid background prevents form content from showing
-// through.
+// Opt-in via the `sticky` prop — pins the header to the very top of
+// the viewport so the primary action (Save) stays reachable on long
+// forms. Pinning at top:0 (not below the navbar) is intentional: the
+// navbar auto-hides on scroll-down, and pinning below it would leave
+// a navbar-height gap that lets scrolling content show through above
+// the header.
 .headerSticky {
   position: sticky;
-  top: $navbar-height;
+  top: 0;
   z-index: 5;
   background: $color-bg;
   padding: $spacing-12 0;
@@ -38,6 +40,9 @@
   min-width: 0;
 }
 
+// Ceramic neutral tile — matches the `ghost` Button variant so the
+// back affordance reads as part of the same surface family as the
+// other action buttons in the header.
 .back {
   display: inline-flex;
   align-items: center;
@@ -46,16 +51,39 @@
   height: 36px;
   border-radius: $border-radius-md;
   border: 1px solid $color-border;
-  background: alpha($color-text-primary, 4%);
+  background-color: $color-surface;
+  background-image: linear-gradient(
+    180deg,
+    $ceramic-highlight-soft 0%,
+    transparent 60%
+  );
   color: $color-text-primary;
   text-decoration: none;
   flex-shrink: 0;
-  @include transition;
+  box-shadow:
+    0 4px 12px $card-shadow,
+    inset 0 1px 0 $ceramic-highlight,
+    inset 0 -2px 4px $ceramic-inner-shadow;
+  transition: transform 0.2s, box-shadow 0.2s, color 0.2s, border-color 0.2s;
 
   &:hover {
+    transform: translateY(-2px);
     border-color: $color-primary;
     color: $color-primary;
     text-decoration: none;
+    box-shadow:
+      0 8px 20px $card-shadow-hover,
+      inset 0 1px 0 $ceramic-highlight,
+      inset 0 -2px 4px $ceramic-inner-shadow;
+  }
+
+  &:active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow:
+      0 2px 6px $card-shadow,
+      inset 0 -1px 0 $ceramic-highlight-soft,
+      inset 0 2px 4px $ceramic-inner-shadow;
+    transition-duration: 0.1s;
   }
 }
 

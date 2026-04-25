@@ -99,6 +99,25 @@
   }
 }
 
+.variant-danger {
+  @include ceramic-surface($color-accent, 28%);
+  color: $static-white;
+
+  &:hover:not(:disabled) {
+    box-shadow:
+      0 8px 24px alpha($color-accent, 35%),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  &:active:not(:disabled) {
+    box-shadow:
+      0 2px 6px alpha($color-accent, 20%),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 2px 4px rgba(0, 0, 0, 0.22);
+  }
+}
+
 .variant-outline {
   background: transparent;
   border: 2px solid $color-primary;

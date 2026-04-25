@@ -7,6 +7,7 @@ import { useZapGoalProgress } from "@/lib/hooks/useZapGoalProgress";
 import { useZapperMetadata } from "@/lib/hooks/useZapperMetadata";
 import type { ZapGoalProgressData } from "@/app/api/challenges/[id]/zap-goal-progress/route";
 import { FundPotModal } from "@/components/challenges/FundPotModal";
+import { BlockLoader } from "@/components/ui/block-loader";
 import styles from "./zap-goal-progress.module.scss";
 
 interface ZapGoalProgressProps {
@@ -211,7 +212,7 @@ export function ZapGoalProgress({
       )}
 
       {loading && recentZappers.length === 0 && (
-        <p className={styles.loadingHint}>{t("loading")}</p>
+        <BlockLoader label={t("loading")} />
       )}
 
       {fundOpen && (

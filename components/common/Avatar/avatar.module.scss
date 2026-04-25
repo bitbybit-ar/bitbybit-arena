@@ -14,6 +14,31 @@
   overflow: hidden;
   flex-shrink: 0;
   user-select: none;
+  // Border lives on the container so the wrapped <img> doesn't clip it.
+  // 2px reads on every avatar size from sm (24px) up to lg (64px); the
+  // box-sizing default keeps the visible disc the size the caller asked
+  // for instead of inflating it by the ring width.
+  border: 2px solid transparent;
+  box-sizing: border-box;
+}
+
+.borderNostr {
+  // Brand purple ring used by the Navbar's logged-in avatar — match
+  // it here so every avatar primitive across the app reads as a
+  // Nostr identity by default.
+  border-color: $color-nostr;
+}
+
+.borderApproved {
+  border-color: $color-accent-alt;
+}
+
+.borderPending {
+  border-color: $color-secondary;
+}
+
+.borderRejected {
+  border-color: $color-accent;
 }
 
 .image {

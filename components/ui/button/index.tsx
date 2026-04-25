@@ -8,6 +8,7 @@ type ButtonBaseProps = {
     | "primary"
     | "secondary"
     | "success"
+    | "danger"
     | "outline"
     | "ghost"
     | "link";
