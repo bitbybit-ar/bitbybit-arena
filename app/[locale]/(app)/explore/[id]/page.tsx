@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache, Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
@@ -131,7 +131,13 @@ export default async function ChallengeDetailPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdHtml }}
       />
-      <ChallengeClient />
+      {/* Suspense boundary required because <ChallengeClient /> reads
+          search params via `useSearchParams()` for the ?tab=manage
+          deep link. Without this Next.js 15 deopts the whole subtree
+          to client-side rendering and surfaces a build warning. */}
+      <Suspense fallback={null}>
+        <ChallengeClient />
+      </Suspense>
     </>
   );
 }

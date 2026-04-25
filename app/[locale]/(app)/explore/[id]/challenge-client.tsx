@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslations } from "next-intl";
-import { useParams, notFound } from "next/navigation";
+import { useParams, useSearchParams, notFound } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { useRouter } from "@/i18n/routing";
 import { ArrowRightIcon, BoltIcon, CopyIcon } from "@/components/icons";
@@ -12,15 +12,17 @@ import { Tag } from "@/components/ui/tag";
 import { Modal } from "@/components/ui/modal";
 import { BlockLoader } from "@/components/ui/block-loader";
 import { ImageUpload } from "@/components/common/ImageUpload";
+import { Avatar, type AvatarStatus } from "@/components/common/Avatar";
+import { Section, SectionTitle } from "@/components/common/Section";
 import {
   CheckpointCompletionSection,
   defaultDraft,
   type CheckpointDraft,
 } from "@/components/challenges/CheckpointCompletionSection";
 import { CheckpointSubmissionCard } from "@/components/challenges/CheckpointSubmissionCard";
-import { ParticipantsList, type ParticipantItem } from "@/components/challenges/ParticipantsList";
 import { RewardDistributionPanel } from "@/components/challenges/RewardDistributionPanel";
 import { useClipboard } from "@/lib/hooks/useClipboard";
+import { cn } from "@/lib/utils";
 import { fetchNostrMetadata } from "@/lib/nostr/metadata";
 import {
   buildJoinEvent,
@@ -44,8 +46,10 @@ import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
 import { useToast } from "@/components/ui/toast";
 import type {
+  ChallengeCheckpointCompletion,
   Checkpoint,
   CheckpointCompletion,
+  ParticipantItem,
   PendingCheckpointSubmission,
   PrizeDistribution,
 } from "@/lib/types";
@@ -113,7 +117,13 @@ interface CompletionItem {
   proof_event_id: string | null;
   status: string;
   submitted_at: string;
-  user: { id: string; display_name: string; username: string; nostr_pubkey?: string };
+  user: {
+    id: string;
+    display_name: string;
+    username: string;
+    nostr_pubkey?: string;
+    avatar_url?: string | null;
+  };
 }
 
 export default function ChallengeClient() {
@@ -122,6 +132,7 @@ export default function ChallengeClient() {
   const tCreate = useTranslations("createChallenge");
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const { user: sessionUser } = useSession();
   const { needsSigner, signWithPrompt, requestReSignIn } = useSignerContext();
   const { showToast } = useToast();
@@ -137,8 +148,16 @@ export default function ChallengeClient() {
   const [proofImageDescriptor, setProofImageDescriptor] =
     useState<BlossomDescriptor | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [selectedWinners, setSelectedWinners] = useState<Set<string>>(new Set());
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  // Tab is mirrored in the URL (`?tab=manage`) so creators can deep-
+  // link straight to the Manage view from notifications. Source of
+  // truth is the query string; the JSX reads via `activeTab` and we
+  // navigate to switch.
+  const activeTab: "general" | "manage" =
+    searchParams?.get("tab") === "manage" ? "manage" : "general";
+  // Selected user id for the submission-details modal in the Manage tab.
+  // Null when the modal is closed.
+  const [rosterUserId, setRosterUserId] = useState<string | null>(null);
   // Per-checkpoint draft state keyed by checkpoint id. Collapses what
   // used to be three parallel records (proofs / images / errors) into
   // a single object so every read and write updates the same slot.
@@ -152,6 +171,13 @@ export default function ChallengeClient() {
   >([]);
   const [pendingCursor, setPendingCursor] = useState<string | null>(null);
   const [loadingMorePending, setLoadingMorePending] = useState(false);
+  // Creator-only: every checkpoint completion (across statuses) so the
+  // per-user submission-details modal can show full step history for
+  // checkpoint-mode challenges. Empty array on non-checkpoint or non-
+  // creator pages — populated lazily by fetchAll below.
+  const [allCheckpointCompletions, setAllCheckpointCompletions] = useState<
+    ChallengeCheckpointCompletion[]
+  >([]);
   const [rejectReasons, setRejectReasons] = useState<Record<string, string>>(
     {}
   );
@@ -215,18 +241,26 @@ export default function ChallengeClient() {
         setIsParticipant(false);
       }
 
-      // Creator-only: first page of pending checkpoint submissions.
-      // Kept off the challenge-detail payload so that list can grow
-      // without bloating the primary response.
+      // Creator-only: first page of pending checkpoint submissions
+      // PLUS the all-statuses checkpoint completions feed used by the
+      // submission-details modal. Both kept off the challenge-detail
+      // payload so the primary response stays bounded.
       if (viewerIsCreator && cJson.success && cJson.data.checkpoint_mode !== "none") {
         try {
-          const pendingRes = await fetch(
-            `/api/challenges/${challengeId}/pending-checkpoint-submissions`
-          );
+          const [pendingRes, allCpRes] = await Promise.all([
+            fetch(
+              `/api/challenges/${challengeId}/pending-checkpoint-submissions`
+            ),
+            fetch(`/api/challenges/${challengeId}/checkpoint-completions`),
+          ]);
           const pendingJson = await pendingRes.json();
           if (pendingJson.success) {
             setPendingSubmissions(pendingJson.data.items);
             setPendingCursor(pendingJson.data.nextCursor);
+          }
+          const allCpJson = await allCpRes.json();
+          if (allCpJson.success) {
+            setAllCheckpointCompletions(allCpJson.data);
           }
         } catch {
           /* non-blocking — the review list just renders empty */
@@ -234,6 +268,7 @@ export default function ChallengeClient() {
       } else {
         setPendingSubmissions([]);
         setPendingCursor(null);
+        setAllCheckpointCompletions([]);
       }
     } catch {
       // silently fail
@@ -963,13 +998,84 @@ export default function ChallengeClient() {
 
   const handleVerify = async (completionId: string, status: "approved" | "rejected") => {
     setActionLoading(completionId);
-    await fetch(`/api/completions/${completionId}/verify`, {
+    const res = await fetch(`/api/completions/${completionId}/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    const json = await res.json().catch(() => ({ success: false }));
+    if (status === "approved" && json.success) {
+      // Approving the proof IS the badge-award gesture — there's no
+      // separate creator action anymore. Look up the completion's user
+      // from the in-memory list and run the same award + publish path
+      // that the multi-select button used to drive.
+      const comp = completions.find((c) => c.id === completionId);
+      if (comp) await awardBadgeToUser(comp.user.id);
+    }
     await fetchAll();
     setActionLoading(null);
+  };
+
+  // Award + publish the NIP-58 badge for a single recipient. Idempotent
+  // on the server (409 if a badge row already exists), so we treat that
+  // case as success — the user already has the badge.
+  const awardBadgeToUser = async (userId: string) => {
+    if (!challenge) return;
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return;
+      }
+    }
+    const winner = participants.find((p) => p.user_id === userId);
+    if (!winner?.user.nostr_pubkey) return;
+
+    const awardRes = await fetch(`/api/challenges/${challengeId}/award`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_ids: [userId] }),
+    });
+    // 409 = already awarded; that's a no-op success for our purposes.
+    if (!awardRes.ok && awardRes.status !== 409) return;
+
+    try {
+      // NIP-58 needs the kind:30009 definition before we can `a`-tag it
+      // from a kind:8 award. Lazy-publish on first use so legacy
+      // challenges from before the definition was mandatory still work.
+      if (!challenge.badge_nostr_event_id) {
+        const definition = buildBadgeDefinitionEvent({
+          slug: challenge.slug,
+          name: challenge.badge_name || challenge.title,
+          description: undefined,
+          image: challenge.badge_image_url || undefined,
+        });
+        const signedDef = await signWithPrompt(definition);
+        await publishSignedEvent(signedDef);
+        await fetch(`/api/challenges/${challengeId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ badge_nostr_event_id: signedDef.id }),
+        });
+      }
+
+      const signed = await signWithPrompt(
+        buildBadgeAwardEvent({
+          badgeDefinitionSlug: challenge.slug,
+          issuerPubkey: challenge.creator.nostr_pubkey,
+          recipientPubkey: winner.user.nostr_pubkey,
+        })
+      );
+      await publishSignedEvent(signed);
+      fetch(`/api/challenges/${challengeId}/award`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          nostr_event_id: signed.id,
+        }),
+      }).catch(() => {});
+    } catch { /* non-blocking — DB row is already in place */ }
   };
 
   const handleVerifyCheckpoint = async (
@@ -1016,81 +1122,6 @@ export default function ChallengeClient() {
     }
   };
 
-  const handleAwardBadges = async () => {
-    if (selectedWinners.size === 0 || !challenge) return;
-    if (needsSigner) {
-      try {
-        await requestReSignIn();
-      } catch {
-        return;
-      }
-    }
-    setActionLoading("award");
-    await fetch(`/api/challenges/${challengeId}/award`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_ids: Array.from(selectedWinners) }),
-    });
-
-    // NIP-58 requires the kind:8 award event to `a`-tag a kind:30009
-    // badge definition. Legacy challenges created before Phase A may not
-    // have one — lazy-publish here, then reuse that event id for every
-    // award we emit below.
-    try {
-      if (!challenge.badge_nostr_event_id) {
-        const definition = buildBadgeDefinitionEvent({
-          slug: challenge.slug,
-          name: challenge.badge_name || challenge.title,
-          description: undefined,
-          image: challenge.badge_image_url || undefined,
-        });
-        const signedDef = await signWithPrompt(definition);
-        await publishSignedEvent(signedDef);
-        await fetch(`/api/challenges/${challengeId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ badge_nostr_event_id: signedDef.id }),
-        });
-      }
-
-      const winners = participants.filter((p) => selectedWinners.has(p.user_id));
-      for (const winner of winners) {
-        if (winner.user.nostr_pubkey) {
-          const signed = await signWithPrompt(
-            buildBadgeAwardEvent({
-              badgeDefinitionSlug: challenge.slug,
-              issuerPubkey: challenge.creator.nostr_pubkey,
-              recipientPubkey: winner.user.nostr_pubkey,
-            })
-          );
-          await publishSignedEvent(signed);
-          // Record the event id so badges.nostr_event_id stops being
-          // dead storage. Non-blocking on failure.
-          fetch(`/api/challenges/${challengeId}/award`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              user_id: winner.user_id,
-              nostr_event_id: signed.id,
-            }),
-          }).catch(() => {});
-        }
-      }
-    } catch { /* non-blocking */ }
-    setSelectedWinners(new Set());
-    await fetchAll();
-    setActionLoading(null);
-  };
-
-  const toggleWinner = (userId: string) => {
-    setSelectedWinners((prev) => {
-      const next = new Set(prev);
-      if (next.has(userId)) next.delete(userId);
-      else next.add(userId);
-      return next;
-    });
-  };
-
   if (loading) {
     return (
       <div className={styles.loadingState}>
@@ -1103,386 +1134,685 @@ export default function ChallengeClient() {
     notFound();
   }
 
+  // Derived once per render — both tabs read it: General lists badge
+  // recipients next to participants, Manage shows the same data in the
+  // detailed list. Built from completions so the rule stays aligned with
+  // "approved completion === badge".
+  const badgeRecipientUserIds = new Set(
+    completions
+      .filter((c) => c.status === "approved")
+      .map((c) => c.user.id)
+  );
+
+  // Per-viewer derivations — precomputed once so the JSX below reads
+  // straight from these values instead of re-running the same filters
+  // inside multiple inline IIFEs.
+  const myProgressInfo = deriveMyProgress(
+    challenge,
+    participants,
+    completions,
+    sessionUser?.user_id ?? null
+  );
+  const manageRoster = deriveManageRoster(
+    participants,
+    completions,
+    allCheckpointCompletions,
+    challenge
+  );
+
+  // Belt-and-braces: if a non-creator manages to flip activeTab to
+  // "manage" via stale state (e.g. they were the creator a moment ago,
+  // then the session changed), force-fall back to general so the page
+  // never tries to render the creator-only surfaces for the wrong viewer.
+  const showManage = activeTab === "manage" && isCreator;
+
   return (
     <div className={styles.page}>
-      <button className={styles.backButton} onClick={() => router.push("/explore")}>
-        <ArrowRightIcon size={16} /> {tCommon("back")}
-      </button>
+      <div className={styles.topBar}>
+        {showManage ? (
+          <button
+            className={styles.backButton}
+            onClick={() => router.push(`/explore/${challengeId}`)}
+          >
+            <ArrowRightIcon size={16} /> {t("backToChallenge")}
+          </button>
+        ) : (
+          <button
+            className={styles.backButton}
+            onClick={() => router.push("/explore")}
+          >
+            <ArrowRightIcon size={16} /> {tCommon("back")}
+          </button>
+        )}
+        {isCreator && !showManage && (
+          // Top-right CTA replaces the previous tab nav. Lives in the
+          // URL (`?tab=manage`) so creators can deep-link from a
+          // notification — push() instead of replace() so back/forward
+          // works as expected.
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => router.push(`/explore/${challengeId}?tab=manage`)}
+          >
+            {t("manageChallengeCta")}
+          </Button>
+        )}
+      </div>
 
       <div className={styles.main}>
-        {/* Challenge info */}
-        <div className={styles.challengeCard}>
-          <Tag variant={typeVariant(challenge.type)}>
-            {tCreate(`types.${challenge.type}`)}
-          </Tag>
-          <h1 className={styles.challengeTitle}>{challenge.title}</h1>
-          <p className={styles.creator}>
-            {t("by")} {challenge.creator.display_name}
-          </p>
-          <p className={styles.description}>{challenge.description}</p>
 
-          <div className={styles.details}>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>{t("status")}</span>
-              <span>{tCommon(statusKey(challenge.status))}</span>
-            </div>
-            {challenge.goal && (
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>{t("goal")}</span>
-                <span>{challenge.goal} {challenge.unit}</span>
-              </div>
-            )}
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>{t("verification")}</span>
-              <span>
-                {(challenge.verification_methods ?? [])
-                  .map((m) => tCreate(`verificationTypes.${m}`))
-                  .join(" · ")}
-              </span>
-            </div>
-            {challenge.ends_at && (
-              <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>{t("ends")}</span>
-                <span>{new Date(challenge.ends_at).toLocaleDateString()}</span>
-              </div>
-            )}
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>{t("participants")}</span>
-              <span>{challenge.participant_count}</span>
-            </div>
-          </div>
+        {!showManage && (
+          <div className={styles.grid}>
+            <div className={styles.col}>
+              <Section>
+                <Tag variant={typeVariant(challenge.type)}>
+                  {tCreate(`types.${challenge.type}`)}
+                </Tag>
+                <h1 className={styles.challengeTitle}>{challenge.title}</h1>
+                <p className={styles.creator}>
+                  {t("by")} {challenge.creator.display_name}
+                </p>
+                <p className={styles.description}>{challenge.description}</p>
 
-          <SignerRequiredNotice />
-
-          {/* Join toggle — same behavior for creator and participant. The
-              creator just sees an extra confirmation before joining, and
-              if they win a prize share it comes back marked `retained`. */}
-          {(challenge.status === "open" || challenge.status === "in_progress") &&
-            (isParticipant ? (
-              <Button
-                variant="outline"
-                onClick={handleWithdrawClick}
-                disabled={actionLoading === "withdraw"}
-              >
-                {actionLoading === "withdraw" ? t("leaving") : t("joinedToggle")}
-              </Button>
-            ) : (
-              <Button onClick={handleJoinClick} disabled={actionLoading === "join"}>
-                {actionLoading === "join" ? t("joining") : t("joinChallenge")}
-              </Button>
-            ))}
-          {isCreator && (
-            <p className={styles.creatorBadge}>{t("yourChallenge")}</p>
-          )}
-        </div>
-
-        {/* Reward — badge + prize. Hidden when neither is set. */}
-        {(!!challenge.badge_image_url ||
-          !!challenge.badge_name ||
-          challenge.prize_amount_sats > 0) && (
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>{t("rewardDisplayTitle")}</h2>
-            <div className={styles.rewardBlock}>
-              {(challenge.badge_image_url || challenge.badge_name) && (
-                <div className={styles.rewardBadgeBlock}>
-                  {challenge.badge_image_url ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={challenge.badge_image_url}
-                      alt={challenge.badge_name ?? tCommon("badge")}
-                      className={styles.rewardBadgeImage}
-                    />
-                  ) : (
-                    <div
-                      className={styles.rewardBadgePlaceholder}
-                      aria-hidden="true"
-                    />
+                <div className={styles.details}>
+                  <div className={styles.detailRow}>
+                    <span className={styles.detailLabel}>{t("status")}</span>
+                    <span>{tCommon(statusKey(challenge.status))}</span>
+                  </div>
+                  {challenge.goal && (
+                    <div className={styles.detailRow}>
+                      <span className={styles.detailLabel}>{t("goal")}</span>
+                      <span>{challenge.goal} {challenge.unit}</span>
+                    </div>
                   )}
-                  <div className={styles.rewardBadgeText}>
-                    <span className={styles.rewardItemLabel}>
-                      {t("badgeAwarded")}
+                  <div className={styles.detailRow}>
+                    <span className={styles.detailLabel}>{t("verification")}</span>
+                    <span>
+                      {(challenge.verification_methods ?? [])
+                        .map((m) => tCreate(`verificationTypes.${m}`))
+                        .join(" · ")}
                     </span>
-                    {challenge.badge_name && (
-                      <span className={styles.rewardBadgeName}>
-                        {challenge.badge_name}
+                  </div>
+                  {/* Nostr-targeted challenges expose the link in the
+                      info block so non-participants can also see what
+                      the challenge is about. nostr_action points at a
+                      specific event (njump.me/<id>); nostr_hashtag has
+                      no single target, so we link to njump's tag feed
+                      (njump.me/t/<tag>) — both render via the same
+                      njump bridge so any Nostr client can pick it up. */}
+                  {challenge.nostr_action_target_event_id && (
+                    <div className={styles.detailRow}>
+                      <span className={styles.detailLabel}>
+                        {t("nostrTargetLabel")}
                       </span>
-                    )}
-                  </div>
-                </div>
-              )}
-              {challenge.prize_amount_sats > 0 && (
-                <div className={styles.rewardPrizeBlock}>
-                  <BoltIcon size={20} />
-                  <div className={styles.rewardBadgeText}>
-                    <span className={styles.rewardItemLabel}>
-                      {t("prizePool")}
-                    </span>
-                    <span className={styles.rewardPrizeAmount}>
-                      {challenge.prize_amount_sats.toLocaleString()}{" "}
-                      {tCommon("sats")}
-                    </span>
-                    {challenge.prize_distribution &&
-                      challenge.prize_distribution !== "none" && (
-                        <span className={styles.rewardPrizeMode}>
-                          {tCreate(
-                            `rewardZapModes.${challenge.prize_distribution}`
-                          )}
-                        </span>
-                      )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* NIP-75 zap goal — funding progress + "Fund this pot" CTA.
-            Hidden when the challenge has no prize; shows a creator-only
-            "Republish zap goal" recovery button when the row has a
-            prize but no `zap_goal_event_id` on file. */}
-        {challenge.prize_amount_sats > 0 && (
-          <ZapGoalProgress
-            goalEventId={challenge.zap_goal_event_id}
-            goalSats={challenge.prize_amount_sats}
-            challengeTitle={challenge.title}
-            creatorPubkey={challenge.creator.nostr_pubkey}
-            creatorLightningAddress={
-              challenge.creator.lightning_address ?? null
-            }
-            rewardsPaid={!!challenge.rewards_paid_at}
-            creatorCanRepublish={isCreator && !challenge.zap_goal_event_id}
-            onRepublish={handleRepublishZapGoal}
-            republishLoading={actionLoading === "republishZapGoal"}
-          />
-        )}
-
-        {/* Creator review — pending checkpoint submissions */}
-        {isCreator &&
-          challenge.checkpoint_mode !== "none" &&
-          pendingSubmissions.length > 0 && (
-            <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>
-                {t("reviewCheckpointsTitle")} ({pendingSubmissions.length}
-                {pendingCursor ? "+" : ""})
-              </h2>
-              <div className={styles.completionList}>
-                {pendingSubmissions.map((sub) => {
-                  const cpIndex = challenge.checkpoints.findIndex(
-                    (c) => c.id === sub.checkpoint_id
-                  );
-                  const cp = cpIndex >= 0 ? challenge.checkpoints[cpIndex] : null;
-                  return (
-                    <CheckpointSubmissionCard
-                      key={sub.id}
-                      submission={sub}
-                      checkpoint={cp}
-                      checkpointOrder={cp ? cpIndex + 1 : null}
-                      loading={actionLoading === `cpv_${sub.id}`}
-                      rejectReason={rejectReasons[sub.id] ?? ""}
-                      onRejectReasonChange={(next) =>
-                        setRejectReasons((prev) => {
-                          const updated = { ...prev };
-                          if (next) updated[sub.id] = next;
-                          else delete updated[sub.id];
-                          return updated;
-                        })
-                      }
-                      onApprove={() =>
-                        handleVerifyCheckpoint(sub.id, "approved")
-                      }
-                      onReject={() =>
-                        handleVerifyCheckpoint(sub.id, "rejected")
-                      }
-                    />
-                  );
-                })}
-              </div>
-              {pendingCursor && (
-                <div className={styles.loadMoreRow}>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={loadMorePendingSubmissions}
-                    disabled={loadingMorePending}
-                  >
-                    {loadingMorePending ? tCommon("loading") : t("loadMore")}
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-
-        {/* Checkpoints */}
-        <CheckpointCompletionSection
-          checkpointMode={challenge.checkpoint_mode}
-          checkpoints={challenge.checkpoints}
-          myCheckpointCompletions={challenge.my_checkpoint_completions}
-          isParticipant={isParticipant}
-          drafts={checkpointDrafts}
-          onDraftChange={(checkpointId, patch) =>
-            updateCheckpointDraft(setCheckpointDrafts, checkpointId, patch)
-          }
-          onSubmitCheckpoint={handleCompleteCheckpoint}
-          submittingCheckpointId={
-            actionLoading?.startsWith("cp_") ? actionLoading.slice(3) : null
-          }
-        />
-
-        {/* Submit proof */}
-        {isParticipant && challenge.checkpoint_mode === "none" && (challenge.verification_methods ?? []).includes("nostr_action") && (
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>{t("verifyLikeTitle")}</h2>
-            <p className={styles.emptyText}>
-              {t("verifyLikeInstructions")}
-            </p>
-            {challenge.nostr_action_target_event_id && (
-              <p className={styles.targetEventId}>
-                <a
-                  href={`https://njump.me/${challenge.nostr_action_target_event_id}`}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  {challenge.nostr_action_target_event_id.slice(0, 16)}…
-                </a>
-              </p>
-            )}
-            <Button
-              size="sm"
-              onClick={handleVerifyLike}
-              disabled={actionLoading === "verifyLike"}
-            >
-              {actionLoading === "verifyLike"
-                ? t("verifying")
-                : t("verifyLikeButton")}
-            </Button>
-            {verifyError && <p className={styles.error}>{verifyError}</p>}
-          </div>
-        )}
-
-        {isParticipant && challenge.checkpoint_mode === "none" && (challenge.verification_methods ?? []).some((m) => m !== "nostr_action" && m !== "nostr_hashtag") && (
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>{t("submitProof")}</h2>
-            <textarea
-              className={styles.proofInput}
-              placeholder={t("proofPlaceholder")}
-              value={proofContent}
-              onChange={(e) => setProofContent(e.target.value)}
-              rows={3}
-            />
-            <div className={styles.proofActions}>
-              <div className={styles.proofActionsUpload}>
-                <ImageUpload
-                  value={proofImageDescriptor}
-                  onChange={setProofImageDescriptor}
-                  alt={t("proofImageAlt")}
-                  maxSizeMB={5}
-                />
-              </div>
-              <Button
-                className={styles.proofSubmitButton}
-                size="sm"
-                onClick={handleSubmitProof}
-                disabled={
-                  (!proofContent.trim() && !proofImageDescriptor) ||
-                  actionLoading === "proof"
-                }
-              >
-                {actionLoading === "proof" ? t("submitting") : tCommon("submit")}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Completions */}
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>{t("completions")} ({completions.length})</h2>
-          {completions.length === 0 ? (
-            <p className={styles.emptyText}>{t("noCompletions")}</p>
-          ) : (
-            <div className={styles.completionList}>
-              {completions.map((comp) => (
-                <div key={comp.id} className={styles.completionCard}>
-                  <div className={styles.completionHeader}>
-                    <span className={styles.completionUser}>{comp.user.display_name}</span>
-                    <Tag variant={comp.status === "approved" ? "green" : comp.status === "rejected" ? "red" : "gold"}>
-                      {tCommon(comp.status)}
-                    </Tag>
-                  </div>
-                  {comp.content && (
-                    <p className={styles.completionContent}>{comp.content}</p>
-                  )}
-                  {comp.image_url && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={comp.image_url}
-                      alt={comp.content ?? t("proofImageAlt")}
-                      className={styles.completionImage}
-                    />
-                  )}
-                  {comp.proof_event_id && (
-                    <p className={styles.completionContent}>
                       <a
-                        href={`https://njump.me/${comp.proof_event_id}`}
+                        href={`https://njump.me/${challenge.nostr_action_target_event_id}`}
                         target="_blank"
                         rel="noreferrer noopener"
                       >
-                        {t("proofFound")}: {comp.proof_event_id.slice(0, 16)}…
+                        {t("viewOnNostr")}
                       </a>
-                    </p>
-                  )}
-                  {comp.user.nostr_pubkey &&
-                    sessionUser?.nostr_pubkey !== comp.user.nostr_pubkey && (
-                      <button
-                        className={styles.zapButton}
-                        onClick={() => handleZapCompletion(comp)}
-                        disabled={zapLoadingId === comp.id}
-                        title="Zap"
-                      >
-                        <BoltIcon size={14} />{" "}
-                        {zapLoadingId === comp.id ? t("zapSending") : "Zap"}
-                      </button>
-                    )}
-                  {isCreator && comp.status === "pending" && (
-                    <div className={styles.verifyActions}>
-                      <Button size="sm" onClick={() => handleVerify(comp.id, "approved")} disabled={actionLoading === comp.id}>
-                        {actionLoading === comp.id ? t("approving") : tCommon("approve")}
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleVerify(comp.id, "rejected")} disabled={actionLoading === comp.id}>
-                        {tCommon("reject")}
-                      </Button>
                     </div>
                   )}
+                  {challenge.nostr_hashtag && (
+                    <div className={styles.detailRow}>
+                      <span className={styles.detailLabel}>
+                        {t("nostrHashtagLabel")}
+                      </span>
+                      <a
+                        href={`https://njump.me/t/${encodeURIComponent(challenge.nostr_hashtag)}`}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
+                        #{challenge.nostr_hashtag}
+                      </a>
+                    </div>
+                  )}
+                  {challenge.ends_at && (
+                    <div className={styles.detailRow}>
+                      <span className={styles.detailLabel}>{t("ends")}</span>
+                      <span>{new Date(challenge.ends_at).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  <div className={styles.detailRow}>
+                    <span className={styles.detailLabel}>{t("participants")}</span>
+                    <span>{challenge.participant_count}</span>
+                  </div>
                 </div>
-              ))}
+
+                <SignerRequiredNotice />
+
+                {(challenge.status === "open" || challenge.status === "in_progress") &&
+                  (isParticipant ? (
+                    <Button
+                      variant="outline"
+                      onClick={handleWithdrawClick}
+                      disabled={actionLoading === "withdraw"}
+                    >
+                      {actionLoading === "withdraw" ? t("leaving") : t("joinedToggle")}
+                    </Button>
+                  ) : (
+                    <Button onClick={handleJoinClick} disabled={actionLoading === "join"}>
+                      {actionLoading === "join" ? t("joining") : t("joinChallenge")}
+                    </Button>
+                  ))}
+                {isCreator && (
+                  <p className={styles.creatorBadge}>{t("yourChallenge")}</p>
+                )}
+              </Section>
+
+              {(!!challenge.badge_image_url ||
+                !!challenge.badge_name ||
+                challenge.prize_amount_sats > 0) && (
+                <Section>
+                  <SectionTitle>{t("rewardDisplayTitle")}</SectionTitle>
+                  <div className={styles.rewardBlock}>
+                    {(challenge.badge_image_url || challenge.badge_name) && (
+                      <div className={styles.rewardBadgeBlock}>
+                        {challenge.badge_image_url ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={challenge.badge_image_url}
+                            alt={challenge.badge_name ?? tCommon("badge")}
+                            className={styles.rewardBadgeImage}
+                          />
+                        ) : (
+                          <div
+                            className={styles.rewardBadgePlaceholder}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <div className={styles.rewardBadgeText}>
+                          <span className={styles.rewardItemLabel}>
+                            {t("badgeAwarded")}
+                          </span>
+                          {challenge.badge_name && (
+                            <span className={styles.rewardBadgeName}>
+                              {challenge.badge_name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {challenge.prize_amount_sats > 0 && (
+                      <div className={styles.rewardPrizeBlock}>
+                        <BoltIcon size={20} />
+                        <div className={styles.rewardBadgeText}>
+                          <span className={styles.rewardItemLabel}>
+                            {t("prizePool")}
+                          </span>
+                          <span className={styles.rewardPrizeAmount}>
+                            {challenge.prize_amount_sats.toLocaleString()}{" "}
+                            {tCommon("sats")}
+                          </span>
+                          {challenge.prize_distribution &&
+                            challenge.prize_distribution !== "none" && (
+                              <span className={styles.rewardPrizeMode}>
+                                {tCreate(
+                                  `rewardZapModes.${challenge.prize_distribution}`
+                                )}
+                              </span>
+                            )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Section>
+              )}
+
             </div>
-          )}
-        </div>
 
-        {/* Participants + Award */}
-        <ParticipantsList
-          participants={participants}
-          isCreator={isCreator}
-          goal={challenge.goal}
-          selectedWinners={selectedWinners}
-          onToggleWinner={toggleWinner}
-          onAwardBadges={handleAwardBadges}
-          awardLoading={actionLoading === "award"}
-        />
+            <div className={styles.col}>
+              {/* Zap goal funding bar lives at the top of the right
+                  column so the "Fund this pot" CTA reads as the
+                  primary call to action for visitors who haven't
+                  joined yet. Hidden when the challenge has no prize. */}
+              {challenge.prize_amount_sats > 0 && (
+                <ZapGoalProgress
+                  goalEventId={challenge.zap_goal_event_id}
+                  goalSats={challenge.prize_amount_sats}
+                  challengeTitle={challenge.title}
+                  creatorPubkey={challenge.creator.nostr_pubkey}
+                  creatorLightningAddress={
+                    challenge.creator.lightning_address ?? null
+                  }
+                  rewardsPaid={!!challenge.rewards_paid_at}
+                  creatorCanRepublish={isCreator && !challenge.zap_goal_event_id}
+                  onRepublish={handleRepublishZapGoal}
+                  republishLoading={actionLoading === "republishZapGoal"}
+                />
+              )}
+              {isParticipant ? (
+                <>
+                  <CheckpointCompletionSection
+                    checkpointMode={challenge.checkpoint_mode}
+                    checkpoints={challenge.checkpoints}
+                    myCheckpointCompletions={challenge.my_checkpoint_completions}
+                    isParticipant={isParticipant}
+                    drafts={checkpointDrafts}
+                    onDraftChange={(checkpointId, patch) =>
+                      updateCheckpointDraft(setCheckpointDrafts, checkpointId, patch)
+                    }
+                    onSubmitCheckpoint={handleCompleteCheckpoint}
+                    submittingCheckpointId={
+                      actionLoading?.startsWith("cp_") ? actionLoading.slice(3) : null
+                    }
+                  />
 
-        {/* Reward zaps */}
-        <RewardDistributionPanel
-          isCreator={isCreator}
-          prizeAmountSats={challenge.prize_amount_sats}
-          prizeDistribution={challenge.prize_distribution}
-          rewardsPaidAt={challenge.rewards_paid_at}
-          resultNostrEventId={challenge.result_nostr_event_id}
-          claimLoading={actionLoading === "reward"}
-          republishResultLoading={actionLoading === "republishResult"}
-          rewardStatus={rewardStatus}
-          rewardError={rewardError}
-          onClaimReward={handleClaimReward}
-          onRepublishResult={handleRepublishResult}
-        />
+                  {/* Per-participant progress + own-submission history.
+                      Only relevant for streak/multi-submission challenges
+                      (checkpoint_mode === "none") — when checkpoints are
+                      enabled, CheckpointCompletionSection above already
+                      shows per-step progress and per-step history. */}
+                  {challenge.checkpoint_mode === "none" && (
+                    <Section>
+                      <SectionTitle>{t("yourProgressTitle")}</SectionTitle>
+                      {myProgressInfo.goal ? (
+                        <div className={styles.progressTrack}>
+                          <div className={styles.progressBar}>
+                            <div
+                              className={styles.progressFill}
+                              style={{ width: `${myProgressInfo.pct ?? 0}%` }}
+                            />
+                          </div>
+                          <span className={styles.progressCount}>
+                            {t("yourProgressCount", {
+                              progress: myProgressInfo.myProgress,
+                              goal: myProgressInfo.goal,
+                            })}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className={styles.progressCount}>
+                          {t("yourProgressUncapped", {
+                            progress: myProgressInfo.myProgress,
+                            unit: challenge.unit ?? "",
+                          })}
+                        </span>
+                      )}
+                      {myProgressInfo.completed && (
+                        <p className={styles.completedBanner}>
+                          {t("challengeCompleted")}
+                        </p>
+                      )}
+                      {myProgressInfo.myCompletions.length === 0 ? (
+                        <p className={styles.emptyText}>
+                          {t("noMySubmissions")}
+                        </p>
+                      ) : (
+                        <>
+                          <h3 className={styles.sectionTitle}>
+                            {t("mySubmissionsTitle")}
+                          </h3>
+                          <div className={styles.mySubmissionList}>
+                            {[...myProgressInfo.myCompletions]
+                              .reverse()
+                              .map((c) => (
+                                <div
+                                  key={c.id}
+                                  className={styles.mySubmissionRow}
+                                >
+                                  <span className={styles.mySubmissionDate}>
+                                    {new Date(
+                                      c.submitted_at
+                                    ).toLocaleDateString()}
+                                  </span>
+                                  <span
+                                    className={styles.mySubmissionContent}
+                                    title={c.content ?? ""}
+                                  >
+                                    {c.content ||
+                                      (c.image_url
+                                        ? t("proofImageAlt")
+                                        : "—")}
+                                  </span>
+                                  <Tag
+                                    variant={
+                                      c.status === "approved"
+                                        ? "green"
+                                        : c.status === "rejected"
+                                          ? "red"
+                                          : "gold"
+                                    }
+                                  >
+                                    {tCommon(c.status)}
+                                  </Tag>
+                                </div>
+                              ))}
+                          </div>
+                        </>
+                      )}
+                    </Section>
+                  )}
+
+                  {challenge.checkpoint_mode === "none" &&
+                    (challenge.verification_methods ?? []).includes("nostr_action") && (
+                      <Section>
+                        <SectionTitle>{t("verifyLikeTitle")}</SectionTitle>
+                        <p className={styles.emptyText}>
+                          {t("verifyLikeInstructions")}
+                        </p>
+                        {challenge.nostr_action_target_event_id && (
+                          <p className={styles.targetEventId}>
+                            <a
+                              href={`https://njump.me/${challenge.nostr_action_target_event_id}`}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                            >
+                              {challenge.nostr_action_target_event_id.slice(0, 16)}…
+                            </a>
+                          </p>
+                        )}
+                        <Button
+                          size="sm"
+                          onClick={handleVerifyLike}
+                          disabled={actionLoading === "verifyLike"}
+                        >
+                          {actionLoading === "verifyLike"
+                            ? t("verifying")
+                            : t("verifyLikeButton")}
+                        </Button>
+                        {verifyError && <p className={styles.error}>{verifyError}</p>}
+                      </Section>
+                    )}
+
+                  {/* Hide the next-proof input once the participant has
+                      hit the goal — they're done. Without this gate the
+                      form keeps inviting submissions that no longer
+                      matter for progress. */}
+                  {challenge.checkpoint_mode === "none" &&
+                    (challenge.verification_methods ?? []).some(
+                      (m) => m !== "nostr_action" && m !== "nostr_hashtag"
+                    ) &&
+                    !myProgressInfo.completed && (
+                      <Section>
+                        <SectionTitle>
+                          {myProgressInfo.myCompletions.length === 0
+                            ? t("submitFirstProof")
+                            : t("submitNextProof")}
+                        </SectionTitle>
+                        <textarea
+                          className={styles.proofInput}
+                          placeholder={t("proofPlaceholder")}
+                          value={proofContent}
+                          onChange={(e) => setProofContent(e.target.value)}
+                          rows={3}
+                        />
+                        <div className={styles.proofActions}>
+                          <div className={styles.proofActionsUpload}>
+                            <ImageUpload
+                              value={proofImageDescriptor}
+                              onChange={setProofImageDescriptor}
+                              alt={t("proofImageAlt")}
+                              maxSizeMB={5}
+                            />
+                          </div>
+                          <Button
+                            className={styles.proofSubmitButton}
+                            size="sm"
+                            onClick={handleSubmitProof}
+                            disabled={
+                              (!proofContent.trim() && !proofImageDescriptor) ||
+                              actionLoading === "proof"
+                            }
+                          >
+                            {actionLoading === "proof" ? t("submitting") : tCommon("submit")}
+                          </Button>
+                        </div>
+                      </Section>
+                    )}
+                </>
+              ) : (
+                (challenge.status === "open" || challenge.status === "in_progress") && (
+                  <div className={styles.joinPrompt}>
+                    <p className={styles.joinPromptTitle}>
+                      {t("joinPromptTitle")}
+                    </p>
+                    <p className={styles.joinPromptBody}>
+                      {t("joinPromptBody")}
+                    </p>
+                    <Button onClick={handleJoinClick} disabled={actionLoading === "join"}>
+                      {actionLoading === "join" ? t("joining") : t("joinChallenge")}
+                    </Button>
+                  </div>
+                )
+              )}
+
+              {/* Compact completions — only render when someone has
+                  actually submitted. An empty completions section adds
+                  visual weight without communicating anything; the
+                  count badge already lives next to participants once
+                  the first proof comes in. */}
+              {completions.length > 0 && (
+                <Section>
+                  <SectionTitle>
+                    {t("completions")} ({completions.length})
+                  </SectionTitle>
+                  <AvatarStack
+                    // Dedupe by user_id so a submitter with multiple
+                    // entries (streak / multi-day) shows up once. The
+                    // modal lists all their entries inside.
+                    items={Array.from(
+                      new Map(
+                        completions.map((c) => [
+                          c.user.id,
+                          {
+                            id: c.user.id,
+                            name: c.user.display_name,
+                            avatarUrl: c.user.avatar_url ?? null,
+                            status: (c.status === "approved"
+                              ? "approved"
+                              : c.status === "rejected"
+                                ? "rejected"
+                                : "pending") as AvatarStatus,
+                          },
+                        ])
+                      ).values()
+                    )}
+                    moreLabel={(extra) =>
+                      t("andMoreCount", { count: extra })
+                    }
+                    onItemClick={(userId) => setRosterUserId(userId)}
+                  />
+                </Section>
+              )}
+
+              {/* Compact participants — same. Detailed per-row list lives
+                  in Manage. */}
+              <Section>
+                <SectionTitle>
+                  {t("participants")} ({participants.length})
+                </SectionTitle>
+                {participants.length === 0 ? (
+                  <p className={styles.emptyText}>{t("noParticipants")}</p>
+                ) : (
+                  <AvatarStack
+                    items={participants.map((p) => ({
+                      id: p.id,
+                      name: p.user.display_name,
+                      avatarUrl: p.user.avatar_url ?? null,
+                    }))}
+                    moreLabel={(extra) =>
+                      t("andMoreCount", { count: extra })
+                    }
+                  />
+                )}
+              </Section>
+            </div>
+          </div>
+        )}
+
+        {showManage && (
+          <div className={styles.col}>
+            {challenge.checkpoint_mode !== "none" && pendingSubmissions.length > 0 && (
+              <Section>
+                <SectionTitle>
+                  {t("reviewCheckpointsTitle")} ({pendingSubmissions.length}
+                  {pendingCursor ? "+" : ""})
+                </SectionTitle>
+                <div className={styles.completionList}>
+                  {pendingSubmissions.map((sub) => {
+                    const cpIndex = challenge.checkpoints.findIndex(
+                      (c) => c.id === sub.checkpoint_id
+                    );
+                    const cp = cpIndex >= 0 ? challenge.checkpoints[cpIndex] : null;
+                    return (
+                      <CheckpointSubmissionCard
+                        key={sub.id}
+                        submission={sub}
+                        checkpoint={cp}
+                        checkpointOrder={cp ? cpIndex + 1 : null}
+                        loading={actionLoading === `cpv_${sub.id}`}
+                        rejectReason={rejectReasons[sub.id] ?? ""}
+                        onRejectReasonChange={(next) =>
+                          setRejectReasons((prev) => {
+                            const updated = { ...prev };
+                            if (next) updated[sub.id] = next;
+                            else delete updated[sub.id];
+                            return updated;
+                          })
+                        }
+                        onApprove={() =>
+                          handleVerifyCheckpoint(sub.id, "approved")
+                        }
+                        onReject={() =>
+                          handleVerifyCheckpoint(sub.id, "rejected")
+                        }
+                      />
+                    );
+                  })}
+                </div>
+                {pendingCursor && (
+                  <div className={styles.loadMoreRow}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={loadMorePendingSubmissions}
+                      disabled={loadingMorePending}
+                    >
+                      {loadingMorePending ? tCommon("loading") : t("loadMore")}
+                    </Button>
+                  </div>
+                )}
+              </Section>
+            )}
+
+            {manageRoster.completedParticipants.length > 0 && (
+              <Section>
+                <SectionTitle>
+                  {t("completions")} ({manageRoster.completedParticipants.length})
+                </SectionTitle>
+                <div className={styles.rosterList}>
+                  {manageRoster.completedParticipants.map((p) => {
+                    const userComps =
+                      manageRoster.submissionsByUser.get(p.user_id) ?? [];
+                    const status = rollUpStatus(userComps);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={styles.rosterRow}
+                        onClick={() => setRosterUserId(p.user_id)}
+                      >
+                        <Avatar
+                          src={p.user.avatar_url ?? null}
+                          name={p.user.display_name}
+                          alt={p.user.display_name}
+                          size="md"
+                          status={status}
+                        />
+                        <span className={styles.rosterName}>
+                          {p.user.display_name}
+                        </span>
+                        <span className={styles.rosterTags}>
+                          <Tag
+                            variant={
+                              status === "approved"
+                                ? "green"
+                                : status === "rejected"
+                                  ? "red"
+                                  : "gold"
+                            }
+                          >
+                            {tCommon(status)}
+                          </Tag>
+                          {manageRoster.hasBadge &&
+                            badgeRecipientUserIds.has(p.user_id) && (
+                              <Tag variant="gold">
+                                {t("badgeEarnedTag")}
+                              </Tag>
+                            )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Section>
+            )}
+
+            {/* When there are completions, show the "more participants"
+                section for users who joined but haven't submitted yet
+                (so the creator can still see the full roster). When
+                there are zero completions, fall back to the plain
+                "Participants" section since there's nothing to split. */}
+            {(manageRoster.completedParticipants.length === 0
+              ? participants
+              : manageRoster.pendingParticipants
+            ).length > 0 && (
+              <Section>
+                <SectionTitle>
+                  {manageRoster.completedParticipants.length === 0
+                    ? `${t("participants")} (${participants.length})`
+                    : `${t("manageMoreParticipants")} (${manageRoster.pendingParticipants.length})`}
+                </SectionTitle>
+                <div className={styles.rosterList}>
+                  {(manageRoster.completedParticipants.length === 0
+                    ? participants
+                    : manageRoster.pendingParticipants
+                  ).map((p) => (
+                    <div
+                      key={p.id}
+                      className={cn(styles.rosterRow, styles.rosterRowStatic)}
+                    >
+                      <Avatar
+                        src={p.user.avatar_url ?? null}
+                        name={p.user.display_name}
+                        alt={p.user.display_name}
+                        size="md"
+                      />
+                      <span className={styles.rosterName}>
+                        {p.user.display_name}
+                      </span>
+                      <span className={styles.rosterTags}>
+                        <Tag
+                          variant={
+                            p.status === "completed" ? "green" : "purple"
+                          }
+                        >
+                          {tCommon(p.status)}
+                        </Tag>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+
+            <RewardDistributionPanel
+              isCreator={isCreator}
+              prizeAmountSats={challenge.prize_amount_sats}
+              prizeDistribution={challenge.prize_distribution}
+              rewardsPaidAt={challenge.rewards_paid_at}
+              resultNostrEventId={challenge.result_nostr_event_id}
+              claimLoading={actionLoading === "reward"}
+              republishResultLoading={actionLoading === "republishResult"}
+              rewardStatus={rewardStatus}
+              rewardError={rewardError}
+              onClaimReward={handleClaimReward}
+              onRepublishResult={handleRepublishResult}
+            />
+          </div>
+        )}
       </div>
 
       {shareContext && (
@@ -1491,6 +1821,188 @@ export default function ChallengeClient() {
           onClose={() => setShareContext(null)}
         />
       )}
+
+      {rosterUserId && (() => {
+        // Build a unified entries list off whatever submission shape
+        // this challenge actually uses. Checkpoint-mode pulls the
+        // per-step rows (every status, sorted by checkpoint order) so
+        // the modal can show full history; non-checkpoint pulls the
+        // challenge-level completions (streak / one-shot proofs).
+        const isCheckpointMode = challenge.checkpoint_mode !== "none";
+        const userName =
+          participants.find((p) => p.user_id === rosterUserId)?.user
+            .display_name ?? "";
+        const entries = isCheckpointMode
+          ? allCheckpointCompletions
+              .filter((c) => c.user.id === rosterUserId)
+              .map((c) => {
+                const cpIndex = challenge.checkpoints.findIndex(
+                  (cp) => cp.id === c.checkpoint_id
+                );
+                const cp = cpIndex >= 0 ? challenge.checkpoints[cpIndex] : null;
+                const baseLabel = t("submissionStepLabel", {
+                  index: cpIndex + 1,
+                });
+                return {
+                  id: c.id,
+                  label: cp ? `${baseLabel} — ${cp.title}` : baseLabel,
+                  sortKey: cpIndex,
+                  status: c.status,
+                  content: c.content,
+                  imageUrl: c.image_url,
+                  proofEventId: c.proof_event_id,
+                  rejectReason: c.reject_reason,
+                  loading: actionLoading === `cpv_${c.id}`,
+                  onApprove:
+                    isCreator && c.status === "pending"
+                      ? () => handleVerifyCheckpoint(c.id, "approved")
+                      : undefined,
+                  onReject:
+                    isCreator && c.status === "pending"
+                      ? () => handleVerifyCheckpoint(c.id, "rejected")
+                      : undefined,
+                  zapTarget: null as CompletionItem | null,
+                };
+              })
+              .sort((a, b) => a.sortKey - b.sortKey)
+          : completions
+              .filter((c) => c.user.id === rosterUserId)
+              .map((c, idx) => ({
+                id: c.id,
+                label: t("submissionStepLabel", { index: idx + 1 }),
+                sortKey: idx,
+                status: c.status as "pending" | "approved" | "rejected",
+                content: c.content,
+                imageUrl: c.image_url,
+                proofEventId: c.proof_event_id,
+                rejectReason: null as string | null,
+                loading: actionLoading === c.id,
+                onApprove:
+                  isCreator && c.status === "pending"
+                    ? () => handleVerify(c.id, "approved")
+                    : undefined,
+                onReject:
+                  isCreator && c.status === "pending"
+                    ? () => handleVerify(c.id, "rejected")
+                    : undefined,
+                zapTarget: c as CompletionItem | null,
+              }));
+        return (
+          <Modal
+            onClose={() => setRosterUserId(null)}
+            title={t("submissionDetailsTitle", { name: userName })}
+          >
+            {entries.length === 0 ? (
+              <p className={styles.submissionModalEmpty}>
+                {t("noCompletions")}
+              </p>
+            ) : (
+              <div className={styles.submissionModalList}>
+                {entries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className={styles.submissionModalEntry}
+                  >
+                    <div className={styles.submissionModalEntryHead}>
+                      <span className={styles.submissionModalEntryLabel}>
+                        {entry.label}
+                      </span>
+                      <Tag
+                        variant={
+                          entry.status === "approved"
+                            ? "green"
+                            : entry.status === "rejected"
+                              ? "red"
+                              : "gold"
+                        }
+                      >
+                        {tCommon(entry.status)}
+                      </Tag>
+                    </div>
+                    {entry.content ? (
+                      <p className={styles.submissionModalContent}>
+                        {entry.content}
+                      </p>
+                    ) : (
+                      !entry.imageUrl && (
+                        <p className={styles.submissionModalEmpty}>
+                          {t("submissionEmptyContent")}
+                        </p>
+                      )
+                    )}
+                    {entry.imageUrl && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={entry.imageUrl}
+                        alt={entry.content ?? t("proofImageAlt")}
+                        className={styles.submissionModalImage}
+                      />
+                    )}
+                    {entry.rejectReason && (
+                      <p className={styles.submissionModalContent}>
+                        <strong>
+                          {t("checkpointRejectReasonLabel")}:
+                        </strong>{" "}
+                        {entry.rejectReason}
+                      </p>
+                    )}
+                    {entry.proofEventId && (
+                      <p className={styles.submissionModalContent}>
+                        <a
+                          href={`https://njump.me/${entry.proofEventId}`}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          {t("proofFound")}: {entry.proofEventId.slice(0, 16)}…
+                        </a>
+                      </p>
+                    )}
+                    <div className={styles.submissionModalActions}>
+                      {entry.onApprove && (
+                        <Button
+                          size="sm"
+                          onClick={entry.onApprove}
+                          disabled={entry.loading}
+                        >
+                          {entry.loading
+                            ? t("approving")
+                            : tCommon("approve")}
+                        </Button>
+                      )}
+                      {entry.onReject && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={entry.onReject}
+                          disabled={entry.loading}
+                        >
+                          {tCommon("reject")}
+                        </Button>
+                      )}
+                      {entry.zapTarget &&
+                        entry.zapTarget.user.nostr_pubkey &&
+                        sessionUser?.nostr_pubkey !==
+                          entry.zapTarget.user.nostr_pubkey && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleZapCompletion(entry.zapTarget!)}
+                            disabled={zapLoadingId === entry.zapTarget.id}
+                          >
+                            <BoltIcon size={14} />{" "}
+                            {zapLoadingId === entry.zapTarget.id
+                              ? t("zapSending")
+                              : "Zap"}
+                          </Button>
+                        )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Modal>
+        );
+      })()}
 
       {showCreatorJoinWarning && (
         <Modal
@@ -1614,6 +2126,149 @@ function updateCheckpointDraft(
     ...prev,
     [id]: { ...(prev[id] ?? defaultDraft()), ...patch },
   }));
+}
+
+// Per-viewer derivations for the General tab's "Your progress"
+// section. Pulled out of the JSX so the render reads straight from
+// the destructured values instead of re-running these filters inside
+// an inline IIFE every render.
+function deriveMyProgress(
+  challenge: ChallengeDetail,
+  participants: ParticipantItem[],
+  completions: CompletionItem[],
+  sessionUserId: string | null
+) {
+  const myParticipation = sessionUserId
+    ? participants.find((p) => p.user_id === sessionUserId)
+    : undefined;
+  const myProgress = myParticipation?.progress ?? 0;
+  const completed = myParticipation?.status === "completed";
+  const myCompletions = sessionUserId
+    ? completions.filter((c) => c.user.id === sessionUserId)
+    : [];
+  const goal = challenge.goal;
+  const pct = goal
+    ? Math.min(100, Math.round((myProgress / goal) * 100))
+    : null;
+  return { myParticipation, myProgress, completed, myCompletions, goal, pct };
+}
+
+// Per-user roll-ups for the Manage tab. Builds the submissions map
+// once and partitions participants into "has at least one submission"
+// (rendered in the Completaciones section) vs "no submissions yet"
+// (rendered in Más participantes). For checkpoint-mode challenges,
+// "submissions" includes per-checkpoint completions too so a user
+// who has only worked on checkpoints (and never sent a challenge-
+// level proof) still appears in the actionable roster.
+function deriveManageRoster(
+  participants: ParticipantItem[],
+  completions: CompletionItem[],
+  checkpointCompletions: ChallengeCheckpointCompletion[],
+  challenge: ChallengeDetail
+) {
+  const submissionsByUser = new Map<string, CompletionItem[]>();
+  for (const c of completions) {
+    const list = submissionsByUser.get(c.user.id) ?? [];
+    list.push(c);
+    submissionsByUser.set(c.user.id, list);
+  }
+  // Set of user_ids with any kind of submission — challenge-level OR
+  // checkpoint-level. Drives the completed-vs-pending split below.
+  const userIdsWithSubmissions = new Set(submissionsByUser.keys());
+  for (const cc of checkpointCompletions) {
+    userIdsWithSubmissions.add(cc.user.id);
+  }
+  const completedParticipants = participants.filter((p) =>
+    userIdsWithSubmissions.has(p.user_id)
+  );
+  const pendingParticipants = participants.filter(
+    (p) => !userIdsWithSubmissions.has(p.user_id)
+  );
+  const hasBadge = !!(challenge.badge_name || challenge.badge_image_url);
+  return {
+    submissionsByUser,
+    completedParticipants,
+    pendingParticipants,
+    hasBadge,
+  };
+}
+
+// Pick the most-actionable status across a user's submissions: pending
+// wins (creator still has work to do), then rejected (creator already
+// passed but submitter could resubmit), then approved.
+function rollUpStatus(
+  comps: CompletionItem[]
+): "approved" | "pending" | "rejected" {
+  if (comps.some((c) => c.status === "pending")) return "pending";
+  if (
+    comps.some((c) => c.status === "rejected") &&
+    !comps.some((c) => c.status === "approved")
+  ) {
+    return "rejected";
+  }
+  return "approved";
+}
+
+// Cap rendered avatars so a 200-participant challenge doesn't paint a
+// 200-circle wall in the General tab. Anything beyond gets rolled up
+// into a "+N" pill — the detailed list lives in Manage anyway.
+const AVATAR_STACK_LIMIT = 12;
+
+function AvatarStack({
+  items,
+  moreLabel,
+  onItemClick,
+}: {
+  items: {
+    id: string;
+    name: string;
+    avatarUrl: string | null;
+    status?: AvatarStatus;
+  }[];
+  moreLabel: (extra: number) => string;
+  /** When set, each avatar renders inside a button that fires this
+   *  callback with the item id. Used by the General-tab Completaciones
+   *  stack to surface the same submission-details modal the Manage
+   *  tab uses, so non-creators can also peek at any submission. */
+  onItemClick?: (id: string) => void;
+}) {
+  const visible = items.slice(0, AVATAR_STACK_LIMIT);
+  const extra = Math.max(0, items.length - visible.length);
+  return (
+    <div className={styles.avatarStack}>
+      {visible.map((item) =>
+        onItemClick ? (
+          <button
+            key={item.id}
+            type="button"
+            className={styles.avatarStackButton}
+            onClick={() => onItemClick(item.id)}
+            aria-label={item.name}
+          >
+            <Avatar
+              src={item.avatarUrl}
+              name={item.name}
+              alt={item.name}
+              size="sm"
+              status={item.status}
+            />
+          </button>
+        ) : (
+          <Avatar
+            key={item.id}
+            src={item.avatarUrl}
+            name={item.name}
+            alt={item.name}
+            size="sm"
+            status={item.status}
+          />
+        )
+      )}
+      {extra > 0 && (
+        <span className={styles.avatarStackMore}>{moreLabel(extra)}</span>
+      )}
+    </div>
+  );
 }
 
 function typeVariant(type: string): "purple" | "gold" | "green" | "red" {

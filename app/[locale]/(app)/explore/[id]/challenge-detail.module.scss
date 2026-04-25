@@ -5,7 +5,11 @@
 @use "@/styles/media-mixins" as *;
 
 .page {
-  max-width: 800px;
+  // Shared platform container — matches the Navbar's inner max-width
+  // so the back button + section cards line up with the brand mark
+  // above. The hard-coded 1200px previously used here drifted right
+  // of the navbar on wide displays.
+  max-width: $container-max-width;
   margin: 0 auto;
   padding: $spacing-32 $container-padding;
   padding-top: calc($navbar-height + #{$spacing-32});
@@ -18,6 +22,17 @@
   }
 }
 
+// Top bar: back link on the left, optional creator-only "Manage your
+// challenge" CTA on the right. Replaces the old tab-strip which was
+// awkward on small screens and didn't survive a deep link.
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-16;
+  margin-bottom: $spacing-24;
+}
+
 .backButton {
   display: inline-flex;
   align-items: center;
@@ -27,7 +42,6 @@
   color: $color-text-secondary;
   font-size: $font-size-sm;
   cursor: pointer;
-  margin-bottom: $spacing-24;
   padding: 0;
 
   svg {
@@ -59,7 +73,298 @@
 .main {
   display: flex;
   flex-direction: column;
-  gap: $spacing-24;
+  gap: $spacing-20;
+}
+
+// Two-column grid for the General tab — left column carries the
+// always-visible info (60%), right column carries participant-only
+// tools (40%). Stacks to a single column on mobile so the join CTA
+// or checkpoint picker stays above-the-fold instead of getting buried
+// beside narrow info sections.
+.grid {
+  display: grid;
+  gap: $spacing-20;
+  align-items: start;
+
+  @include tabletAndUp {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-20;
+  min-width: 0;
+}
+
+// Compact avatar strip for the General tab's participants /
+// completions sections. Detailed lists live in the Manage tab so
+// the public surface stays scannable.
+.avatarStack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-8;
+  align-items: center;
+}
+
+// Reset button defaults so the wrapper just adds a click target +
+// focus ring without disturbing the avatar's circular border.
+.avatarStackButton {
+  background: transparent;
+  border: none;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: translateY(-1px) scale(1.05);
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+}
+
+.avatarStackMore {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $color-text-secondary;
+  background: alpha($color-text-primary, 6%);
+  padding: 2px $spacing-8;
+  border-radius: $border-radius-full;
+  min-width: 32px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.joinPrompt {
+  @include ceramic-card;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+  padding: $spacing-20;
+  // Tint the ceramic ring + sheen toward the brand purple so the
+  // "join" CTA reads as the primary affordance in the right column
+  // without losing the ceramic depth.
+  border-color: alpha($color-primary, 40%);
+  background-color: alpha($color-primary, 8%);
+  text-align: center;
+}
+
+.joinPromptTitle {
+  font-family: $font-display;
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  margin: 0;
+}
+
+.joinPromptBody {
+  margin: 0;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+}
+
+// Per-participant progress + own-submission history. Lives in the
+// participant column so a streak/multi-submission challenge gives
+// clear "you're on day 2 of 5" feedback after every submit, instead
+// of clearing the form silently.
+.progressTrack {
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
+}
+
+.progressBar {
+  flex: 1;
+  height: 8px;
+  background: alpha($color-text-primary, 8%);
+  border-radius: $border-radius-full;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: $color-primary;
+  border-radius: $border-radius-full;
+  transition: width 0.3s ease;
+}
+
+.progressCount {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  white-space: nowrap;
+}
+
+.completedBanner {
+  margin: 0;
+  padding: $spacing-12;
+  background: alpha($color-accent-alt, 12%);
+  border: 1px solid alpha($color-accent-alt, 30%);
+  border-radius: $border-radius-md;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+}
+
+.mySubmissionList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+}
+
+.mySubmissionRow {
+  @include ceramic-card;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: $spacing-12;
+  padding: $spacing-8 $spacing-12;
+  border-radius: $border-radius-md;
+  align-items: center;
+  font-size: $font-size-sm;
+}
+
+.mySubmissionDate {
+  color: $color-text-secondary;
+  font-size: $font-size-xs;
+  white-space: nowrap;
+}
+
+.mySubmissionContent {
+  color: $color-text-primary;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+// Compact roster row for the Manage tab — avatar (with status-coloured
+// ring) + name + status tag. The whole row is a button that opens the
+// per-user submission modal.
+.rosterList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+}
+
+.rosterRow {
+  @include ceramic-card;
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
+  padding: $spacing-8 $spacing-12;
+  border-radius: $border-radius-md;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: $color-primary;
+    box-shadow:
+      0 8px 20px $card-shadow-hover,
+      inset 0 1px 0 $ceramic-highlight,
+      inset 0 -2px 4px $ceramic-inner-shadow;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+}
+
+.rosterRowStatic {
+  cursor: default;
+
+  // Non-interactive participant row — keep the ceramic surface but
+  // strip the lift on hover so it doesn't read as a button.
+  &:hover {
+    transform: none;
+    border-color: $color-border;
+    box-shadow:
+      0 4px 12px $card-shadow,
+      inset 0 1px 0 $ceramic-highlight,
+      inset 0 -2px 4px $ceramic-inner-shadow;
+  }
+}
+
+.rosterName {
+  flex: 1;
+  font-weight: $font-weight-semibold;
+  font-size: $font-size-sm;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.rosterTags {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  flex-shrink: 0;
+}
+
+// Submission detail modal — compact stack of submissions for the
+// selected user, each with status, content and image.
+.submissionModalList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-16;
+}
+
+.submissionModalEntry {
+  @include ceramic-card;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+  padding: $spacing-12;
+  border-radius: $border-radius-md;
+}
+
+.submissionModalEntryHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-8;
+}
+
+.submissionModalEntryLabel {
+  font-weight: $font-weight-semibold;
+  font-size: $font-size-sm;
+}
+
+.submissionModalContent {
+  margin: 0;
+  white-space: pre-line;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+}
+
+.submissionModalEmpty {
+  margin: 0;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-style: italic;
+}
+
+.submissionModalImage {
+  display: block;
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: $border-radius-md;
+  object-fit: cover;
+}
+
+.submissionModalActions {
+  display: flex;
+  gap: $spacing-8;
 }
 
 .challengeCard {
@@ -175,29 +480,27 @@
   }
 }
 
+// ImageUpload spans the row; the submit button sits in its own
+// footer below, aligned to the right edge so the read order matches
+// the typical "describe → attach → submit" flow.
 .proofActions {
   display: flex;
   flex-direction: column;
   gap: $spacing-12;
-
-  @include tabletAndUp {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: $spacing-16;
-  }
 }
 
 .proofActionsUpload {
-  flex: 1;
+  width: 100%;
   min-width: 0;
 }
 
 .proofSubmitButton {
-  align-self: stretch;
+  align-self: flex-end;
 
-  @include tabletAndUp {
-    align-self: flex-start;
-    flex-shrink: 0;
+  @include mobile {
+    // Phones don't have room for a right-floated button to look
+    // intentional — stretch full-width so it remains tappable.
+    align-self: stretch;
   }
 }
 

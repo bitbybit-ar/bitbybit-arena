@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Section, SectionTitle } from "@/components/common/Section";
 import {
@@ -57,6 +58,79 @@ export function CheckpointCompletionSection({
   submittingCheckpointId,
 }: CheckpointCompletionSectionProps) {
   const t = useTranslations("challenge");
+  // Picker state — only one checkpoint's submit form is open at a time.
+  // This is the change that drove the redesign: the previous layout
+  // expanded every actionable form simultaneously, which was noisy
+  // when a parallel-mode challenge had many checkpoints open at once.
+  const [selectedCheckpointId, setSelectedCheckpointId] = useState<string | null>(null);
+
+  // Resolve per-checkpoint status once so the auto-select effect and
+  // the render loop can't drift — both consult the same map. Computed
+  // before the early return so the hook order below stays stable
+  // regardless of the no-checkpoints branch (Rules of Hooks).
+  // useMemo keeps the array reference stable across renders that
+  // didn't change the inputs — without it the dependent effect would
+  // re-run on every render of the parent.
+  const statuses = useMemo<
+    { id: string; status: CheckpointItemStatus; canSubmit: boolean }[]
+  >(
+    () =>
+      checkpoints.map((cp, idx) => {
+        const completion = myCheckpointCompletions.find(
+          (c) => c.checkpoint_id === cp.id
+        );
+        const priorIncomplete =
+          checkpointMode === "sequential" &&
+          checkpoints
+            .slice(0, idx)
+            .some(
+              (earlier) =>
+                !myCheckpointCompletions.find(
+                  (c) =>
+                    c.checkpoint_id === earlier.id &&
+                    c.status === "approved"
+                )
+            );
+        const status: CheckpointItemStatus =
+          completion?.status === "approved"
+            ? "done"
+            : completion?.status === "pending"
+              ? "awaiting-review"
+              : completion?.status === "rejected"
+                ? "rejected"
+                : isParticipant && priorIncomplete
+                  ? "locked"
+                  : "todo";
+        const canSubmit =
+          isParticipant &&
+          status !== "done" &&
+          status !== "awaiting-review" &&
+          status !== "locked";
+        return { id: cp.id, status, canSubmit };
+      }),
+    [checkpoints, myCheckpointCompletions, isParticipant, checkpointMode]
+  );
+
+  // Auto-select the first actionable checkpoint when the viewer joins
+  // or when their current selection is no longer actionable (e.g. they
+  // just submitted it and it flipped to awaiting-review). Stable hook
+  // order: must run before the conditional return below.
+  useEffect(() => {
+    if (!isParticipant) {
+      if (selectedCheckpointId !== null) setSelectedCheckpointId(null);
+      return;
+    }
+    const stillValid =
+      selectedCheckpointId !== null &&
+      statuses.find((s) => s.id === selectedCheckpointId)?.canSubmit === true;
+    if (stillValid) return;
+    // Prefer rejected (resubmits are urgent) over plain todos.
+    const rejected = statuses.find((s) => s.status === "rejected");
+    const firstAvailable = statuses.find((s) => s.canSubmit);
+    setSelectedCheckpointId(rejected?.id ?? firstAvailable?.id ?? null);
+    // statuses is derived from props; re-running on prop changes is the
+    // whole point of this effect, so it's safe to depend on its shape.
+  }, [isParticipant, selectedCheckpointId, statuses]);
 
   if (checkpointMode === "none" || checkpoints.length === 0) {
     return null;
@@ -81,42 +155,17 @@ export function CheckpointCompletionSection({
           ? t("checkpointModeSequential")
           : t("checkpointModeParallel")}
       </p>
+      {isParticipant && statuses.some((s) => s.canSubmit) && (
+        <p className={styles.emptyText}>{t("checkpointPickHint")}</p>
+      )}
       <div className={styles.checkpointTower}>
         {checkpoints.map((cp, idx) => {
           const completion = myCheckpointCompletions.find(
             (c) => c.checkpoint_id === cp.id
           );
-          const priorIncomplete =
-            checkpointMode === "sequential" &&
-            checkpoints
-              .slice(0, idx)
-              .some(
-                (earlier) =>
-                  !myCheckpointCompletions.find(
-                    (c) =>
-                      c.checkpoint_id === earlier.id &&
-                      c.status === "approved"
-                  )
-              );
-          // `locked` is only meaningful to someone who has joined —
-          // a non-participant can't act on a lock, so we render the
-          // row as a neutral todo until they join.
-          const status: CheckpointItemStatus =
-            completion?.status === "approved"
-              ? "done"
-              : completion?.status === "pending"
-                ? "awaiting-review"
-                : completion?.status === "rejected"
-                  ? "rejected"
-                  : isParticipant && priorIncomplete
-                    ? "locked"
-                    : "todo";
-          const canSubmit =
-            isParticipant &&
-            status !== "done" &&
-            status !== "awaiting-review" &&
-            status !== "locked";
+          const { status, canSubmit } = statuses[idx];
           const draft = drafts[cp.id];
+          const isSelected = selectedCheckpointId === cp.id;
           return (
             <CheckpointItem
               key={cp.id}
@@ -127,6 +176,8 @@ export function CheckpointCompletionSection({
               submittedContent={completion?.content ?? null}
               submittedImageUrl={completion?.image_url ?? null}
               rejectReason={completion?.reject_reason ?? null}
+              selected={isSelected}
+              onSelect={canSubmit ? () => setSelectedCheckpointId(cp.id) : undefined}
               formSlot={
                 canSubmit ? (
                   cp.verification_methods[0] === "nostr_action" ? (

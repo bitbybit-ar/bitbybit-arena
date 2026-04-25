@@ -2,6 +2,23 @@
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
 
+// `itemWrap` holds the row-button and the form panel together so a
+// selected checkpoint reads as a single grouped surface (matching
+// border, optional shared shadow). Form has to be a sibling and not
+// a descendant of the button — interactive inputs nested inside a
+// <button> produce invalid HTML.
+.itemWrap {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+}
+
+.itemWrapSelected {
+  // Lift the selected pair slightly so it stands out from the
+  // unselected siblings.
+  filter: drop-shadow(0 4px 14px alpha($color-primary, 12%));
+}
+
 .item {
   display: flex;
   gap: $spacing-12;
@@ -10,6 +27,45 @@
   background: $color-surface;
   border: 1px solid $color-border;
   border-radius: $border-radius-lg;
+}
+
+.itemButton {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover {
+    border-color: $color-primary;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+}
+
+.itemSelected {
+  border-color: $color-primary;
+  box-shadow: 0 0 0 1px $color-primary inset;
+}
+
+.formPanel {
+  margin-left: calc(32px + #{$spacing-12});
+  padding: $spacing-12;
+  background: $color-surface;
+  border: 1px solid $color-primary;
+  border-radius: $border-radius-lg;
+}
+
+.selectHint {
+  color: $color-primary;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  margin: 0;
 }
 
 .body {

@@ -174,6 +174,51 @@ export interface Participant {
   user?: User;
 }
 
+// Per-user checkpoint completion row returned by
+// GET /api/challenges/[id]/checkpoint-completions. Creator-only —
+// drives the per-user submission-details modal in the Manage tab so
+// every step a participant has worked through (across statuses) is
+// visible in one place. Distinct from PendingCheckpointSubmission
+// because that one only carries pending rows for the review queue.
+export interface ChallengeCheckpointCompletion {
+  id: string;
+  checkpoint_id: string;
+  participant_id: string;
+  content: string | null;
+  image_url: string | null;
+  proof_event_id: string | null;
+  status: "pending" | "approved" | "rejected";
+  reject_reason: string | null;
+  completed_at: string | null;
+  created_at: string;
+  user: {
+    id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+    nostr_pubkey: string;
+  };
+}
+
+// Slim participant shape returned by GET /api/challenges/[id]/participants —
+// just the id/status/progress plus the bits of the user the roster UI
+// actually renders. Kept here (rather than colocated on the now-defunct
+// ParticipantsList component) so the challenge page is the only consumer
+// without dragging in a presentational module just for the type.
+export interface ParticipantItem {
+  id: string;
+  user_id: string;
+  status: string;
+  progress: number;
+  user: {
+    id: string;
+    display_name: string;
+    username: string;
+    nostr_pubkey?: string;
+    avatar_url?: string | null;
+  };
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
