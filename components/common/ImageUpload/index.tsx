@@ -85,12 +85,22 @@ export function ImageUpload({
       // `err.message` directly. The Spanish UI used to render
       // "Network error uploading to Blossom" verbatim — now it gets
       // "No pudimos conectar con el servidor de imágenes…".
+      //
+      // next-intl 3.x doesn't throw on missing keys: it returns the
+      // key literal and logs a warning. So a `try/catch` alone would
+      // silently set the error message to the raw code (e.g.
+      // "server_rejected") on a bundle drift. Compare the lookup
+      // result against the input key — if they match, fall back to
+      // the friendly generic instead of leaking the code text.
       if (err instanceof BlossomUploadError) {
+        let translated: string | null = null;
         try {
-          setError(tErrors(err.code));
+          const out = tErrors(err.code);
+          if (out && out !== err.code) translated = out;
         } catch {
-          setError(t("uploadFailed"));
+          /* fall through to generic */
         }
+        setError(translated ?? t("uploadFailed"));
       } else {
         setError(t("uploadFailed"));
       }

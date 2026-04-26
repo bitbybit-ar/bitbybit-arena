@@ -743,6 +743,16 @@
 // Reject-completion confirm modal — gives the creator a textarea to
 // explain why they're rejecting. Mirrors the checkpoint variant in
 // CheckpointSubmissionCard so both reject paths feel the same.
+.rejectReasonLabel {
+  display: block;
+  margin-bottom: $spacing-4;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $color-text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .rejectReasonInput {
   width: 100%;
   margin-bottom: $spacing-16;

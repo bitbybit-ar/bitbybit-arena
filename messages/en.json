@@ -127,6 +127,10 @@
         "title": "Proof rejected",
         "body": "Your proof on \"{challenge}\" was rejected."
       },
+      "completion_verified_rejected_with_reason": {
+        "title": "Proof rejected",
+        "body": "Your proof on \"{challenge}\" was rejected: {reason}"
+      },
       "checkpoint_submitted": {
         "title": "Checkpoint proof to review",
         "body": "Someone submitted a proof for checkpoint \"{checkpoint}\" on \"{challenge}\"."
@@ -138,6 +142,10 @@
       "checkpoint_verified_rejected": {
         "title": "Checkpoint rejected",
         "body": "Your proof for checkpoint \"{checkpoint}\" on \"{challenge}\" was rejected."
+      },
+      "checkpoint_verified_rejected_with_reason": {
+        "title": "Checkpoint rejected",
+        "body": "Your proof for checkpoint \"{checkpoint}\" on \"{challenge}\" was rejected: {reason}"
       },
       "prize_awarded": {
         "title": "You won sats!",

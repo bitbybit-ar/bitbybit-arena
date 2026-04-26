@@ -18,7 +18,10 @@ import { HttpUrlSchema } from "./primitives";
 
 const ApprovalStatusSchema = z.enum(["approved", "rejected"]);
 
-const MAX_REJECT_REASON_LEN = 500;
+// Exported so client-side textareas can hard-cap matching the server
+// schema. Single source of truth — bumping this value updates both
+// the maxLength attribute and the Zod validator at once.
+export const MAX_REJECT_REASON_LEN = 500;
 
 /**
  * POST /api/completions/[id]/verify — creator approves or rejects.

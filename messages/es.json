@@ -127,6 +127,10 @@
         "title": "Prueba rechazada",
         "body": "Tu prueba en \"{challenge}\" fue rechazada."
       },
+      "completion_verified_rejected_with_reason": {
+        "title": "Prueba rechazada",
+        "body": "Tu prueba en \"{challenge}\" fue rechazada: {reason}"
+      },
       "checkpoint_submitted": {
         "title": "Prueba de checkpoint para revisar",
         "body": "Alguien envió una prueba para el checkpoint \"{checkpoint}\" en \"{challenge}\"."
@@ -138,6 +142,10 @@
       "checkpoint_verified_rejected": {
         "title": "Checkpoint rechazado",
         "body": "Tu prueba del checkpoint \"{checkpoint}\" en \"{challenge}\" fue rechazada."
+      },
+      "checkpoint_verified_rejected_with_reason": {
+        "title": "Checkpoint rechazado",
+        "body": "Tu prueba del checkpoint \"{checkpoint}\" en \"{challenge}\" fue rechazada: {reason}"
       },
       "prize_awarded": {
         "title": "¡Ganaste sats!",

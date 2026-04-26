@@ -58,6 +58,7 @@ import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
 import { useToast } from "@/components/ui/toast";
 import { translateApiError } from "@/lib/api/translate-error";
+import { MAX_REJECT_REASON_LEN } from "@/lib/schemas/completions";
 import type {
   AchievementItem,
   ChallengeCheckpointCompletion,
@@ -178,7 +179,7 @@ export default function ChallengeClient() {
   // "You earned a badge!" banner that nudges them toward Achievements
   // to publish kind:30008. Empty when the user has no badge yet, or
   // already accepted it.
-  const [pendingBadgeForMe, setPendingBadgeForMe] = useState(false);
+  const [hasPendingBadge, setHasPendingBadge] = useState(false);
   // Tab is mirrored in the URL (`?tab=manage`) so creators can deep-
   // link straight to the Manage view from notifications. Source of
   // truth is the query string; the JSX reads via `activeTab` and we
@@ -345,31 +346,34 @@ export default function ChallengeClient() {
   // badges merge yet (which happens in my-challenges → Achievements).
   // We surface this with a banner on the challenge page so the user
   // doesn't have to navigate away to discover they've won something.
-  useEffect(() => {
+  //
+  // Pulled into a stable callback (not inlined in the effect) so the
+  // award + approval paths can re-run it explicitly after a new badge
+  // could have been minted, without depending on `completions` and
+  // refetching after every unrelated state change.
+  const refreshPendingBadge = useCallback(async () => {
     if (!sessionUser) {
-      setPendingBadgeForMe(false);
+      setHasPendingBadge(false);
       return;
     }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch("/api/my-badges?limit=50");
-        if (!res.ok) return;
-        const json = await res.json();
-        if (!json.success || cancelled) return;
-        const items: AchievementItem[] = json.data?.items ?? [];
-        const match = items.find(
-          (b) => b.challenge?.id === challengeId && !b.accepted_at
-        );
-        if (!cancelled) setPendingBadgeForMe(!!match);
-      } catch {
-        /* non-blocking — banner just stays hidden */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionUser, challengeId, completions]);
+    try {
+      const res = await fetch("/api/my-badges?limit=50");
+      if (!res.ok) return;
+      const json = await res.json();
+      if (!json.success) return;
+      const items: AchievementItem[] = json.data?.items ?? [];
+      const match = items.find(
+        (b) => b.challenge?.id === challengeId && !b.accepted_at
+      );
+      setHasPendingBadge(!!match);
+    } catch {
+      /* non-blocking — banner just stays hidden */
+    }
+  }, [sessionUser, challengeId]);
+
+  useEffect(() => {
+    void refreshPendingBadge();
+  }, [refreshPendingBadge]);
 
   // Click handler for the Join button. Creators joining their own
   // challenge see a warning modal first (they don't pay themselves if
@@ -1310,6 +1314,11 @@ export default function ChallengeClient() {
         }),
       }).catch(() => {});
       showToast(t("badgeAwardSent"), "success");
+      // The recipient of the award (when they're the signed-in user)
+      // should see the awardee banner without having to refresh the
+      // page. Inexpensive — one /api/my-badges call instead of one
+      // per completions update.
+      void refreshPendingBadge();
     } catch {
       // DB row is already in place — let the creator know publishing failed
       // so they can retry from the participant list.
@@ -1449,7 +1458,7 @@ export default function ChallengeClient() {
           /api/my-badges row gets `accepted_at` and the next refetch
           drops it from the unaccepted list).
         */}
-        {pendingBadgeForMe && (
+        {hasPendingBadge && (
           <div className={styles.badgeBanner} role="status">
             <BoltIcon size={18} color="var(--color-secondary)" />
             <div className={styles.badgeBannerBody}>
@@ -2359,13 +2368,20 @@ export default function ChallengeClient() {
           <p className={styles.confirmMessage}>
             {t("rejectConfirmDescription")}
           </p>
+          <label
+            htmlFor="reject-reason-input"
+            className={styles.rejectReasonLabel}
+          >
+            {t("rejectReasonLabel")}
+          </label>
           <textarea
+            id="reject-reason-input"
             className={styles.rejectReasonInput}
             value={rejectReasonDraft}
             onChange={(e) => setRejectReasonDraft(e.target.value)}
             placeholder={t("rejectReasonPlaceholder")}
             rows={4}
-            maxLength={500}
+            maxLength={MAX_REJECT_REASON_LEN}
             autoFocus
           />
           <div className={styles.confirmActions}>
@@ -2389,17 +2405,30 @@ export default function ChallengeClient() {
         </Modal>
       )}
 
-      {showRewardConfirm && challenge && (
+      {showRewardConfirm && challenge && (() => {
+        // Mirror the server's distribution math (app/api/challenges/[id]
+        // /reward/route.ts) so the confirm dialog tells the truth:
+        //   - first_to_complete → 1 winner
+        //   - split             → every completed participant
+        //   - tiered            → up to 3 (top finishers)
+        // We count `participants.status === "completed"` because that's
+        // exactly the set the server picks from. Default to 1 when the
+        // distribution mode is missing or "none" — clicking Pay should
+        // never show "Pay 0 winners" for a challenge that has any sats
+        // staked.
+        const completedCount = participants.filter(
+          (p) => p.status === "completed"
+        ).length;
+        let winnerCount = 1;
+        if (challenge.prize_distribution === "split") {
+          winnerCount = Math.max(1, completedCount);
+        } else if (challenge.prize_distribution === "tiered") {
+          winnerCount = Math.max(1, Math.min(3, completedCount));
+        }
+        return (
         <Modal
           onClose={() => setShowRewardConfirm(false)}
-          // We don't know the exact winner count up front — the server
-          // computes it inside POST /reward based on the distribution
-          // mode. Use the participant_count as the upper bound for
-          // pluralization; the description carries the precise prize
-          // amount and the irreversible-action warning.
-          title={t("rewardConfirmTitle", {
-            count: Math.max(1, challenge.participant_count),
-          })}
+          title={t("rewardConfirmTitle", { count: winnerCount })}
           size="sm"
         >
           <p className={styles.confirmMessage}>
@@ -2419,7 +2448,8 @@ export default function ChallengeClient() {
             </Button>
           </div>
         </Modal>
-      )}
+        );
+      })()}
 
       {zapInvoice && (
         <Modal
