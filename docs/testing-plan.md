@@ -1,6 +1,6 @@
 # Judge walkthrough
 
-This is the hands-on guide for evaluating BitByBit Arena. Ten numbered steps, in order; each one is self-contained, names a visible button label, and — where relevant — tells you which Nostr event kind the app emits, so you can cross-check it on a relay explorer.
+This is the hands-on guide for evaluating BitByBit Arena. Eleven numbered steps, in order; each one is self-contained, names a visible button label, and — where relevant — tells you which Nostr event kind the app emits, so you can cross-check it on a relay explorer.
 
 ## Before you start
 

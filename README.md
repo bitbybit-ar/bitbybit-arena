@@ -16,7 +16,7 @@ Arena is that exact loop turned into an app. Anyone can create a challenge, anyo
 
 **30-second path**: Sign in with your Nostr identity (browser extension, NIP-46 bunker, or paste nsec) → open **Explore** → join a challenge → submit a text proof → see the badge event on your Nostr profile.
 
-**Full walkthrough**: [docs/testing-plan.md](docs/testing-plan.md) — ten numbered test steps that cover every major feature.
+**Full walkthrough**: [docs/testing-plan.md](docs/testing-plan.md) — eleven numbered test steps that cover every major feature.
 
 Because judging is done by AI, two things worth pre-loading:
 
@@ -88,7 +88,7 @@ Plus a few side surfaces reachable from buttons / the avatar menu: `/create` (ch
 ## Documentation
 
 - [Changelog](CHANGELOG.md) — what shipped in v1.0.0, grouped by area, with the known limitations called out honestly.
-- [Judge walkthrough](docs/testing-plan.md) — **start here** if you're evaluating the project. Ten numbered steps covering every major feature.
+- [Judge walkthrough](docs/testing-plan.md) — **start here** if you're evaluating the project. Eleven numbered steps covering every major feature.
 - [API reference](docs/api.md) — OpenAPI 3.1 spec for every route under `app/api/`. The YAML lives at [`docs/openapi.yaml`](docs/openapi.yaml).
 - [Nostr flows](docs/nostr-flows.md) — end-to-end sequences for nostr-action proof, checkpoints, and zap rewards.
 - [Nostr event design](docs/nostr-events.md) — custom event kinds, tag structure, data model.
