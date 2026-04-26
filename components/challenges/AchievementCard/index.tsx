@@ -44,6 +44,10 @@ export function AchievementCard({
               src={achievement.badge_image_url}
               alt={achievement.badge_name}
               className={styles.achievementImage}
+              width={256}
+              height={256}
+              loading="lazy"
+              decoding="async"
             />
           ) : (
             <div className={styles.achievementImagePlaceholder}>

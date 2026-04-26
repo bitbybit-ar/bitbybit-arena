@@ -4,14 +4,26 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useParams, useSearchParams, notFound } from "next/navigation";
-import { QRCodeSVG } from "qrcode.react";
+import dynamic from "next/dynamic";
 import { useRouter } from "@/i18n/routing";
 import { ArrowRightIcon, BoltIcon, CopyIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
 import { Modal } from "@/components/ui/modal";
 import { BlockLoader } from "@/components/ui/block-loader";
-import { ImageUpload } from "@/components/common/ImageUpload";
+
+// QR + image-upload are heavy and only render after specific user
+// actions (open the reward modal, attach a proof). Splitting them out
+// keeps them off the initial /explore/<id> bundle so the page TTFI
+// doesn't pay for code most viewers never reach.
+const QRCodeSVG = dynamic(
+  () => import("qrcode.react").then((m) => m.QRCodeSVG),
+  { ssr: false }
+);
+const ImageUpload = dynamic(
+  () => import("@/components/common/ImageUpload").then((m) => m.ImageUpload),
+  { ssr: false }
+);
 import { Avatar, type AvatarStatus } from "@/components/common/Avatar";
 import { Section, SectionTitle } from "@/components/common/Section";
 import {
@@ -55,11 +67,20 @@ import type {
   PrizeDistribution,
 } from "@/lib/types";
 import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
-import {
-  ShareOnNostrModal,
-  type ShareContext,
-} from "@/components/share/ShareOnNostrModal";
+import { type ShareContext } from "@/components/share/ShareOnNostrModal";
 import styles from "./challenge-detail.module.scss";
+
+// Share modal is mounted only after the user submits/joins/etc., so
+// we lazy-load it to keep the click-to-render bundle off the page-load
+// path. The trade-off is a first-render delay on the modal — invisible
+// to humans because the modal opens behind a state transition anyway.
+const ShareOnNostrModal = dynamic(
+  () =>
+    import("@/components/share/ShareOnNostrModal").then(
+      (m) => m.ShareOnNostrModal
+    ),
+  { ssr: false }
+);
 
 // Same cadence as the landing ZapModal's NWC polling. 4 s keeps latency
 // tolerable without hammering the wallet endpoint.
@@ -1344,6 +1365,10 @@ export default function ChallengeClient() {
                             src={challenge.badge_image_url}
                             alt={challenge.badge_name ?? tCommon("badge")}
                             className={styles.rewardBadgeImage}
+                            width={64}
+                            height={64}
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div
@@ -1965,6 +1990,10 @@ export default function ChallengeClient() {
                         src={entry.imageUrl}
                         alt={entry.content ?? t("proofImageAlt")}
                         className={styles.submissionModalImage}
+                        width={480}
+                        height={480}
+                        loading="lazy"
+                        decoding="async"
                       />
                     )}
                     {entry.rejectReason && (

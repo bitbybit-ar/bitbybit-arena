@@ -90,6 +90,10 @@ export function CheckpointItem({
           src={submittedImageUrl}
           alt={t("checkpointProofImageAlt", { index })}
           className={styles.submittedImage}
+          width={320}
+          height={320}
+          loading="lazy"
+          decoding="async"
         />
       )}
       {status === "awaiting-review" && (

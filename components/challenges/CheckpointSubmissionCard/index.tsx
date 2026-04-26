@@ -70,6 +70,10 @@ export function CheckpointSubmissionCard({
           src={submission.image_url}
           alt={submission.content ?? t("proofImageAlt")}
           className={styles.image}
+          width={320}
+          height={320}
+          loading="lazy"
+          decoding="async"
         />
       )}
       {submission.proof_event_id && (

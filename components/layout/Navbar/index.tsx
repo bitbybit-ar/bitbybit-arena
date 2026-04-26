@@ -128,11 +128,16 @@ export function Navbar() {
                   )}
                 </button>
                 {menuOpen && (
-                  <div className={styles.avatarMenu} role="menu">
+                  // Plain dropdown — not a WAI-ARIA `menu`. The previous
+                  // role="menu"/menuitem markup implied arrow-key
+                  // navigation we never wired up; with two children Tab
+                  // is the natural traversal anyway. Dropping the roles
+                  // lets <a> and <button> announce themselves correctly
+                  // without leaking a half-implemented menu pattern.
+                  <div className={styles.avatarMenu}>
                     <Link
                       href="/settings"
                       className={styles.menuItem}
-                      role="menuitem"
                       onClick={() => setMenuOpen(false)}
                     >
                       <SettingsIcon size={14} />
@@ -140,7 +145,6 @@ export function Navbar() {
                     </Link>
                     <button
                       className={styles.menuItem}
-                      role="menuitem"
                       onClick={handleSignOut}
                     >
                       <LogoutIcon size={14} />

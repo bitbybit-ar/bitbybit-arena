@@ -63,24 +63,38 @@ export function Avatar({
   }, [src]);
   const showImage = !!src && !failed;
 
+  // Decorative `alt=""` callers want the avatar muted from screen readers
+  // entirely (e.g. the name appears next to it in a list). We honor that
+  // in BOTH branches: when the image is shown, the empty alt does the job;
+  // when we fall back to initials, we mark the wrapper aria-hidden so the
+  // letter isn't announced as random text. For non-empty `alt`, we always
+  // expose the avatar with a meaningful name — the previous code hid the
+  // wrapper in the fallback state, which left users with assistive tech
+  // unable to identify the user being represented by the initial.
+  const decorative = alt === "";
   return (
     <span
       className={cn(styles.avatar, sizeClass[size], statusClass[status], className)}
-      aria-hidden={showImage ? undefined : true}
+      role={decorative ? undefined : "img"}
+      aria-label={decorative ? undefined : alt}
+      aria-hidden={decorative ? true : undefined}
     >
       {showImage ? (
         // Existing call sites render user avatars with plain <img> (behind
         // an eslint-disable for next/image), so this primitive mirrors
         // that choice to avoid triggering the image-domains config.
+        // The image itself carries `alt=""` because the wrapper above is
+        // already labeled — letting both the wrapper and the inner img
+        // announce the name would double-read it on every avatar.
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={src ?? undefined}
-          alt={alt}
+          alt=""
           className={styles.image}
           onError={() => setFailed(true)}
         />
       ) : (
-        initialFor(name)
+        <span aria-hidden="true">{initialFor(name)}</span>
       )}
     </span>
   );

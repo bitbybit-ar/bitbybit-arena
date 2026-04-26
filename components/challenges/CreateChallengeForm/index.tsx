@@ -2,6 +2,7 @@
 
 import { type ReactNode, useState } from "react";
 import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
 import { useRouter } from "@/i18n/routing";
 import { FormInput, FormTextarea } from "@/components/ui/form";
 import { FieldLabel } from "@/components/common/FieldLabel";
@@ -23,8 +24,19 @@ import { isSignerCancellation } from "@/lib/nostr/auth-errors";
 import { useSignerContext } from "@/lib/signer-context";
 import { useToast } from "@/components/ui/toast";
 import { translateApiError } from "@/lib/api/translate-error";
-import { ShareOnNostrModal } from "@/components/share/ShareOnNostrModal";
 import type { VerificationMethod } from "@/lib/types";
+
+// Lazy-loaded so the share modal's nostr publish chain doesn't ship
+// on the create-form bundle. It only renders after the user finishes
+// creating a challenge — the few-hundred-ms loader is invisible
+// because the modal opens right after a successful POST anyway.
+const ShareOnNostrModal = dynamic(
+  () =>
+    import("@/components/share/ShareOnNostrModal").then(
+      (m) => m.ShareOnNostrModal
+    ),
+  { ssr: false }
+);
 import { slugify } from "@/lib/utils";
 import { CheckpointEditor, type CheckpointDraft } from "./CheckpointEditor";
 import { RewardSection, type RewardZapMode } from "./RewardSection";

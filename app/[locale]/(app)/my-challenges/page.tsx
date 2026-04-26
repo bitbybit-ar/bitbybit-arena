@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
 import { Link } from "@/i18n/routing";
 import { PixelIcon } from "@/components/common/PixelIcon";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -22,11 +23,18 @@ import {
 } from "@/lib/nostr/events";
 import { publishSignedEvent } from "@/lib/nostr/publish";
 import { useToast } from "@/components/ui/toast";
-import {
-  ShareOnNostrModal,
-  type ShareContext,
-} from "@/components/share/ShareOnNostrModal";
+import { type ShareContext } from "@/components/share/ShareOnNostrModal";
 import styles from "./my-challenges.module.scss";
+
+// Mounted only after the user accepts a badge, so it stays out of the
+// page-load bundle.
+const ShareOnNostrModal = dynamic(
+  () =>
+    import("@/components/share/ShareOnNostrModal").then(
+      (m) => m.ShareOnNostrModal
+    ),
+  { ssr: false }
+);
 
 const TABS_ID = "my-challenges-tabs";
 type Tab = "joined" | "created" | "achievements";

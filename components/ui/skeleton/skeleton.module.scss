@@ -1,0 +1,40 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+
+.skeleton {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    alpha($color-text-primary, 0.06) 0%,
+    alpha($color-text-primary, 0.12) 50%,
+    alpha($color-text-primary, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: $border-radius-sm;
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+  // Avoid a flash of "filled" content on the first paint while the
+  // animation hasn't started yet — the mid-gradient stop matches the
+  // animation's resting position closely enough that the eye reads it
+  // as "still loading" instead of "data here".
+  will-change: background-position;
+}
+
+.circle {
+  border-radius: $border-radius-full;
+}
+
+@keyframes skeletonPulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: alpha($color-text-primary, 0.08);
+  }
+}

@@ -2,11 +2,21 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import dynamic from "next/dynamic";
 import { BoltIcon } from "@/components/icons";
 import { useZapGoalProgress } from "@/lib/hooks/useZapGoalProgress";
 import { useZapperMetadata } from "@/lib/hooks/useZapperMetadata";
 import type { ZapGoalProgressData } from "@/app/api/challenges/[id]/zap-goal-progress/route";
-import { FundPotModal } from "@/components/challenges/FundPotModal";
+import { Avatar } from "@/components/common/Avatar";
+
+// Pulls qrcode.react and the NWC polling chain — only mounts when the
+// user clicks "Fund the pot". Lazy-loading keeps the challenge-detail
+// initial bundle slim.
+const FundPotModal = dynamic(
+  () =>
+    import("@/components/challenges/FundPotModal").then((m) => m.FundPotModal),
+  { ssr: false }
+);
 import { BlockLoader } from "@/components/ui/block-loader";
 import styles from "./zap-goal-progress.module.scss";
 
@@ -28,13 +38,6 @@ interface ZapGoalProgressProps {
   creatorCanRepublish?: boolean;
   onRepublish?: () => void;
   republishLoading?: boolean;
-}
-
-// Short, deterministic avatar for a zapper we don't have metadata for.
-// DiceBear matches the style used by seeded mock users, so anonymous
-// zappers feel visually consistent with the rest of the app.
-function avatarUrl(pubkey: string): string {
-  return `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${pubkey}`;
 }
 
 function shortPubkey(pubkey: string): string {
@@ -160,25 +163,14 @@ export function ZapGoalProgress({
           {recentZappers.map((z) => {
             const profile = zapperProfiles.get(z.pubkey);
             const displayName = profile?.display_name ?? shortPubkey(z.pubkey);
-            const avatar = profile?.picture ?? avatarUrl(z.pubkey);
             return (
               <li key={`${z.pubkey}-${z.received_at}`} className={styles.zapper}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  className={styles.avatar}
-                  src={avatar}
+                <Avatar
+                  src={profile?.picture ?? null}
                   alt=""
-                  aria-hidden="true"
-                  onError={(e) => {
-                    // kind:0 `picture` URLs come from user profiles and
-                    // occasionally 404 (dead CDN, deleted file). Fall
-                    // back to the deterministic dicebear placeholder so
-                    // the row never shows a broken-image icon.
-                    const img = e.currentTarget;
-                    if (img.src !== avatarUrl(z.pubkey)) {
-                      img.src = avatarUrl(z.pubkey);
-                    }
-                  }}
+                  name={displayName}
+                  size="sm"
+                  className={styles.avatar}
                 />
                 <div className={styles.zapperBody}>
                   <div className={styles.zapperRow}>

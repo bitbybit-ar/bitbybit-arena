@@ -48,8 +48,13 @@
   @include transition;
 
   &::placeholder {
+    // Drop opacity: stacking 0.4 on top of $color-text-secondary
+    // blended placeholder text below ~2.5:1 contrast, failing WCAG AA.
+    // Using the secondary text color at full opacity keeps the visual
+    // hierarchy (placeholder reads quieter than typed text) while
+    // landing at ~4.8:1 — comfortably above the 4.5:1 AA threshold.
     color: $color-text-secondary;
-    opacity: 0.4;
+    opacity: 1;
   }
 
   &:focus {
@@ -113,8 +118,13 @@
   @include transition;
 
   &::placeholder {
+    // Drop opacity: stacking 0.4 on top of $color-text-secondary
+    // blended placeholder text below ~2.5:1 contrast, failing WCAG AA.
+    // Using the secondary text color at full opacity keeps the visual
+    // hierarchy (placeholder reads quieter than typed text) while
+    // landing at ~4.8:1 — comfortably above the 4.5:1 AA threshold.
     color: $color-text-secondary;
-    opacity: 0.4;
+    opacity: 1;
   }
 
   &:focus {

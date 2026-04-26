@@ -19,7 +19,14 @@ interface ImageUploadProps {
   accept?: string;
   /** Input id, used by label htmlFor. */
   id?: string;
-  /** Alt text shown on the preview image. */
+  /**
+   * Alt text shown on the preview image. Required for non-decorative
+   * uploads (badge images, completion proofs) so screen readers announce
+   * what the user just attached. The default is the namespaced
+   * `imageUpload.previewAlt` ("Uploaded image preview") rather than an
+   * empty string — the previous default `alt=""` silently hid uploaded
+   * proofs from assistive tech across every caller.
+   */
   alt?: string;
 }
 
@@ -36,9 +43,10 @@ export function ImageUpload({
   maxSizeMB = 5,
   accept = "image/*",
   id,
-  alt = "",
+  alt,
 }: ImageUploadProps) {
   const t = useTranslations("imageUpload");
+  const previewAlt = alt && alt.trim().length > 0 ? alt : t("previewAlt");
   const { signWithPrompt } = useSignerContext();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -97,7 +105,15 @@ export function ImageUpload({
       {value ? (
         <div className={styles.preview}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value.url} alt={alt} className={styles.previewImage} />
+          <img
+            src={value.url}
+            alt={previewAlt}
+            className={styles.previewImage}
+            width={64}
+            height={64}
+            loading="lazy"
+            decoding="async"
+          />
           <div className={styles.previewActions}>
             <button
               type="button"
