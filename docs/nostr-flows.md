@@ -1,10 +1,12 @@
 # Nostr Flows
 
-This document describes the three Nostr-native flows added to BitByBit Arena on top of the base challenge platform:
+This document describes the three Nostr-native feature areas added to BitByBit Arena on top of the base challenge platform. The first area covers **two** auto-verification paths (reactions and hashtag posts) but is grouped as one because they share the same plumbing — a `verification_methods` array on the challenge / checkpoint, a server-side relay query on submit, and a shared duplicate-proof index.
 
-1. **Nostr proof-of-completion** — auto-verify completions via NIP-25 kind 7 reactions or NIP-12 hashtag posts
-2. **Checkpoints** — sequential or parallel sub-tasks, each independently verifiable
-3. **Zap rewards** — NIP-75 Zap Goals for funding + NIP-57 client-side payouts to winners
+1. **Nostr proof-of-completion** — auto-verify via either:
+    - NIP-25 kind 7 reactions on a creator-pinned target event, or
+    - kind:1 notes carrying a `#t` hashtag (NIP-01 `t` tag; the original NIP-12 was deprecated and folded back into NIP-01).
+2. **Checkpoints** — sequential or parallel sub-tasks, each independently verifiable.
+3. **Zap rewards** — NIP-75 Zap Goals for funding + NIP-57 client-side payouts to winners.
 
 All three are optional and compose cleanly: a challenge can have any combination of them (or none).
 
@@ -23,7 +25,7 @@ Each challenge (and each checkpoint) carries a `verification_methods: text[]` co
 | `creator_approval` | Participant submits text proof, creator reviews in-app | Manual |
 | `automatic` | Honor system — any text proof auto-approves | Automatic |
 | `nostr_action` | NIP-25 kind 7 reaction (like) to a target event id the creator pinned | Automatic (queries relays) |
-| `nostr_hashtag` | NIP-12 kind:1 note by the participant tagged with a specific `#t` hashtag the creator set | Automatic (queries relays) |
+| `nostr_hashtag` | kind:1 note by the participant carrying a NIP-01 `t` tag matching the hashtag the creator set (the underlying mechanism — NIP-12 was the original spec but was deprecated and merged back into NIP-01) | Automatic (queries relays) |
 
 When the challenge has more than one method, the client must pass `method: <value>` in the completions POST body. Single-method challenges default to their sole method.
 
@@ -135,7 +137,7 @@ When a creator sets `prize_amount_sats > 0`, the client **automatically** publis
    ```json
    {
      "kind": 9041,
-     "content": "Prize pot: <challenge title>",
+     "content": "<challenge title>",
      "tags": [
        ["amount", "<millisats>"],
        ["relays", "wss://relay.damus.io", "..."],

@@ -10,13 +10,13 @@ Mirrors [bitbybit-habits](https://github.com/bitbybit-ar/bitbybit-habits) for co
 | **Styles** | SCSS modules (no Tailwind, no CSS-in-JS) |
 | **Icons** | Custom SVGs in `components/icons/` |
 | **i18n** | next-intl with `[locale]` routing (es default, en second) |
-| **Auth** | Nostr (NIP-07 browser extension) — primary and only auth method |
+| **Auth** | Nostr only — three signers (NIP-07 extension, NIP-46 bunker, paste-nsec local) all converging on a NIP-98 HTTP Auth event. See [docs/nostr-login.md](./nostr-login.md). |
 | **Protocol** | Nostr via nostr-tools |
 | **Zaps** | NIP-57 (client-side only, no server-side Lightning/invoices) |
-| **Proofs** | Text-only for MVP (photo upload deferred) |
-| **Badges** | NIP-58 badge creation and awarding |
+| **Proofs** | Text + image (Blossom BUD-01/02) with NIP-92 `imeta` tags |
+| **Badges** | NIP-58 (kind 30009 definition, kind 8 award, kind 30008 profile-badges with merge-preserve) |
 | **Database** | Neon DB (PostgreSQL) via @neondatabase/serverless + Drizzle ORM |
-| **API Docs** | OpenAPI 3.0 (Swagger) |
+| **API Docs** | OpenAPI 3.1 — [`docs/openapi.yaml`](./openapi.yaml), reader's guide at [`docs/api.md`](./api.md) |
 | **Font** | Nunito / Nunito Sans |
 
 ## Why a Database if It's Nostr-Native?
@@ -37,50 +37,79 @@ The Nostr events are the **source of truth** for public data. The database is an
 bitbybit-arena/
   app/
     [locale]/                  <- i18n routes (es, en)
-      (auth)/                  <- Nostr login
-      (app)/                   <- Main app (2 tabs)
-        explore/               <- Browse + create challenges
-        my-challenges/         <- User's joined challenges
+      (auth)/signin/           <- Three-tab signer picker (extension/bunker/nsec)
+      (app)/
+        explore/               <- Browse + filter + sort, plus [id] detail
+        my-challenges/         <- Joined / Created / Achievements tabs
+        create/                <- Challenge creation form
+        settings/              <- Profile + preferences + notifications + danger zone
+      about/                   <- Public about page
       layout.tsx
       page.tsx                 <- Landing page
-    api/                       <- API routes (outside [locale])
-      auth/                    <- Nostr auth endpoints
-      challenges/              <- CRUD, join, search, filter
-      completions/             <- Submit, verify, list
-      badges/                  <- Create, award, list
-      nostr/                   <- Relay management, event publishing
+    api/                       <- Routes (outside [locale])
+      auth/                    <- nostr (NIP-98 login), session, signout
+      challenges/              <- list/create + per-id CRUD, join, completions,
+                                  checkpoints, award, reward, zap-goal-progress,
+                                  pending-checkpoint-submissions, participants
+      completions/[id]/verify  <- Creator approve/reject for non-checkpoint flow
+      checkpoint-completions/[id]/verify
+      badges/[id]              <- Accept-on-Nostr stamp
+      profile/                 <- GET/PUT/DELETE + sync subroute
+      my-badges/, my-challenges/
+      notifications/, tags/popular/, zap/status/
     layout.tsx
   components/
-    icons/                     <- Custom SVG icons
-    layout/                    <- Navbar (bottom tabs on mobile), Header
-    ui/                        <- Button, Card, Modal, Avatar, Badge, etc.
-    challenges/                <- ChallengeCard, ChallengeForm, ProofSubmit
-    profile/                   <- UserProfile, BadgeDisplay
+    common/                    <- Block, BlockTower, Bubble, PixelIcon,
+                                  PixelDissolve, Avatar, ImageUpload, etc.
+    icons/                     <- Custom SVG icons as React components
+    layout/                    <- Navbar, Footer, ReSignInModal,
+                                  SignerProviderClient, NotificationBell
+    landing/                   <- Hero, HowItWorks, About, Partners, Support, ZapModal
+    auth/                      <- ExtensionSignerButton, NostrConnectPanel,
+                                  NsecSignerForm, SignerMethodButtons
+    challenges/                <- ChallengeCard, CreateChallengeForm,
+                                  CheckpointItem, FundPotModal, ZapGoalProgress,
+                                  RewardDistributionPanel, etc.
+    about/                     <- Story, Projects, Team, LaCrypta, OpenSource
+    onboarding/                <- OnboardingGate, WelcomeModal
+    share/ShareOnNostrModal/
+    ui/                        <- button, card, modal, dropdown, form, tabs,
+                                  toast, skeleton, block-loader, etc.
   i18n/
     request.ts
     routing.ts
   lib/
-    api/                       <- apiHandler wrapper, errors, validation
-    db/                        <- Drizzle schema, connection
-    nostr/                     <- Event builders, relay pool, subscriptions
-    hooks/                     <- useNostr, useChallenge
-    auth.ts                    <- Nostr session management
+    api/                       <- apiHandler wrapper, errors, rate-limit,
+                                  verification-methods helper
+    db/                        <- schema, connection, checkpoints helper
+    nostr/                     <- events, verify, signers, fetch-events,
+                                  verify-like, verify-hashtag-post, lnurl,
+                                  blossom, nip46-login, relays, metadata
+    hooks/                     <- useScrollReveal, useFollowList,
+                                  useZapGoalProgress, etc.
+    schemas/                   <- Zod request/response schemas
+    contexts/theme-context.tsx <- Theme provider (light/dark/system)
+    auth.ts, auth-constants.ts <- JWT session helpers + cookie name constant
+    signer-context.tsx         <- Active signer + completeLoginWithSigner
     types.ts                   <- Shared TypeScript interfaces
+    lightning.ts, seo.ts, env.ts, notifications.ts, utils.ts
   messages/                    <- es.json, en.json
-  styles/                      <- SCSS variables, mixins, glass system
+  styles/                      <- SCSS foundation
+    _colors.scss, _theme.scss, _spacing.scss, _typography.scss,
+    _common-mixins.scss (incl. ceramic-card), _media-mixins.scss,
+    globals.scss
   tests/
-    api/
-    helpers/
-  docs/
-    openapi.yaml
-  middleware.ts
+    unit/, integration/        <- See docs/testing.md
+  docs/                        <- Design docs, Nostr event specs, openapi.yaml
+  drizzle/                     <- Migrations
+  scripts/                     <- migrate.ts, seed.ts
 ```
 
 ## Key Differences from bitbybit-habits
 
 | Aspect | Habits | Arena |
 |--------|--------|------------|
-| **Auth** | Email/password + optional Nostr | Nostr only (NIP-07) |
+| **Auth** | Email/password + optional Nostr | Nostr only — NIP-07 / NIP-46 / paste-nsec, all over NIP-98 |
 | **Data model** | Private, family-scoped | Public, network-wide |
 | **Payments** | Sponsor pays kid (NWC) | Zaps only (NIP-57, client-side) |
 | **Users** | Sponsor + Kid roles | Single role (Nostr identity) |
@@ -92,7 +121,7 @@ bitbybit-arena/
 1. User picks a signer on `/signin`: NIP-07 extension, NIP-46 bunker, or paste-nsec local signer.
 2. Client builds an unsigned NIP-98 HTTP Auth event (kind 27235) bound to `POST /api/auth/nostr` via `u` and `method` tags, with `signer_type` embedded as a custom `["arena_signer", ...]` tag.
 3. Signer signs; client POSTs with `Authorization: Nostr <base64(event)>`.
-4. Server validates signature (Schnorr via `nostr-tools/pure.verifyEvent`), URL/method binding, and ±60 s `created_at` window. User record is upserted by pubkey; kind:0 profile is fetched from relays (NIP-01).
+4. Server validates signature (Schnorr via `nostr-tools/pure.verifyEvent`), URL/method binding, and ±30 s `created_at` window. User record is upserted by pubkey; kind:0 profile is fetched from relays (NIP-01).
 5. Session is a JWT in `__Host-session` (prod) / `session` (dev) httpOnly cookie, 7-day expiry.
 
 No email, no password, no challenge round-trip. Nostr identity is the only auth method — keeps it simple and aligned with the hackathon theme.
@@ -117,7 +146,7 @@ Next.js Client (React)
 ## Design Decisions
 
 ### Mobile-first, bottom tab navigation
-The 2-tab layout (Explore + My Challenges) uses a bottom navigation bar on mobile (standard mobile pattern). On desktop, it becomes a sidebar or top nav. Fewer tabs = less cognitive load, better UX score from AI judges.
+The two bottom-nav tabs are Explore + My Challenges — those are the surfaces a user lives in. The other authenticated surfaces (`/create`, `/settings`) are reached from in-page buttons and the avatar menu, not from the bottom nav, so the tab strip stays at two items. On desktop, the nav becomes a sidebar / top nav. Fewer permanent tabs = less cognitive load, better UX score from AI judges.
 
 ### Nostr-first, database-second
 Events are always published to Nostr relays first. The database indexes them for fast queries. If the database is empty, the app can rebuild state from relay events.

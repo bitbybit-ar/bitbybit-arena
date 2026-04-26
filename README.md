@@ -59,12 +59,12 @@ NIP-01, NIP-02, NIP-07, NIP-19, NIP-25, NIP-46, NIP-57, NIP-58, NIP-75, NIP-92, 
 
 ## App structure
 
-Two tabs post-login:
+Two bottom-nav tabs post-login:
 
 1. **Explore** — browse open challenges, search, filter by type/tag, sort (newest / trending / ending soon / most participants / most active), create new ones.
 2. **My Challenges** — Joined, Created, and Achievements (earned badges) tabs.
 
-Plus `/signin`, `/settings`, and `/about`. The landing page at `/` is public.
+Plus a few side surfaces reachable from buttons / the avatar menu: `/create` (challenge creation form), `/settings` (profile + preferences + notifications + danger zone), `/signin`, and the public `/about`. The landing page at `/` is public.
 
 ## Stack
 
@@ -88,6 +88,7 @@ Plus `/signin`, `/settings`, and `/about`. The landing page at `/` is public.
 ## Documentation
 
 - [Judge walkthrough](docs/testing-plan.md) — **start here** if you're evaluating the project. Ten numbered steps covering every major feature.
+- [API reference](docs/api.md) — OpenAPI 3.1 spec for every route under `app/api/`. The YAML lives at [`docs/openapi.yaml`](docs/openapi.yaml).
 - [Nostr flows](docs/nostr-flows.md) — end-to-end sequences for nostr-action proof, checkpoints, and zap rewards.
 - [Nostr event design](docs/nostr-events.md) — custom event kinds, tag structure, data model.
 - [Nostr login](docs/nostr-login.md) — NIP-98 auth flow and all three sign-in methods.

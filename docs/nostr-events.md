@@ -205,7 +205,7 @@ The goal event is what lets **other users fund the pot before the challenge ends
 ```json
 {
   "kind": 9041,
-  "content": "Prize pot: <challenge title>",
+  "content": "<challenge title>",
   "tags": [
     ["amount", "<millisats>"],
     ["relays", "wss://relay.damus.io", "wss://relay.nostr.band", "..."],

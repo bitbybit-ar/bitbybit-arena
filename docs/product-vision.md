@@ -2,7 +2,7 @@
 
 ## One-liner
 
-aA Nostr-native challenge platform — create challenges, compete with others, earn badges that live on your Nostr identity.
+A Nostr-native challenge platform — create challenges, compete with others, earn badges that live on your Nostr identity.
 
 ## Problem
 

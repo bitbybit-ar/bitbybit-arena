@@ -37,10 +37,11 @@ Search should be fast — indexed server-side on the database.
 | **Type** | One-time, Streak, Competition, Race, Creative | All |
 | **Category** | Fitness, Learning, Creative, Social, Other (user-defined tags) | All |
 | **Duration** | Ending soon (< 7 days), This month, No deadline | All |
-| **Verification** | Creator approval, Community vote, Automatic | All |
-| **Participants** | Any, < 10, 10-50, 50+ | Any |
+| **Verification** | Creator approval, Automatic, Nostr action (NIP-25 like), Nostr hashtag (kind:1 with `#t`) | All |
 
 Filters should be combinable (AND logic). URL query params for shareability (e.g., `/explore?status=open&type=streak`).
+
+There is also an **Only following** toggle. When the signed-in user has a NIP-02 follow list (kind 3), enabling it scopes the result set to challenges whose creator is in that list. When the toggle is off, follow signal is still used as a soft *boost* (followed creators float to the top), but non-followed challenges still appear. Driven by `lib/hooks/useFollowList.ts`.
 
 ---
 
