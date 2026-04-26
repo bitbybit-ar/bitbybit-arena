@@ -13,10 +13,27 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    const isProd = process.env.NODE_ENV === "production";
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' https: data: blob:",
+      "font-src 'self' https://fonts.gstatic.com data:",
+      "connect-src 'self' wss: https:",
+      "frame-ancestors 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; ");
+
     return [
       {
         source: "/(.*)",
         headers: [
+          ...(isProd
+            ? [{ key: "Content-Security-Policy", value: csp }]
+            : []),
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
