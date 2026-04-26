@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { getSession } from "@/lib/auth";
 import { alternatesFor } from "@/lib/seo";
@@ -10,8 +11,9 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata" });
   return {
-    title: "Create challenge",
+    title: t("create"),
     robots: { index: false, follow: true },
     alternates: alternatesFor(locale, "/create"),
   };

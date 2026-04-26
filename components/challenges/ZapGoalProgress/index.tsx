@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type CSSProperties } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { BoltIcon } from "@/components/icons";
 import { useZapGoalProgress } from "@/lib/hooks/useZapGoalProgress";
 import { useZapperMetadata } from "@/lib/hooks/useZapperMetadata";
@@ -54,6 +54,7 @@ export function ZapGoalProgress({
   republishLoading = false,
 }: ZapGoalProgressProps) {
   const t = useTranslations("zapGoal");
+  const locale = useLocale();
   const [fundOpen, setFundOpen] = useState(false);
 
   const { raisedSats, zapperCount, recentZappers, loading, refresh } =
@@ -137,11 +138,11 @@ export function ZapGoalProgress({
 
       <div className={styles.numbers}>
         <span className={styles.raised}>
-          {raisedSats.toLocaleString()}
+          {raisedSats.toLocaleString(locale)}
           <span className={styles.unit}> sats</span>
         </span>
         <span className={styles.ofGoal}>
-          {t("ofGoal", { goal: goalSats.toLocaleString() })}
+          {t("ofGoal", { goal: goalSats.toLocaleString(locale) })}
         </span>
       </div>
 
@@ -184,7 +185,7 @@ export function ZapGoalProgress({
                     <span className={styles.zapperName}>{displayName}</span>
                     <span className={styles.zapperAmount}>
                       <BoltIcon size={12} color="var(--color-secondary)" />
-                      {z.amount_sats.toLocaleString()}
+                      {z.amount_sats.toLocaleString(locale)}
                     </span>
                   </div>
                   {z.message && (
