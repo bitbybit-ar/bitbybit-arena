@@ -1,0 +1,42 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+
+.skeleton {
+  display: block;
+  background-color: alpha($color-text-primary, 0.08);
+  background-image: linear-gradient(
+    90deg,
+    alpha($color-text-primary, 0.06) 0%,
+    alpha($color-text-primary, 0.12) 50%,
+    alpha($color-text-primary, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: $border-radius-sm;
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+  // Layered fallback: the solid background-color paints first, so the
+  // initial frame (before the gradient slides into view) reads as a
+  // muted placeholder rather than a strip of fully-transparent space.
+  // `will-change` hints the compositor to promote this to its own
+  // layer so the animation doesn't repaint surrounding content.
+  will-change: background-position;
+}
+
+.circle {
+  border-radius: $border-radius-full;
+}
+
+@keyframes skeletonPulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: alpha($color-text-primary, 0.08);
+  }
+}

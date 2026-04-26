@@ -82,9 +82,40 @@ export function NotificationBell() {
   }, []);
 
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, POLL_MS);
-    return () => clearInterval(interval);
+    // Only schedule the interval when the tab is actually visible.
+    // A long-lived background tab used to fire ~2,880 polls per day per
+    // user even though the bell isn't on screen — wasted bandwidth on
+    // both ends. We pause on `visibilitychange` and resume (with an
+    // immediate fetch to catch up on anything that landed while we
+    // were away) when the tab comes back.
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const start = () => {
+      if (interval) return;
+      // Catch-up fetch on resume so the user doesn't have to wait
+      // a full 30s for the first refresh.
+      fetchNotifications();
+      interval = setInterval(fetchNotifications, POLL_MS);
+    };
+
+    const stop = () => {
+      if (!interval) return;
+      clearInterval(interval);
+      interval = null;
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") start();
+      else stop();
+    };
+
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [fetchNotifications]);
 
   useClickOutside(wrapperRef, () => setOpen(false), open);
@@ -123,8 +154,14 @@ export function NotificationBell() {
         type="button"
         className={styles.bell}
         onClick={() => setOpen((v) => !v)}
+        // `aria-haspopup="dialog"` matches what we render — a labeled
+        // panel with a list of notifications, not a WAI-ARIA `menu`
+        // pattern with arrow-key navigation. Screen readers now
+        // announce "popup dialog" instead of "menu" when focusing the
+        // bell, which sets the right keyboard expectation (Esc closes,
+        // Tab moves linearly through items).
         aria-label={t("ariaLabel")}
-        aria-haspopup="true"
+        aria-haspopup="dialog"
         aria-expanded={open}
       >
         <BellIcon size={18} />
@@ -136,7 +173,11 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className={styles.dropdown}>
+        <div
+          className={styles.dropdown}
+          role="dialog"
+          aria-label={t("ariaLabel")}
+        >
           <div className={styles.header}>
             <span className={styles.count}>{t("unreadCount", { count: unreadCount })}</span>
             {unreadCount > 0 && (

@@ -63,10 +63,21 @@ export function Avatar({
   }, [src]);
   const showImage = !!src && !failed;
 
+  // Decorative `alt=""` callers want the avatar muted from screen readers
+  // entirely (e.g. the name appears next to it in a list). The wrapper
+  // itself carries no role/label so screen readers don't announce a
+  // generic "image" beacon — the labeling lives on the inner element
+  // that actually represents the avatar:
+  //  - image branch: the <img alt={alt}> announces itself
+  //  - fallback branch: a labeled <span role="img" aria-label> wraps
+  //    the visible initial so the letter doesn't get spelled out
+  // This avoids the role="img" nesting (wrapper + inner img both
+  // labeled) that confuses some screen readers.
+  const decorative = alt === "";
   return (
     <span
       className={cn(styles.avatar, sizeClass[size], statusClass[status], className)}
-      aria-hidden={showImage ? undefined : true}
+      aria-hidden={decorative ? true : undefined}
     >
       {showImage ? (
         // Existing call sites render user avatars with plain <img> (behind
@@ -79,8 +90,18 @@ export function Avatar({
           className={styles.image}
           onError={() => setFailed(true)}
         />
-      ) : (
+      ) : decorative ? (
+        // Decorative fallback: keep the initial visually but stay silent.
+        // The outer wrapper is already aria-hidden, so this span needs
+        // no further muting — left as plain text.
         initialFor(name)
+      ) : (
+        // Labeled fallback: the initial alone reads as a stray letter,
+        // so we wrap it as a single role="img" region with the caller's
+        // name as its accessible name.
+        <span role="img" aria-label={alt}>
+          <span aria-hidden="true">{initialFor(name)}</span>
+        </span>
       )}
     </span>
   );

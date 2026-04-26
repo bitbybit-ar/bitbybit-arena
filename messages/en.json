@@ -55,7 +55,7 @@
     "sats": "sats",
     "viewAll": "View all",
     "explore": "Explore",
-    "myChallenges": "My Challenges",
+    "myChallenges": "My challenges",
     "settings": "Settings",
     "back": "Back",
     "delete": "Delete",
@@ -97,6 +97,13 @@
     "create": "Create challenge",
     "about": "About",
     "signIn": "Sign in"
+  },
+  "loadingStates": {
+    "exploreList": "Loading challenges…",
+    "challengeDetail": "Loading challenge…",
+    "myChallenges": "Loading your challenges…",
+    "settings": "Loading your profile…",
+    "createForm": "Loading the create form…"
   },
   "notifications": {
     "ariaLabel": "Notifications",
@@ -150,7 +157,8 @@
     "remove": "Remove",
     "invalidType": "Unsupported image type. Use PNG, JPG, WEBP or GIF.",
     "tooLarge": "That image is too large (max {max}MB).",
-    "uploadFailed": "Could not upload the image. Try again."
+    "uploadFailed": "Could not upload the image. Try again.",
+    "previewAlt": "Uploaded image preview"
   },
   "landing": {
     "hero": {
@@ -168,7 +176,7 @@
       "step2Title": "Battle",
       "step2Description": "Enter challenges, submit your proof of victory, and track your progress.",
       "step3Title": "Earn",
-      "step3Description": "Conquer challenges to earn sats and NIP-58 badges on your Nostr identity. Your victories are celebrated across the network."
+      "step3Description": "Conquer challenges to earn sats and badges that live on your Nostr identity. Your victories are celebrated across the network."
     },
     "about": {
       "title": "The BitByBit Family",
@@ -208,7 +216,7 @@
         "error": "Failed to send zap. Try again.",
         "errorNoAddress": "Lightning address is not configured yet.",
         "errorInvalidAddress": "Could not resolve Lightning address. It may not be active yet.",
-        "noWebln": "No Lightning wallet found. Copy the invoice manually.",
+        "noWebln": "No wallet extension detected — scan the QR or copy the invoice to pay from any Lightning wallet. We'll detect the payment automatically.",
         "copyInvoice": "Copy invoice",
         "copiedInvoice": "Invoice copied!",
         "waitingPayment": "Waiting for payment..."
@@ -290,7 +298,7 @@
     "welcomeTitle": "Welcome to BitByBit Arena",
     "welcomeIntro": "Your Nostr identity is connected. Let's finish setting up your profile so others recognize you in challenges.",
     "syncCta": "Pull profile from Nostr",
-    "syncHint": "We'll fetch your name, avatar, and Lightning address from your kind:0 metadata on relays.",
+    "syncHint": "We'll fetch your name, avatar, and Lightning address from your Nostr profile on the relays.",
     "syncing": "Syncing…",
     "manualCta": "Set it up manually",
     "manualHint": "Edit your name, avatar, and Lightning address from Settings.",
@@ -345,8 +353,8 @@
     }
   },
   "explore": {
-    "title": "Explore Challenges",
-    "createNew": "Create Challenge",
+    "title": "Explore challenges",
+    "createNew": "Create challenge",
     "searchPlaceholder": "Search challenges...",
     "filters": "Filters",
     "allTypes": "All types",
@@ -375,7 +383,7 @@
     "sourceFollowing": "People I follow"
   },
   "createChallenge": {
-    "title": "Create Challenge",
+    "title": "Create challenge",
     "sections": {
       "general": "General info",
       "details": "Details",
@@ -419,11 +427,11 @@
         "example": "E.g., Podium for contests, Split for participation challenges"
       },
       "badgeName": {
-        "text": "Name of the NIP-58 badge winners receive on their Nostr identity.",
+        "text": "Name of the badge winners receive on their Nostr identity.",
         "example": "E.g., 30-Day Zen Master"
       },
       "badgeImage": {
-        "text": "Upload an image for the badge. We store it on a Blossom server (content-addressed by SHA-256) so any Nostr client can display it.",
+        "text": "Upload an image for the badge. We host it so any Nostr client can display it.",
         "example": "PNG, JPG, WEBP or GIF up to 2MB"
       }
     },
@@ -468,8 +476,8 @@
     },
     "verificationEmptyError": "Select at least one verification method.",
     "nostrActionTargetLabel": "Target event id",
-    "nostrActionTargetPlaceholder": "64-character hex id of the event participants must like",
-    "nostrActionTargetError": "Event id must be a 64-character hex string",
+    "nostrActionTargetPlaceholder": "Nostr event id (64-character hex) participants must like",
+    "nostrActionTargetError": "Event id must be 64 hexadecimal characters",
     "nostrHashtagLabel": "Hashtag",
     "nostrHashtagPlaceholder": "E.g., arenahackathon",
     "nostrHashtagError": "Hashtag must be 2-50 characters (letters, numbers, underscore)",
@@ -492,7 +500,7 @@
     "removeCheckpoint": "Remove",
     "checkpointsEmptyError": "Add at least one checkpoint or select \"No checkpoints\"",
     "checkpointTitleError": "Checkpoint {index}: title must be at least 3 characters",
-    "checkpointTargetError": "Checkpoint {index}: event id must be a 64-character hex string",
+    "checkpointTargetError": "Checkpoint {index}: event id must be 64 hexadecimal characters",
     "checkpointHashtagError": "Checkpoint {index}: hashtag must be 2-50 characters (letters, numbers, underscore)",
     "prizeAmountLabel": "Prize (sats)",
     "prizeAmountPlaceholder": "E.g., 10000",
@@ -507,7 +515,7 @@
       "split": "Everyone who completes shares the pot equally. Best for participation-style challenges.",
       "tiered": "Top three finishers split 50% / 30% / 20%. Best for ranked contests."
     },
-    "zapGoalAutoNote": "A NIP-75 Zap Goal (kind 9041) is published to Nostr automatically so anyone can fund the prize pot. If the publish fails you'll see a \"Republish zap goal\" button on the challenge page.",
+    "zapGoalAutoNote": "A funding goal is published to Nostr automatically so anyone can chip in to the prize pot. If the publish fails you'll see a \"Republish goal\" button on the challenge page.",
     "zapGoalSkippedNoSigner": "The challenge was created but we couldn't publish the Zap Goal: your Nostr signer isn't active. You can publish it later from the challenge page.",
     "zapGoalPublishFailed": "The challenge was created but we couldn't publish the Zap Goal to the relays. You can republish it from the challenge page.",
     "badgeNameLabel": "Badge name",
@@ -523,7 +531,7 @@
   },
   "challenge": {
     "by": "by",
-    "joinChallenge": "Join Challenge",
+    "joinChallenge": "Join challenge",
     "joining": "Joining...",
     "joinedToggle": "Joined ✓",
     "leaving": "Leaving...",
@@ -556,13 +564,13 @@
     "nostrHashtagLabel": "Hashtag",
     "viewOnNostr": "View on Nostr",
     "progress": "Progress",
-    "submitProof": "Submit Proof",
+    "submitProof": "Submit proof",
     "proofPlaceholder": "Describe what you did...",
     "proofImageAlt": "Completion photo",
     "submitting": "Submitting...",
     "proofSubmitted": "Proof submitted!",
     "verifyLikeTitle": "Verify your like",
-    "verifyLikeInstructions": "Like the target event from your Nostr client, then press verify. We'll look for your kind 7 reaction on the relays.",
+    "verifyLikeInstructions": "Like the target event from your Nostr client, then press verify. We'll look for your like on the relays.",
     "verifyLikeButton": "Verify my like on Nostr",
     "verifying": "Verifying...",
     "proofFound": "Proof found",
@@ -616,7 +624,7 @@
     "rewardError": "Could not pay the reward. Try again.",
     "rewardCancelled": "Payout cancelled. The reward endpoint is idempotent — click \"Pay winners\" again to resume from the same winner list.",
     "rewardQrTitle": "Pay {name} — winner {index} of {total}",
-    "rewardQrHint": "No WebLN detected. Scan the QR or copy the invoice to send {amount} sats from any Lightning wallet. We'll move to the next winner as soon as this invoice settles.",
+    "rewardQrHint": "No Lightning wallet extension detected. Scan the QR or copy the invoice to send {amount} sats from any Lightning wallet. We'll move to the next winner as soon as this invoice settles.",
     "rewardQrWaiting": "Waiting for the invoice to settle…",
     "zapNoAddress": "This user hasn't set a Lightning address on their Nostr profile.",
     "zapSending": "Preparing your zap...",
@@ -629,10 +637,10 @@
     "completions": "Completions",
     "noCompletions": "No completions yet.",
     "pendingReview": "Pending review",
-    "verifyCompletions": "Verify Completions",
+    "verifyCompletions": "Verify proofs",
     "approving": "Approving...",
     "rejecting": "Rejecting...",
-    "awardBadges": "Award Badges",
+    "awardBadges": "Award badges",
     "awarding": "Awarding...",
     "badgeEarnedTag": "Badge awarded",
     "awarded": "Badges awarded!",
@@ -646,8 +654,8 @@
     "starts": "Starts",
     "ends": "Ends",
     "status": "Status",
-    "editChallenge": "Edit Challenge",
-    "deleteChallenge": "Delete Challenge",
+    "editChallenge": "Edit challenge",
+    "deleteChallenge": "Delete challenge",
     "confirmDelete": "Are you sure? This action cannot be undone.",
     "deleted": "Challenge deleted"
   },
@@ -668,7 +676,7 @@
   },
   "fundPot": {
     "title": "Fund this pot",
-    "description": "Send sats to the prize pot for \"{title}\". Your zap goes to the creator's Lightning address and gets referenced by the challenge's NIP-75 goal event.",
+    "description": "Send sats to the prize pot for \"{title}\". Your zap goes to the creator's Lightning address and shows up on the challenge's funding goal.",
     "amount": "Amount (sats)",
     "customPlaceholder": "Custom amount",
     "message": "Message (optional)",
@@ -676,8 +684,8 @@
     "fund": "Fund",
     "signing": "Signing zap request…",
     "fetchingInvoice": "Fetching invoice…",
-    "paying": "Paying via WebLN…",
-    "noWebln": "No WebLN extension — scan the QR or copy the invoice to pay from any Lightning wallet. We'll detect the payment automatically.",
+    "paying": "Paying with your wallet…",
+    "noWebln": "No wallet extension detected — scan the QR or copy the invoice to pay from any Lightning wallet. We'll detect the payment automatically.",
     "waitingPayment": "Waiting for payment…",
     "copyInvoice": "Copy invoice",
     "copiedInvoice": "Copied!",
@@ -686,7 +694,7 @@
     "errorNoCreatorLud16": "The creator has no Lightning address on their Nostr profile yet."
   },
   "myChallenges": {
-    "title": "My Challenges",
+    "title": "My challenges",
     "created": "Created",
     "joined": "Joined",
     "achievements": "Achievements",
@@ -809,7 +817,7 @@
     "syncing": "Syncing...",
     "syncSuccess": "Profile synced from Nostr",
     "syncFailed": "Could not sync from relays",
-    "syncHint": "Sync pulls your latest kind:0 metadata from relays into Arena. Publish signs a new kind:0 with your edits and pushes it back — fields Arena doesn't manage (nip05, website, banner…) are preserved from the version already on relays.",
+    "syncHint": "Sync pulls your latest profile from your Nostr relays into Arena. Publish signs the updated profile and pushes it back — fields Arena doesn't manage (nip05, website, banner…) are preserved from the version already on relays.",
     "publishToNostr": "Publish to Nostr",
     "publishing": "Publishing...",
     "publishSuccess": "Profile published to Nostr",

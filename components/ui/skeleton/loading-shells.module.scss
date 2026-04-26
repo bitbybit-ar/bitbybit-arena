@@ -1,0 +1,73 @@
+@use "@/styles/spacing" as *;
+@use "@/styles/media-mixins" as *;
+
+// Shared layout shells for `loading.tsx` route fallbacks. Lives next
+// to the Skeleton primitive that consumes it so the two move together.
+// Keeping the layout in SCSS modules (instead of inline `style={...}`
+// in each loading.tsx) matches the project's "no CSS-in-JS" rule.
+
+.shell {
+  padding: $spacing-24;
+  display: flex;
+  flex-direction: column;
+}
+
+.spacerSm {
+  height: $spacing-8;
+}
+
+.spacerMd {
+  height: $spacing-12;
+}
+
+.spacerLg {
+  height: $spacing-16;
+}
+
+.spacerXl {
+  height: $spacing-24;
+}
+
+// Card-grid layout used by Explore + My-Challenges loading shells.
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: $spacing-24;
+}
+
+// Two-column layout used by the Challenge-detail loading shell.
+.detailGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: $spacing-24;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detailColumn {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+}
+
+// Row used by the Settings loading shell — avatar circle next to a
+// stack of form-field skeletons.
+.settingsRow {
+  display: flex;
+  gap: $spacing-24;
+  align-items: flex-start;
+}
+
+.settingsFields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+}
+
+// Form-field block used by the Create loading shell.
+.fieldGroup {
+  margin-bottom: $spacing-16;
+}
