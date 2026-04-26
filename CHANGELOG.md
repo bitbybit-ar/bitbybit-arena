@@ -74,6 +74,21 @@ Each challenge (and each checkpoint) carries an ordered `verification_methods` a
 - **`retained` flag**: if the creator would receive a share, it's marked retained and not paid out (the creator keeps their own sats — the UI shows "X sats retained by creator").
 - **No invoices cross our server.** No sats sit on our server. No custody. The only server-side Lightning surface is `POST /api/zap/status` which polls Nostr Wallet Connect to confirm settlement on QR-fallback flows.
 
+### Share on Nostr
+
+A reusable cross-flow feature that lets the user broadcast a kind:1 note about what they just did in Arena to the wider Nostr network. Pre-filled, editable, and signed client-side.
+
+- **Four trigger contexts**, each surfaced through `ShareOnNostrModal`:
+  - `challenge-created` — after a creator publishes a new challenge (`CreateChallengeForm`).
+  - `challenge-joined` — after a participant joins (`explore/[id]` detail page).
+  - `challenge-completed` — after a participant's status flips to `completed`.
+  - `badge-received` — after accepting a NIP-58 badge from the Achievements tab on `/my-challenges`.
+- **Locale-aware deep link** baked into the suggested content: the modal computes `${NEXT_PUBLIC_APP_URL}/${locale}/explore/${challenge_id}` (with a trailing-slash strip on the env var so a misconfigured base URL never produces a `//es/explore/…`).
+- **Pre-filled, editable copy** — i18n strings under `shareOnNostr.suggested.*` give Spanish + English defaults per context (badge-received also interpolates the badge name); the user can rewrite the note in-modal before publishing.
+- **Client-side signing** via the active signer (`useSignerContext().signWithPrompt`) — the same NIP-07 / NIP-46 / nsec signer the rest of the app uses. The note is built as a standard `buildNoteEvent` (kind:1) and published to `DEFAULT_RELAYS` via `publishSignedEvent`. No server round-trip; Arena never sees the note.
+- **Idle / publishing / published / error** state machine in the modal — the user gets a clear "shared" confirmation, retries on failure, and the `onPublished` callback gives parent components a hook to dismiss / refresh.
+- **Lazy-loaded** at every call site via `next/dynamic` so the modal's bundle only ships when a user actually opens a share flow.
+
 ### Profile, settings, notifications
 
 - **Settings page** with three sections: Profile (display name, username, avatar, about, lightning address — all backed by kind:0 metadata), Preferences (locale + theme), Danger Zone.
@@ -94,12 +109,25 @@ Each challenge (and each checkpoint) carries an ordered `verification_methods` a
 
 ### UI & design system
 
-- **Bottom-nav** with two tabs (Explore + My Challenges); Create and Settings reachable from buttons / avatar menu.
-- **`ceramic-card` mixin** as the single source for elevated surface styling — solid backgrounds, no glassmorphism.
-- **Block, Bubble, PixelIcon, PixelDissolve, BlockTower** — custom decorative components in `components/common/` that carry the BitByBit "stacked blocks" identity.
-- **Light / Dark / System** theme via `next-themes`, persisted in `localStorage`.
-- **Custom SVG icon set** in `components/icons/` (no icon-library dependency).
-- **Reduced-motion respected** — every drift / pulse / spotlight animation collapses to static under `@media (prefers-reduced-motion: reduce)`.
+- **Landing page** with a six-section narrative: Hero (dark, spotlight, pixel-art sword), How It Works (Crear → Batallá → Ganá), About (Habits vs Arena side-by-side), Partners (La Crypta + Nostr WoT), Support (zap-the-devs modal + GitHub star), Footer (motto, links, hackathon credit). PixelDissolve scattered-block transitions between sections.
+- **Bottom-nav** with two tabs (Explore + My Challenges); Create and Settings reachable from buttons and the avatar menu.
+- **`ceramic-card` mixin** as the single source for elevated surface styling — solid backgrounds, subtle borders, no glassmorphism. 26 modules consume it consistently.
+- **Custom decorative system**: `Block`, `Bubble`, `BlockTower`, `PixelIcon` (sword / shield / trophy / flag / vs / lightning shapes), `PixelDissolve` — the visual language that carries the BitByBit "stacked blocks" identity.
+- **Color palette**: purple primary (Nostr) + gold secondary (sats) + green success + red accent. Full light + dark theme tokens in `_colors.scss` / `_theme.scss`, theme switching via `next-themes` (Light / Dark / System), persisted in `localStorage`.
+- **Typography**: Nunito + Nunito Sans from Google Fonts, consistent type scale (`$font-size-xs` → `$font-size-hero`, `$font-weight-normal` → `$font-weight-extrabold`).
+- **Spacing & sizing scales**: `$spacing-4` through `$spacing-100`, `$border-radius-sm` through `$border-radius-full`. Hard rule: no hard-coded px values.
+- **Custom SVG icon set** in `components/icons/` — no `lucide-react` or any icon library dependency.
+- **UI primitives** in `components/ui/`: button, card, modal, dropdown, form (input + textarea + select + button), tabs, toast (with `useToast` hook), skeleton, block-loader, container, section, tag.
+- **App shell pieces** in `components/layout/`: Navbar (theme + locale + auth-aware), Footer, NotificationBell (polls every 30s, click-through with locale-preserving navigation), AppPageHeader, AppBackgroundDecor, SignerProviderClient, SignerRequiredNotice, ReSignInModal (auto-prompts when nsec / NIP-46 needs to re-sign mid-flow).
+- **Auth surface** in `components/auth/`: SignerMethodButtons picker, ExtensionSignerButton + ExtensionUpsell (NIP-07 fallback when `window.nostr` is missing), NostrConnectPanel (NIP-46 QR + bunker URL paste), NsecSignerForm (password input, reveal toggle, acknowledgement checkbox).
+- **Onboarding** in `components/onboarding/`: OnboardingGate routes new users through a WelcomeModal with the explicit consent flow for paste-nsec ("I understand this key lives in browser memory…").
+- **Challenge surface** in `components/challenges/`: ChallengeCard, ChallengeGrid, ExploreFilters (search + filter chips + sort dropdown + Only-following toggle), CreateChallengeForm (split into CheckpointEditor / RewardSection / VerificationSection), CheckpointItem (5 visual states: done / awaiting-review / rejected / locked / todo), CheckpointProgress (dot-per-step indicator), CheckpointSubmitForm, CheckpointSubmissionCard, CheckpointCompletionSection, AchievementCard, FundPotModal, ZapGoalProgress (live "Recent zappers" panel), ZapGoalBar (compact Explore-card variant), RewardDistributionPanel.
+- **Common UX primitives** in `components/common/`: Avatar (Nostr-aware fallback), ImageUpload (Blossom round-trip with preview), TagInput (free-form pills with `MAX_TAGS` counter), OptionCard (radio-style selection), FieldLabel, FormDivider, Tooltip, Section, EmptyState, InfiniteScrollSentinel.
+- **Share on Nostr modal** (`components/share/ShareOnNostrModal/`) for posting completions / awards back to relays from any flow.
+- **Loading + empty states everywhere** — every list view ships skeleton loaders and friendly empty-state copy (audit pass aligned every microcopy string with i18n keys).
+- **Mobile-first responsive**: bottom-nav on mobile / sidebar on desktop, safe-area-inset padding for notched devices, all decorative animations collapse on `@media (prefers-reduced-motion: reduce)`. SCSS breakpoints via `@include mobile / tablet / desktop` mixins.
+- **Animations**: `fadeInUp`, `spotlight-pulse`, `block-drop`, `block-pulse`, `confetti-fall` (24 particles in 5 colors on zap success), `scroll-reveal` + `scroll-reveal-stagger` (driven by `useScrollReveal`), per-section `drift-a / drift-b / drift-c` for floating block decorators. All defined in SCSS modules — no runtime animation library.
+- **Accessibility**: keyboard-accessible interactive elements, ARIA labels on icon-only controls (notification bell, theme toggle, etc.), focus management on modals, color contrast meeting WCAG 2.2 4.5:1 for text, color is never the sole indicator of meaning.
 
 ### Security
 
@@ -121,6 +149,14 @@ Each challenge (and each checkpoint) carries an ordered `verification_methods` a
 - **Concurrency-gated CI** (`ci-shared-test-db` group, `cancel-in-progress: false`) so two PRs can't race the integration suite's TRUNCATE between rebuilds.
 - **17 documentation files** in `docs/` — architecture, Nostr event design, login flow, proof-of-completion, prize distribution, checkpoints, deploy guide, testing strategy, judge walkthrough, and more.
 
+### Testing
+
+- **493 tests** across **51 test files** — split into a fast unit layer with mocked dependencies and an integration layer that runs against a real Neon test branch.
+- **Unit suite** (33 files) — runs in ~2 seconds, no network dependencies. Covers handler / errors / parse / rate-limit / verification-methods (`tests/unit/api/`), JWT session + auth routes (`tests/unit/auth*.test.ts`, `tests/unit/verify.test.ts`), Lightning / NWC / LNURL / zap-goal-progress / await-zap-receipt (`tests/unit/lightning.test.ts`, `tests/unit/nostr/*.test.ts`, `tests/unit/zap-status.test.ts`), every Zod schema (`tests/unit/schemas/*` — challenges / completions / nostr / pagination / primitives / profile), per-route business logic (`award`, `challenges`, `challenge-detail`, `completions`, `join`), and shared helpers (`utils`, `validate-form`, `http-url-schema`).
+- **Integration suite** (18 files) — runs sequentially against a shared Neon test database (CI gates on the `ci-shared-test-db` group to keep TRUNCATE between rebuilds from racing). Exercises the full request → Drizzle → Postgres flow, FK constraints, unique-index races, and progress recomputation: `award`, `badges-accept`, `challenges`, `challenges-follow`, `checkpoints`, `checkpoint-verify`, `completions-verify`, `join`, `my-badges`, `nostr-action-verify`, `nostr-hashtag-verify`, `notifications`, `notifications-emission`, `pending-checkpoint-submissions`, `popular-tags`, `profile`, `reward`, `zap-goal-progress`.
+- **`@vitest-environment node`** declared at the top of every integration file so `@neondatabase/serverless` doesn't trip its "SQL from the browser" warning under the default jsdom global.
+- **Run via** `npm test` (everything), `npm run test:unit` (~2s), `npm run test:integration` (~2 min, requires `.env.test` with a Neon test branch URL), or `npm run test:coverage` for a coverage report. Watch mode at `npm run test:watch`.
+
 ### NIPs implemented
 
 NIP-01, NIP-02, NIP-07, NIP-19, NIP-25, NIP-46, NIP-57, NIP-58, NIP-75, NIP-92, NIP-98, plus Blossom BUD-01/02.
@@ -133,13 +169,10 @@ Docs in `docs/` are the source of truth for architecture decisions, Nostr event 
 
 ### Credits
 
-- **Anix** — lead dev, architecture
-- **Llopo** — backend, Lightning integration
-- **Wander** — UX, frontend
-- **Leon** — PM, hackathon coordination
+- **Anix** ([@analiaacostaok](https://github.com/analiaacostaok)) — solo developer. Architecture, implementation, design, and the v1.0.0 hackathon submission.
 
-Built at La Crypta, the Bitcoin community in Argentina that hosted both BitByBit hackathons.
+Built at La Crypta, the Bitcoin community in Argentina that hosts the BitByBit hackathons.
 
-Sibling project: [bitbybit-habits](https://github.com/bitbybit-ar/bitbybit-habits) (Hackathon #1 FOUNDATIONS — Lightning).
+Sibling project: [bitbybit-habits](https://github.com/bitbybit-ar/bitbybit-habits) (Hackathon 1 FOUNDATIONS — Lightning).
 
 [1.0.0]: https://github.com/bitbybit-ar/bitbybit-arena/releases/tag/v1.0.0
