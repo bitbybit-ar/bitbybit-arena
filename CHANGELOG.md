@@ -147,7 +147,6 @@ A reusable cross-flow feature that lets the user broadcast a kind:1 note about w
 - **OpenAPI 3.1 spec** at [`docs/openapi.yaml`](docs/openapi.yaml) covering every route — 36 operations across 25 paths. Reader's guide at [`docs/api.md`](docs/api.md). Lints clean against `redocly`.
 - **CI** on every PR + push to main: typecheck, lint, unit tests, integration tests against a Neon test branch, production build. Post-merge `migrate` job applies migrations to the production branch via `DATABASE_URL_DIRECT`.
 - **Concurrency-gated CI** (`ci-shared-test-db` group, `cancel-in-progress: false`) so two PRs can't race the integration suite's TRUNCATE between rebuilds.
-- **17 documentation files** in `docs/` — architecture, Nostr event design, login flow, proof-of-completion, prize distribution, checkpoints, deploy guide, testing strategy, judge walkthrough, and more.
 
 ### Testing
 
@@ -165,7 +164,23 @@ Custom event kinds: `30100` (challenge definition), `7100` (challenge join), `71
 
 ### Documentation
 
-Docs in `docs/` are the source of truth for architecture decisions, Nostr event design, and individual flows. The full audit pass at release time aligned every doc with shipped behaviour.
+- **17 documentation files** in `docs/`, the source of truth for architecture decisions, Nostr event design, and individual flows:
+  - [`testing-plan.md`](docs/testing-plan.md) — eleven-step judge walkthrough, every Nostr event kind labelled.
+  - [`api.md`](docs/api.md) + [`openapi.yaml`](docs/openapi.yaml) — OpenAPI 3.1 reference for every route under `app/api/` (36 operations across 25 paths, redocly-clean).
+  - [`architecture.md`](docs/architecture.md) — stack, project structure, design decisions, data flow.
+  - [`nostr-events.md`](docs/nostr-events.md) — every custom event kind (30100 / 7100 / 7101 / 30101 / 30009 / 30008 / 8 / 9041 / 9734 / 9735) with full tag schemas and conditional emission rules.
+  - [`nostr-flows.md`](docs/nostr-flows.md) — end-to-end sequences for nostr-action proof, checkpoints, and zap rewards.
+  - [`nostr-login.md`](docs/nostr-login.md) — NIP-98 auth flow + all three signer methods.
+  - [`proof-of-completion.md`](docs/proof-of-completion.md) — the four verification paths.
+  - [`prize-distribution.md`](docs/prize-distribution.md) — funding via NIP-75, payout via NIP-57.
+  - [`checkpoints.md`](docs/checkpoints.md) — multi-step challenges, state machine, sequential / parallel modes.
+  - [`feed-and-explore.md`](docs/feed-and-explore.md) — search, filters, sorts, follow boost.
+  - [`tags.md`](docs/tags.md) — tagging system and Nostr `t`-tag interoperability.
+  - [`product-vision.md`](docs/product-vision.md), [`landing-design.md`](docs/landing-design.md), [`about-page.md`](docs/about-page.md), [`settings-page.md`](docs/settings-page.md) — UX surfaces.
+  - [`deploy.md`](docs/deploy.md) — Vercel + Neon production setup.
+  - [`testing.md`](docs/testing.md) — unit vs integration test strategy.
+- **CLAUDE.md** + **SUBMISSION.md** at repo root — coding conventions for AI assistants and judge quickstart, respectively.
+- A full audit pass at release time aligned every doc with shipped behaviour — every claim cross-referenced against code.
 
 ### Credits
 
