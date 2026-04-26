@@ -147,6 +147,7 @@ A reusable cross-flow feature that lets the user broadcast a kind:1 note about w
 - **OpenAPI 3.1 spec** at [`docs/openapi.yaml`](docs/openapi.yaml) covering every route — 36 operations across 25 paths. Reader's guide at [`docs/api.md`](docs/api.md). Lints clean against `redocly`.
 - **CI** on every PR + push to main: typecheck, lint, unit tests, integration tests against a Neon test branch, production build. Post-merge `migrate` job applies migrations to the production branch via `DATABASE_URL_DIRECT`.
 - **Concurrency-gated CI** (`ci-shared-test-db` group, `cancel-in-progress: false`) so two PRs can't race the integration suite's TRUNCATE between rebuilds.
+- **Seeder as a customizable template** (`scripts/seed.ts`) — 11 example challenges across the four verification methods, 8 mock users, plus a ready-to-payout `Demo: Tiered Prize Payout` with three pre-completed mocks at staggered `completed_at` timestamps so the tiered split is deterministic. Judges edit `MOCK_CHALLENGES` to suit their evaluation. Prize amounts kept tiny (21 sats `first_to_complete`, 100 sats `tiered`) so the Lightning flow is payable from any wallet during testing. Idempotent — wipes prior `mock-` rows before each insert.
 
 ### Testing
 
