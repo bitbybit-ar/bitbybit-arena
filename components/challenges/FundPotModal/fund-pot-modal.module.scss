@@ -31,8 +31,13 @@
   align-items: center;
   gap: $spacing-4;
   padding: $spacing-8 $spacing-12;
-  background: $color-bg;
-  border: 1px solid $color-border;
+  // Tinted overlay rather than $color-bg so the chip reads on the
+  // modal card in both themes (the card is already $color-surface;
+  // bg vs surface in dark mode are both navy, near-invisible). 12%
+  // tint + 20% border keeps the chip silhouette sharp next to the
+  // active state's solid purple — 6% was too subtle.
+  background: alpha($color-text-primary, 12%);
+  border: 1px solid alpha($color-text-primary, 20%);
   border-radius: $border-radius-md;
   font-family: $font-body;
   font-size: $font-size-sm;

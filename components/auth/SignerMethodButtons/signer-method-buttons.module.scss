@@ -1,10 +1,15 @@
 @use "@/styles/spacing" as *;
 @use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
 
 .methods {
   display: flex;
   flex-direction: column;
   gap: $spacing-12;
+
+  @include mobile {
+    gap: $spacing-8;
+  }
 }
 
 // Stagger fade-in applied only when the consumer opts in via
@@ -41,8 +46,27 @@
   }
 }
 
+// Wraps a method Button + its "what's this?" Tooltip. The button
+// flexes to fill the row; the tooltip trigger sits to its right and
+// stays visible without forcing the button to shrink.
+.methodRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+
+  // The extension method ships an internal Tooltip wrapper for the
+  // "no extension installed" case (focusableWrapper, block). Inside
+  // a methodRow that wrapper still needs to flex-fill so the trailing
+  // tooltip sits at the right edge of the row.
+  > :first-child {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
 .methodButton {
   @include method-button-layout;
+  flex: 1;
 }
 
 .methodInfo {

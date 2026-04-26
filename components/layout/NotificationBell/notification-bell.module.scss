@@ -65,8 +65,14 @@
   z-index: 1001;
   animation: bellMenuFadeIn 0.15s ease-out;
 
+  // On iPhone-SE-class viewports the previous `right: 0` anchored the
+  // dropdown to the bell at the screen edge, leaving the panel
+  // touching the right margin. Switch the anchor to the navbar
+  // padding so the dropdown sits inside the page gutter, and let it
+  // grow to the available width.
   @include mobile {
-    width: calc(100vw - #{$spacing-16});
+    right: -$spacing-8;
+    width: calc(100vw - #{$spacing-24});
   }
 }
 

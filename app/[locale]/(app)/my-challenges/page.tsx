@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import { Link } from "@/i18n/routing";
 import { PixelIcon } from "@/components/common/PixelIcon";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -39,6 +40,16 @@ const ShareOnNostrModal = dynamic(
 const TABS_ID = "my-challenges-tabs";
 type Tab = "joined" | "created" | "achievements";
 
+const VALID_TABS: Tab[] = ["joined", "created", "achievements"];
+
+// Read the initial tab from `?tab=` so deep-links from the
+// challenge-page awardee banner actually land on Achievements
+// instead of dropping the user on the default Joined tab.
+function initialTabFromUrl(raw: string | null): Tab {
+  if (raw && (VALID_TABS as string[]).includes(raw)) return raw as Tab;
+  return "joined";
+}
+
 interface MyChallengeItem {
   id: string;
   title: string;
@@ -65,6 +76,7 @@ export default function MyChallengesPage() {
   } = useSignerContext();
   const { showToast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [accepting, setAccepting] = useState<string | null>(null);
   const [createdItems, setCreatedItems] = useState<MyChallengeItem[]>([]);
   const [joinedItems, setJoinedItems] = useState<MyChallengeItem[]>([]);
@@ -76,7 +88,21 @@ export default function MyChallengesPage() {
   const [achievementsCursor, setAchievementsCursor] = useState<string | null>(null);
   const [loadingMoreAchievements, setLoadingMoreAchievements] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("joined");
+  const [tab, setTab] = useState<Tab>(() =>
+    initialTabFromUrl(searchParams?.get("tab") ?? null)
+  );
+
+  // Re-sync the tab state when the URL changes after mount so an
+  // in-place navigation (router.replace, history popstate, the
+  // awardee banner CTA opening this page while it's already mounted)
+  // doesn't leave the active tab stale. The `?tab=` param is the
+  // single source of truth — local clicks on the Tabs component
+  // still call setTab() directly so we keep instant feedback.
+  const urlTab = searchParams?.get("tab") ?? null;
+  useEffect(() => {
+    const next = initialTabFromUrl(urlTab);
+    setTab((prev) => (prev === next ? prev : next));
+  }, [urlTab]);
   const [shareContext, setShareContext] = useState<ShareContext | null>(null);
 
   const fetchAll = useCallback(() => {
@@ -307,6 +333,16 @@ export default function MyChallengesPage() {
             <EmptyState
               icon={<PixelIcon shape="flag" blockSize={8} />}
               title={t("emptyAchievements")}
+              description={t("emptyAchievementsBody")}
+              action={
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => router.push("/explore")}
+                >
+                  {t("emptyAchievementsCta")}
+                </Button>
+              }
             />
           ) : (
             <>
@@ -341,6 +377,24 @@ export default function MyChallengesPage() {
           <EmptyState
             icon={<PixelIcon shape="flag" blockSize={8} />}
             title={tab === "created" ? t("emptyCreated") : t("emptyJoined")}
+            description={
+              tab === "created" ? t("emptyCreatedBody") : t("emptyJoinedBody")
+            }
+            action={
+              tab === "created" ? (
+                <Button size="sm" onClick={handleCreateClick}>
+                  {tExplore("createNew")}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => router.push("/explore")}
+                >
+                  {t("emptyJoinedCta")}
+                </Button>
+              )
+            }
           />
         ) : (
           <div className={styles.list}>

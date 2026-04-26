@@ -1,6 +1,7 @@
 @use "@/styles/colors" as *;
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
+@use "@/styles/media-mixins" as *;
 
 .scanTitle {
   font-size: $font-size-sm;
@@ -18,6 +19,10 @@
   border-radius: $border-radius-md;
   margin-bottom: $spacing-8;
   color: $color-text-primary;
+
+  @include mobile {
+    padding: $spacing-12;
+  }
 }
 
 // Keeps the icon inline with the label and gives the copy link a
@@ -77,6 +82,13 @@
   display: flex;
   gap: $spacing-8;
   margin-bottom: $spacing-12;
+
+  // On narrow screens the input + Connect button get squeezed, leaving
+  // the bunker URI cropped to a few characters before ellipsis. Stack
+  // them vertically so the input keeps full width.
+  @include mobile {
+    flex-direction: column;
+  }
 }
 
 .bunkerInput {

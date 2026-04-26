@@ -433,10 +433,17 @@
 }
 
 .submissionModalEmpty {
+  // Drop the bottom margin EmptyState ships with so the empty state
+  // sits flush inside the submission-details modal.
   margin: 0;
-  font-size: $font-size-sm;
-  color: $color-text-secondary;
-  font-style: italic;
+}
+
+// Inline EmptyState used inside Section blocks (no participants, no
+// submissions yet). EmptyState's default padding is generous for
+// page-level use; inside a panel we want it tighter so the section
+// header still reads as the dominant element.
+.inlineEmpty {
+  padding: $spacing-16 0;
 }
 
 .submissionModalImage {

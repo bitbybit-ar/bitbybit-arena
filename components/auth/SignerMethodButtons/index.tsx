@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ExtensionSignerButton } from "@/components/auth/ExtensionSignerButton";
+import { Tooltip } from "@/components/common/Tooltip";
 import { LinkIcon, KeyIcon } from "@/components/icons";
 import type { SignerHandle, SignerType } from "@/lib/nostr/signers";
 import type { AuthError } from "@/lib/nostr/auth-errors";
@@ -64,56 +65,82 @@ export function SignerMethodButtons({
     ? `${styles.methods} ${styles.animate}`
     : styles.methods;
 
-  const showExtension = allowedMethods.includes("extension");
-  const showNip46 = allowedMethods.includes("nip46");
-  const showNsec = allowedMethods.includes("nsec");
+  // Single Set lookup beats three Array.includes() calls for the
+  // common case where the parent passes an array. O(1) per check
+  // instead of O(n) × 3, and reads more clearly when more methods
+  // get added to the picker.
+  const allowed = new Set(allowedMethods);
+  const showExtension = allowed.has("extension");
+  const showNip46 = allowed.has("nip46");
+  const showNsec = allowed.has("nsec");
 
   return (
     <div className={wrapperClassName}>
       {showExtension && (
-        <ExtensionSignerButton
-          onSigner={onSigner}
-          onError={onError}
-          expectedPubkey={expectedPubkey}
-        />
+        <div className={styles.methodRow}>
+          <ExtensionSignerButton
+            onSigner={onSigner}
+            onError={onError}
+            expectedPubkey={expectedPubkey}
+          />
+          <Tooltip
+            text={t("extensionExplainer")}
+            example={t("extensionExplainerExample")}
+            label={t("whatIsThis")}
+          />
+        </div>
       )}
 
       {showNip46 && (
-        <Button
-          type="button"
-          variant="primary"
-          fullWidth
-          className={styles.methodButton}
-          onClick={onSelectNip46}
-          disabled={disabled}
-        >
-          <LinkIcon size={20} />
-          <div className={styles.methodInfo}>
-            <span className={styles.methodName}>{t("connectTitle")}</span>
-            <span className={styles.methodDescription}>
-              {t("connectDescription")}
-            </span>
-          </div>
-        </Button>
+        <div className={styles.methodRow}>
+          <Button
+            type="button"
+            variant="primary"
+            fullWidth
+            className={styles.methodButton}
+            onClick={onSelectNip46}
+            disabled={disabled}
+          >
+            <LinkIcon size={20} />
+            <div className={styles.methodInfo}>
+              <span className={styles.methodName}>{t("connectTitle")}</span>
+              <span className={styles.methodDescription}>
+                {t("connectDescription")}
+              </span>
+            </div>
+          </Button>
+          <Tooltip
+            text={t("connectExplainer")}
+            example={t("connectExplainerExample")}
+            label={t("whatIsThis")}
+          />
+        </div>
       )}
 
       {showNsec && (
-        <Button
-          type="button"
-          variant="ghost"
-          fullWidth
-          className={styles.methodButton}
-          onClick={onSelectNsec}
-          disabled={disabled}
-        >
-          <KeyIcon size={20} />
-          <div className={styles.methodInfo}>
-            <span className={styles.methodName}>{t("nsecTitle")}</span>
-            <span className={styles.methodDescription}>
-              {t("nsecDescription")}
-            </span>
-          </div>
-        </Button>
+        <div className={styles.methodRow}>
+          <Button
+            type="button"
+            variant="ghost"
+            fullWidth
+            className={styles.methodButton}
+            onClick={onSelectNsec}
+            disabled={disabled}
+          >
+            <KeyIcon size={20} />
+            <div className={styles.methodInfo}>
+              <span className={styles.methodName}>{t("nsecTitle")}</span>
+              <span className={styles.methodDescription}>
+                {t("nsecDescription")}
+              </span>
+            </div>
+          </Button>
+          <Tooltip
+            text={t("nsecExplainer")}
+            example={t("nsecExplainerExample")}
+            label={t("whatIsThis")}
+          />
+        </div>
       )}
     </div>
   );

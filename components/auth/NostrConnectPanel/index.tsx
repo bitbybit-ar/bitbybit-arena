@@ -164,14 +164,37 @@ export function NostrConnectPanel({
     };
   }, []);
 
+  // Cheap shape check before we tear down the QR session and burn the
+  // round-trip to the bunker. Catches the typo case AND validates the
+  // host portion is a 64-char hex pubkey or an npub1 — the only two
+  // shapes the NIP-46 spec allows after `bunker://`. Anything looser
+  // would let a half-valid URL slip past us and surface the deeper
+  // "Connection failed" message a few seconds later, which read as
+  // a different error to users even though it's the same root cause.
+  const BUNKER_HOST_RE = /^(?:[0-9a-f]{64}|npub1[ac-hj-np-z02-9]{58,})/i;
+  const looksLikeBunkerUrl = (raw: string): boolean => {
+    const trimmed = raw.trim();
+    if (!trimmed.startsWith("bunker://")) return false;
+    const remainder = trimmed.slice("bunker://".length);
+    return BUNKER_HOST_RE.test(remainder);
+  };
+
   const handleBunkerConnect = async () => {
-    if (!bunkerUrl.trim()) return;
+    const trimmed = bunkerUrl.trim();
+    if (!trimmed) return;
+    if (!looksLikeBunkerUrl(trimmed)) {
+      // Inline field error — do NOT abort the QR scan. The user can
+      // either fix the URL and resubmit or switch back to the QR
+      // path without losing the in-progress session.
+      setLocalError(t("connectInvalidBunker"));
+      return;
+    }
     abortRef.current?.abort();
     clearSlowHint();
     setStatus("connecting");
     setLocalError(null);
     try {
-      const bunker = await connectWithBunkerURL(bunkerUrl, {
+      const bunker = await connectWithBunkerURL(trimmed, {
         onAuthUrl: (url) => setAuthChallengeUrl(safeAuthUrl(url)),
       });
       await finalize(bunker);
