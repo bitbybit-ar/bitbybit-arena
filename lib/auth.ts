@@ -41,6 +41,12 @@ export interface AuthSession {
   // sessions issued before this field existed will be `null` — callers
   // should treat that as "no preference, allow any signer".
   signer_type: SignerType | null;
+  // First-time onboarding flag. False until the user has either saved
+  // a profile manually or hydrated real kind:0 metadata from relays.
+  // Drives the welcome modal in the (app) layout. Old sessions without
+  // this field are treated as completed (true) so existing users don't
+  // see a welcome prompt after deploy.
+  profile_completed: boolean;
 }
 
 interface SessionPayload {
@@ -51,6 +57,7 @@ interface SessionPayload {
   locale: "es" | "en";
   nostr_pubkey: string;
   signer_type?: SignerType | null;
+  profile_completed?: boolean;
 }
 
 export async function createSession(session: SessionPayload): Promise<string> {
@@ -83,6 +90,9 @@ export async function getSession(): Promise<AuthSession | null> {
         p.signer_type && VALID_SIGNER_TYPES.includes(p.signer_type)
           ? p.signer_type
           : null,
+      // Old sessions (issued before the column existed) default to true
+      // so existing users don't get the welcome modal after deploy.
+      profile_completed: p.profile_completed !== false,
     };
   } catch {
     return null;

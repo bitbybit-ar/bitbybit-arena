@@ -31,15 +31,27 @@ import {
 } from "@/lib/nostr/signers";
 
 /**
- * Outcome of `completeLoginWithSigner`. Callers want to distinguish
- * "rate limited" from "auth failed" so the UI can say "esperá un
- * minuto" instead of a generic "error connecting" — otherwise users
- * who retry and trip the per-IP bucket just see the same banner on
- * every attempt.
+ * Outcome of `completeLoginWithSigner`. Carries the API error code on
+ * failure so callers can render a code-specific message via
+ * `errors.codes.<code>` instead of a single "Error connecting" string.
+ *
+ *  - `network`  — `fetch` itself rejected (offline, CORS, DNS). The
+ *                 `/api/auth/nostr` request never returned a status.
+ *  - `rate_limited` — server returned 429.
+ *  - `api`      — server returned a non-OK status with an error code.
+ *                 `code` is whatever the server emitted (e.g.
+ *                 `auth_invalid_signature`, `auth_clock_skew`).
+ *  - `signer`   — the signer threw before we even hit the API (user
+ *                 cancelled, extension disconnected). `cause` carries
+ *                 the original error so the caller can decide whether
+ *                 to swallow it (`isSignerCancellation`) or surface it.
  */
 export type LoginResult =
   | { ok: true }
-  | { ok: false; reason: "rate_limited" | "failed" };
+  | { ok: false; reason: "network" }
+  | { ok: false; reason: "rate_limited" }
+  | { ok: false; reason: "api"; code?: string }
+  | { ok: false; reason: "signer"; cause: unknown };
 
 interface SignerContextValue {
   /** Reexported from SessionProvider so consumers only need one context. */
@@ -170,15 +182,16 @@ export function SignerProvider({
 
   const completeLoginWithSigner = useCallback(
     async (next: SignerHandle): Promise<LoginResult> => {
+      // NIP-98 HTTP Auth: build a kind:27235 event whose `u` tag
+      // pins the absolute request URL, `method` tag pins the verb,
+      // and a custom `arena_signer` tag carries the signer method
+      // so it travels inside the signed envelope (a MITM can't
+      // forge a different signer_type without invalidating the
+      // signature). Empty content per the spec.
+      const url = new URL("/api/auth/nostr", window.location.origin).toString();
+      let signed;
       try {
-        // NIP-98 HTTP Auth: build a kind:27235 event whose `u` tag
-        // pins the absolute request URL, `method` tag pins the verb,
-        // and a custom `arena_signer` tag carries the signer method
-        // so it travels inside the signed envelope (a MITM can't
-        // forge a different signer_type without invalidating the
-        // signature). Empty content per the spec.
-        const url = new URL("/api/auth/nostr", window.location.origin).toString();
-        const signed = await next.sign({
+        signed = await next.sign({
           kind: 27235,
           created_at: Math.floor(Date.now() / 1000),
           tags: [
@@ -188,24 +201,45 @@ export function SignerProvider({
           ],
           content: "",
         });
+      } catch (cause) {
+        // Sign failed BEFORE we reached the network — extension declined,
+        // bunker offline, nsec invalid. Caller decides whether to swallow
+        // (cancellation) or surface. We split this from `network` so the
+        // signin UI can stay quiet on cancel.
+        return { ok: false, reason: "signer", cause };
+      }
 
-        const authRes = await fetch("/api/auth/nostr", {
+      let authRes: Response;
+      try {
+        authRes = await fetch("/api/auth/nostr", {
           method: "POST",
           headers: {
             Authorization: `Nostr ${btoa(JSON.stringify(signed))}`,
           },
         });
-        if (authRes.status === 429) {
-          return { ok: false, reason: "rate_limited" };
-        }
-        if (!authRes.ok) return { ok: false, reason: "failed" };
-
-        setSigner(next);
-        await refresh();
-        return { ok: true };
       } catch {
-        return { ok: false, reason: "failed" };
+        // `fetch` only throws on transport-level failure (offline, DNS,
+        // CORS). Non-2xx status comes back as a normal Response.
+        return { ok: false, reason: "network" };
       }
+
+      if (authRes.status === 429) {
+        return { ok: false, reason: "rate_limited" };
+      }
+      if (!authRes.ok) {
+        // Pick up the structured error code emitted by apiHandler. We
+        // intentionally ignore the English `error` string — the client
+        // translates by code via `errors.codes.<code>`, falling back
+        // server-side text only when the code is unknown.
+        const json = await authRes
+          .json()
+          .catch(() => null) as { code?: string } | null;
+        return { ok: false, reason: "api", code: json?.code };
+      }
+
+      setSigner(next);
+      await refresh();
+      return { ok: true };
     },
     [setSigner, refresh]
   );

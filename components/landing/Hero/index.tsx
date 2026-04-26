@@ -6,10 +6,17 @@ import { PixelIcon } from "@/components/common/PixelIcon";
 import { PixelDissolve } from "@/components/common/PixelDissolve";
 import { Button } from "@/components/ui/button";
 import { FlagIcon, TrophyIcon, BoltIcon, BadgeIcon } from "@/components/icons";
+import { useSession } from "@/lib/contexts/session-context";
 import styles from "./hero.module.scss";
 
 export function Hero() {
   const t = useTranslations("landing.hero");
+  const { user } = useSession();
+  // Logged-in users skip the signin bounce and go straight to create.
+  // Anonymous users land on signin with `next=/create` so the post-login
+  // redirect honors their original intent rather than dumping them on
+  // /explore.
+  const createHref = user ? "/create" : "/signin?next=/create";
 
   return (
     <section className={styles.hero}>
@@ -49,7 +56,7 @@ export function Hero() {
             <Button href="/explore" variant="primary">
               {t("exploreCta")}
             </Button>
-            <Button href="/explore" variant="secondary">
+            <Button href={createHref} variant="secondary">
               {t("createCta")}
             </Button>
           </div>

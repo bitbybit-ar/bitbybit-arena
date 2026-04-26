@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, AuthSession } from "@/lib/auth";
 import { getDb, Db } from "@/lib/db";
-import { ApiError, RateLimitError } from "./errors";
+import { ApiError, RateLimitError, type ApiErrorCode } from "./errors";
 import { defaultRateLimitStore, type RateLimitStore } from "./rate-limit";
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+  code?: ApiErrorCode;
 }
 
 export class CreatedResponse<T> {
@@ -99,7 +100,7 @@ export function apiHandler<T>(
 
       if (requireAuth && !session) {
         return NextResponse.json(
-          { success: false, error: "Unauthorized" } satisfies ApiResponse,
+          { success: false, error: "Unauthorized", code: "unauthorized" } satisfies ApiResponse,
           { status: 401, headers: { "Cache-Control": "private, no-store" } }
         );
       }
@@ -119,7 +120,7 @@ export function apiHandler<T>(
     } catch (error) {
       if (error instanceof RateLimitError) {
         return NextResponse.json(
-          { success: false, error: "Too many requests" } satisfies ApiResponse,
+          { success: false, error: error.message, code: error.code } satisfies ApiResponse,
           {
             status: 429,
             headers: {
@@ -132,14 +133,14 @@ export function apiHandler<T>(
 
       if (error instanceof ApiError) {
         return NextResponse.json(
-          { success: false, error: error.message } satisfies ApiResponse,
+          { success: false, error: error.message, code: error.code } satisfies ApiResponse,
           { status: error.statusCode, headers: { "Cache-Control": "private, no-store" } }
         );
       }
 
       console.error("API error:", error);
       return NextResponse.json(
-        { success: false, error: "Internal server error" } satisfies ApiResponse,
+        { success: false, error: "Internal server error", code: "internal" } satisfies ApiResponse,
         { status: 500, headers: { "Cache-Control": "private, no-store" } }
       );
     }

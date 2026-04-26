@@ -2,14 +2,19 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { Link, useRouter } from "@/i18n/routing";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { createNewIdentity } from "@/lib/nostr/create-account";
-import { useSignerContext } from "@/lib/signer-context";
+import { useSignerContext, type LoginResult } from "@/lib/signer-context";
 import { makeNsecSigner } from "@/lib/nostr/signers";
 import type { SignerHandle } from "@/lib/nostr/signers";
-import { type AuthError, loginError } from "@/lib/nostr/auth-errors";
+import {
+  type AuthError,
+  loginError,
+  isSignerCancellation,
+} from "@/lib/nostr/auth-errors";
 import { useAuthErrorLookup } from "@/lib/hooks/useAuthErrorLookup";
 import { SignerMethodButtons } from "@/components/auth/SignerMethodButtons";
 import { ExtensionUpsell } from "@/components/auth/ExtensionUpsell";
@@ -30,11 +35,59 @@ import styles from "./signin.module.scss";
 
 type Panel = "picker" | "nsec" | "nip46";
 
+// Whitelist for the `next` query param. We only honor known internal
+// paths so a malicious link can't redirect users to a third-party site
+// after login (open-redirect class). Add new entries when new flows
+// need a redirect.
+const ALLOWED_NEXT_PATHS = new Set(["/explore", "/create", "/my-challenges", "/settings"]);
+
+function safeNext(raw: string | null): string {
+  if (!raw) return "/explore";
+  if (ALLOWED_NEXT_PATHS.has(raw)) return raw;
+  // Allow `/explore/<id>` so a "join this challenge" link survives the
+  // signin bounce.
+  if (raw.startsWith("/explore/") && !raw.includes("..") && !raw.includes("//")) {
+    return raw;
+  }
+  return "/explore";
+}
+
 export function SignInClient() {
   const t = useTranslations("login");
+  const tErr = useTranslations("errors.codes");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = safeNext(searchParams.get("next"));
   const lookupAuthError = useAuthErrorLookup();
   const { completeLoginWithSigner } = useSignerContext();
+
+  // Map a granular LoginResult into a localized string for the banner.
+  // Returns null when the failure should be silent (signer cancellation),
+  // which is the case the previous "everything → 'error'" lookup got
+  // wrong: cancelling the extension popup used to flash the same red
+  // error as a real auth failure.
+  const messageFor = (result: Extract<LoginResult, { ok: false }>): string | null => {
+    if (result.reason === "signer") {
+      if (isSignerCancellation(result.cause)) return null;
+      return lookupAuthError(loginError("nostr_signing_rejected"));
+    }
+    if (result.reason === "rate_limited") {
+      return lookupAuthError(loginError("rate_limited"));
+    }
+    if (result.reason === "network") {
+      return tErr("network_error");
+    }
+    // result.reason === "api"
+    if (result.code) {
+      try {
+        const translated = tErr(result.code);
+        if (translated && translated !== result.code) return translated;
+      } catch {
+        /* unknown code → generic fallback */
+      }
+    }
+    return lookupAuthError(loginError("error"));
+  };
 
   const [panel, setPanel] = useState<Panel>("picker");
   const [error, setError] = useState<string | null>(null);
@@ -49,14 +102,11 @@ export function SignInClient() {
     setError(null);
     const result = await completeLoginWithSigner(signer);
     if (!result.ok) {
-      setError(
-        lookupAuthError(
-          loginError(result.reason === "rate_limited" ? "rate_limited" : "error")
-        )
-      );
+      const msg = messageFor(result);
+      if (msg) setError(msg);
       return;
     }
-    router.push("/explore");
+    router.push(nextPath);
   };
 
   const handleError = (err: AuthError) => {
@@ -75,11 +125,8 @@ export function SignInClient() {
       // refetch, which made `/explore` render as logged-out.
       const result = await completeLoginWithSigner(signer);
       if (!result.ok) {
-        setError(
-          lookupAuthError(
-            loginError(result.reason === "rate_limited" ? "rate_limited" : "error")
-          )
-        );
+        const msg = messageFor(result);
+        if (msg) setError(msg);
         return;
       }
       setCreatedNsec(nsec);
@@ -100,7 +147,7 @@ export function SignInClient() {
   const handleContinueAfterCreate = () => {
     setCreatedNsec(null);
     setSavedAcknowledged(false);
-    router.push("/explore");
+    router.push(nextPath);
   };
 
   const closePanel = () => {
@@ -138,7 +185,9 @@ export function SignInClient() {
 
       <div className={styles.card}>
         <h1 className={styles.title}>{t("title")}</h1>
-        <p className={styles.subtitle}>{t("subtitle")}</p>
+        <p className={styles.subtitle}>
+          {nextPath === "/create" ? t("subtitleCreate") : t("subtitle")}
+        </p>
 
         <SignerMethodButtons
           onSigner={handleSignerFromChild}

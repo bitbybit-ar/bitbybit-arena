@@ -13,14 +13,20 @@ export const POST = apiHandler(async (_req: NextRequest, { session, db, params }
   });
 
   if (challenge.status !== "open" && challenge.status !== "in_progress") {
-    throw new BadRequestError("This challenge is not accepting participants");
+    throw new BadRequestError(
+      "This challenge is not accepting participants",
+      "challenge_not_accepting_participants"
+    );
   }
 
   // Check if already joined (including withdrawn — allow rejoin)
   const existing = await findParticipation(db, params.id, session!.user_id);
 
   if (existing && existing.status !== "withdrawn") {
-    throw new ConflictError("You have already joined this challenge");
+    throw new ConflictError(
+      "You have already joined this challenge",
+      "already_joined"
+    );
   }
 
   if (existing && existing.status === "withdrawn") {
@@ -61,8 +67,15 @@ export const DELETE = apiHandler(async (_req: NextRequest, { session, db, params
   const existing = await findParticipation(db, params.id, session!.user_id);
 
   if (!existing) throw new NotFoundError("Participation");
-  if (existing.status === "withdrawn") throw new BadRequestError("Already withdrawn");
-  if (existing.status === "completed") throw new BadRequestError("Cannot withdraw from a completed challenge");
+  if (existing.status === "withdrawn") {
+    throw new BadRequestError("Already withdrawn", "already_withdrawn");
+  }
+  if (existing.status === "completed") {
+    throw new BadRequestError(
+      "Cannot withdraw from a completed challenge",
+      "cannot_withdraw_completed"
+    );
+  }
 
   const [updated] = await db
     .update(participants)

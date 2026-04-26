@@ -15,6 +15,7 @@ import { publishSignedEvent } from "@/lib/nostr/publish";
 import type { NostrMetadata } from "@/lib/nostr/types";
 import { UpdateProfileBodySchema } from "@/lib/schemas/profile";
 import { validateForm } from "@/lib/schemas/validate-form";
+import { translateApiError } from "@/lib/api/translate-error";
 import { useRouter, usePathname } from "@/i18n/routing";
 import { NOTIFICATION_TYPES, type NotificationType, type NotificationPrefs } from "@/lib/types";
 import styles from "./settings.module.scss";
@@ -34,6 +35,7 @@ interface UserProfile {
 export default function SettingsPage() {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
+  const tErr = useTranslations("errors.codes");
   const { showToast } = useToast();
   const { preference: themePref, setThemePreference } = useTheme();
   const { signWithPrompt, needsSigner, requestReSignIn } = useSignerContext();
@@ -154,7 +156,7 @@ export default function SettingsPage() {
         applyProfile(json.data);
         showToast(t("saved"), "success");
       } else {
-        showToast(json.error || tCommon("error"), "error");
+        showToast(translateApiError(json, tErr, tCommon("error")), "error");
       }
     } catch {
       showToast(tCommon("error"), "error");
@@ -172,7 +174,7 @@ export default function SettingsPage() {
         applyProfile(json.data);
         showToast(t("syncSuccess"), "success");
       } else {
-        showToast(json.error || t("syncFailed"), "error");
+        showToast(translateApiError(json, tErr, t("syncFailed")), "error");
       }
     } catch {
       showToast(t("syncFailed"), "error");
@@ -276,7 +278,7 @@ export default function SettingsPage() {
         // Session cookie is cleared server-side. Redirect to landing.
         window.location.href = `/${currentLocale}`;
       } else {
-        showToast(json.error || tCommon("error"), "error");
+        showToast(translateApiError(json, tErr, tCommon("error")), "error");
         setDeleting(false);
       }
     } catch {

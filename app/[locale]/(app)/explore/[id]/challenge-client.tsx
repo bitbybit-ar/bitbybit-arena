@@ -45,6 +45,7 @@ import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
 import { useToast } from "@/components/ui/toast";
+import { translateApiError } from "@/lib/api/translate-error";
 import type {
   ChallengeCheckpointCompletion,
   Checkpoint,
@@ -130,6 +131,7 @@ export default function ChallengeClient() {
   const t = useTranslations("challenge");
   const tCommon = useTranslations("common");
   const tCreate = useTranslations("createChallenge");
+  const tErr = useTranslations("errors.codes");
   const locale = useLocale();
   const router = useRouter();
   const params = useParams();
@@ -498,7 +500,7 @@ export default function ChallengeClient() {
       });
       const json = await res.json();
       if (!json.success) {
-        setVerifyError(json.error || t("proofNotFound"));
+        setVerifyError(translateApiError(json, tErr, t("proofNotFound")));
       } else {
         await fetchAll();
       }
@@ -719,7 +721,7 @@ export default function ChallengeClient() {
       });
       const json = await res.json();
       if (!json.success) {
-        setRewardError(json.error || t("rewardError"));
+        setRewardError(translateApiError(json, tErr, t("rewardError")));
         return;
       }
       const winners: RewardWinner[] = json.data.winners;
@@ -853,7 +855,7 @@ export default function ChallengeClient() {
       });
       const json = await res.json();
       if (!json.success) {
-        setRewardError(json.error || t("republishResultFailed"));
+        setRewardError(translateApiError(json, tErr, t("republishResultFailed")));
         return;
       }
       const winners: RewardWinner[] = json.data.winners;
@@ -946,7 +948,7 @@ export default function ChallengeClient() {
       const json = await res.json();
       if (!json.success) {
         updateCheckpointDraft(setCheckpointDrafts, checkpoint.id, {
-          error: json.error || t("checkpointError"),
+          error: translateApiError(json, tErr, t("checkpointError")),
         });
         return;
       }
@@ -1002,22 +1004,37 @@ export default function ChallengeClient() {
 
   const handleVerify = async (completionId: string, status: "approved" | "rejected") => {
     setActionLoading(completionId);
-    const res = await fetch(`/api/completions/${completionId}/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    const json = await res.json().catch(() => ({ success: false }));
-    if (status === "approved" && json.success) {
-      // Approving the proof IS the badge-award gesture — there's no
-      // separate creator action anymore. Look up the completion's user
-      // from the in-memory list and run the same award + publish path
-      // that the multi-select button used to drive.
-      const comp = completions.find((c) => c.id === completionId);
-      if (comp) await awardBadgeToUser(comp.user.id);
+    try {
+      const res = await fetch(`/api/completions/${completionId}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const json = await res.json().catch(() => ({ success: false }));
+      if (!json.success) {
+        showToast(translateApiError(json, tErr, t("verifyError")), "error");
+        return;
+      }
+      showToast(
+        status === "approved"
+          ? t("verifyApprovedToast")
+          : t("verifyRejectedToast"),
+        status === "approved" ? "success" : "info"
+      );
+      if (status === "approved") {
+        // Approving the proof IS the badge-award gesture — there's no
+        // separate creator action anymore. Look up the completion's user
+        // from the in-memory list and run the same award + publish path
+        // that the multi-select button used to drive.
+        const comp = completions.find((c) => c.id === completionId);
+        if (comp) await awardBadgeToUser(comp.user.id);
+      }
+      await fetchAll();
+    } catch {
+      showToast(t("verifyError"), "error");
+    } finally {
+      setActionLoading(null);
     }
-    await fetchAll();
-    setActionLoading(null);
   };
 
   // Award + publish the NIP-58 badge for a single recipient. Idempotent
@@ -1041,7 +1058,10 @@ export default function ChallengeClient() {
       body: JSON.stringify({ user_ids: [userId] }),
     });
     // 409 = already awarded; that's a no-op success for our purposes.
-    if (!awardRes.ok && awardRes.status !== 409) return;
+    if (!awardRes.ok && awardRes.status !== 409) {
+      showToast(t("badgeAwardFailed"), "error");
+      return;
+    }
 
     try {
       // NIP-58 needs the kind:30009 definition before we can `a`-tag it
@@ -1079,7 +1099,12 @@ export default function ChallengeClient() {
           nostr_event_id: signed.id,
         }),
       }).catch(() => {});
-    } catch { /* non-blocking — DB row is already in place */ }
+      showToast(t("badgeAwardSent"), "success");
+    } catch {
+      // DB row is already in place — let the creator know publishing failed
+      // so they can retry from the participant list.
+      showToast(t("badgeAwardFailed"), "error");
+    }
   };
 
   const handleVerifyCheckpoint = async (
@@ -1106,7 +1131,7 @@ export default function ChallengeClient() {
       const json = await res.json().catch(() => ({ success: false }));
       if (!json.success) {
         showToast(
-          json.error || t("checkpointReviewError"),
+          translateApiError(json, tErr, t("checkpointReviewError")),
           "error"
         );
         return;

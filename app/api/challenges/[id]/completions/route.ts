@@ -64,8 +64,12 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     resourceName: "Challenge",
   });
 
-  if (challenge.status === "cancelled") throw new BadRequestError("This challenge has been cancelled");
-  if (challenge.status === "completed") throw new BadRequestError("This challenge is already completed");
+  if (challenge.status === "cancelled") {
+    throw new BadRequestError("This challenge has been cancelled", "challenge_cancelled");
+  }
+  if (challenge.status === "completed") {
+    throw new BadRequestError("This challenge is already completed", "challenge_completed");
+  }
 
   // Must be an active participant
   const [participation] = await db
@@ -80,7 +84,9 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     )
     .limit(1);
 
-  if (!participation) throw new ForbiddenError("You must join this challenge first");
+  if (!participation) {
+    throw new ForbiddenError("You must join this challenge first", "must_join_first");
+  }
 
   const { content, image_url: resolvedImageUrl, step, method } = await parseBody(
     req,
@@ -96,20 +102,26 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
 
   if (selectedMethod === "nostr_action") {
     if (!challenge.nostr_action_target_event_id) {
-      throw new BadRequestError("Challenge is missing a target event id");
+      throw new BadRequestError(
+        "Challenge is missing a target event id",
+        "missing_target_event"
+      );
     }
     const result = await verifyLikeForTarget({
       likerPubkey: session!.nostr_pubkey,
       targetEventId: challenge.nostr_action_target_event_id,
     });
     if (!result.valid || !result.proofEventId) {
-      throw new BadRequestError("Like not found on Nostr relays for the target event");
+      throw new BadRequestError(
+        "Like not found on Nostr relays for the target event",
+        "like_not_found"
+      );
     }
     proofEventId = result.proofEventId;
     autoApprove = true;
   } else if (selectedMethod === "nostr_hashtag") {
     if (!challenge.nostr_hashtag) {
-      throw new BadRequestError("Challenge is missing a hashtag");
+      throw new BadRequestError("Challenge is missing a hashtag", "missing_hashtag");
     }
     const result = await verifyHashtagPost({
       authorPubkey: session!.nostr_pubkey,
@@ -117,7 +129,8 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     });
     if (!result.valid || !result.proofEventId) {
       throw new BadRequestError(
-        "No matching nostr note with that hashtag was found on your relays"
+        "No matching nostr note with that hashtag was found on your relays",
+        "hashtag_post_not_found"
       );
     }
     proofEventId = result.proofEventId;
@@ -129,7 +142,8 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     const textOk = !!content && content.trim().length >= 5;
     if (!textOk && !resolvedImageUrl) {
       throw new BadRequestError(
-        "Provide at least a 5-character description or an image proof"
+        "Provide at least a 5-character description or an image proof",
+        "proof_too_short"
       );
     }
     resolvedContent = textOk ? content!.trim() : null;
@@ -162,7 +176,10 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     // "Verify my like" clicks. Drizzle wraps Neon errors in a
     // DrizzleQueryError so we check both the wrapper and its cause.
     if (isUniqueViolation(err)) {
-      throw new BadRequestError("This like has already been submitted as a proof");
+      throw new BadRequestError(
+        "This like has already been submitted as a proof",
+        "duplicate_proof"
+      );
     }
     throw err;
   }

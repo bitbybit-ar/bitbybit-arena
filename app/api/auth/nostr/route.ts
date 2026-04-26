@@ -34,17 +34,23 @@ const SIGNER_TAG = "arena_signer";
 
 function parseAuthorizationHeader(header: string | null): unknown {
   if (!header) {
-    throw new BadRequestError("Missing Authorization header");
+    throw new BadRequestError("Missing Authorization header", "auth_missing_header");
   }
   const [scheme, encoded] = header.split(/\s+/, 2);
   if (scheme !== "Nostr" || !encoded) {
-    throw new BadRequestError("Authorization header must use the Nostr scheme");
+    throw new BadRequestError(
+      "Authorization header must use the Nostr scheme",
+      "auth_invalid_scheme"
+    );
   }
   try {
     const json = Buffer.from(encoded, "base64").toString("utf8");
     return JSON.parse(json);
   } catch {
-    throw new BadRequestError("Authorization header is not valid base64 JSON");
+    throw new BadRequestError(
+      "Authorization header is not valid base64 JSON",
+      "auth_invalid_base64"
+    );
   }
 }
 
@@ -69,8 +75,20 @@ export const POST = apiHandler(
       console.warn(
         `[auth/nostr] validation failed: ${validation.reason}`
       );
+      // Clock skew gets its own code so the client can show the
+      // user-actionable "sync your device's time" message instead of
+      // a generic signature error. Every other rejection path lumps
+      // under auth_invalid_signature — they're either tampering or
+      // bugs, not user errors the UI can guide them through.
+      if (validation.reason === "clock") {
+        throw new BadRequestError(
+          "Clock skew between client and server",
+          "auth_clock_skew"
+        );
+      }
       throw new BadRequestError(
-        `Invalid signature or auth event (${validation.reason})`
+        `Invalid signature or auth event (${validation.reason})`,
+        "auth_invalid_signature"
       );
     }
     const event = validation.event;
@@ -101,6 +119,11 @@ export const POST = apiHandler(
         .set({
           username: `nostr_${shortPubkey}`,
           display_name: `Nostr ${shortPubkey}`,
+          // Reset to false on reactivation so the user re-runs the
+          // welcome flow — their old profile data was wiped on delete,
+          // so the placeholder identity is the truth again until kind:0
+          // hydration or a manual save flips it back.
+          profile_completed: false,
           deleted_at: null,
           updated_at: new Date(),
         })
@@ -142,6 +165,7 @@ export const POST = apiHandler(
       locale: (user.locale as "es" | "en") || "es",
       nostr_pubkey: pubkey,
       signer_type: signerType,
+      profile_completed: user.profile_completed,
     });
 
     // `__Host-` prefix forces secure + path=/ + no Domain attribute,
@@ -202,14 +226,21 @@ async function hydrateMetadata(
     ]);
     if (!metadata) return user;
 
+    // Successful kind:0 hydration with a real name = profile is complete.
+    // Without this flag flip, even users who already published kind:0 to
+    // their relays would land on /explore and still see the onboarding
+    // banner until they manually saved profile settings.
+    const hydratedName = metadata.display_name || metadata.name;
+    const hasRealName = !!hydratedName && hydratedName.trim().length > 0;
+
     const [updated] = await db
       .update(users)
       .set({
-        display_name:
-          metadata.display_name || metadata.name || user.display_name,
+        display_name: hydratedName || user.display_name,
         avatar_url: metadata.picture || null,
         about: metadata.about || null,
         lightning_address: metadata.lud16 || null,
+        profile_completed: hasRealName ? true : user.profile_completed,
         nostr_metadata: metadata,
         nostr_metadata_updated_at: new Date(),
         updated_at: new Date(),

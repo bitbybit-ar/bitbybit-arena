@@ -37,7 +37,10 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
   const participantUserIds = new Set(validParticipants.map((p) => p.user_id));
   const invalidIds = user_ids.filter((id: string) => !participantUserIds.has(id));
   if (invalidIds.length > 0) {
-    throw new BadRequestError(`These users are not participants: ${invalidIds.join(", ")}`);
+    throw new BadRequestError(
+      `These users are not participants: ${invalidIds.join(", ")}`,
+      "award_not_participants"
+    );
   }
 
   // Check for existing badges
@@ -55,7 +58,10 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
   const newUserIds = user_ids.filter((id: string) => !alreadyAwarded.has(id));
 
   if (newUserIds.length === 0) {
-    throw new ConflictError("All specified users already have badges for this challenge");
+    throw new ConflictError(
+      "All specified users already have badges for this challenge",
+      "already_awarded"
+    );
   }
 
   const badgeName = challenge.badge_name || challenge.title;
