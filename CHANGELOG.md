@@ -127,20 +127,9 @@ NIP-01, NIP-02, NIP-07, NIP-19, NIP-25, NIP-46, NIP-57, NIP-58, NIP-75, NIP-92, 
 
 Custom event kinds: `30100` (challenge definition), `7100` (challenge join), `7101` (completion submission), `30101` (challenge result), `kind:24242` (Blossom upload auth). Kind 30100 overlaps with the unmerged [NIP-113](https://github.com/nostr-protocol/nips/pull/1508) (Activity Events) proposal and will be revisited if that NIP is accepted.
 
-### Known limitations
-
-Honest list of things shipped with v1 that we'd close before a real production launch:
-
-- **Mid-loop reward replay**: per-winner `reward_zap_receipt_id` bookkeeping isn't wired up. If the creator pays winner 1 and the tab closes before winner 2, retrying `Distribute rewards` re-offers all three winners — including winner 1, who's already received their sats. Workaround: pay all winners in one tab session. Tracked.
-- **Trusted Types is Report-Only**, not enforced. Promote after a clean reporting window.
-- **Notifications poll every 30s**. A relay-native subscription or Server-Sent Events would be lower-latency but the polling cadence has been tuned for the hackathon scope.
-- **Community voting** was in the original concept and is deferred. The verification API explicitly rejects any `community_vote` value if a client tries to set one.
-- **No checkpoint reordering** after creation — the `(challenge_id, order)` unique index makes a reorder UI painful and would need to renumber `checkpoint_completions`.
-- **No GIN index on `tags`** today — the table is small enough that B-tree indexes on `creator_id`, `status`, `type`, `ends_at` carry the load, but tag filtering would benefit from `index("challenges_tags_idx").using("gin", table.tags)` once volume grows.
-
 ### Documentation
 
-Docs in `docs/` are the source of truth for architecture decisions, Nostr event design, and individual flows. The full audit pass at release time aligned every doc with shipped behaviour — see PR #101.
+Docs in `docs/` are the source of truth for architecture decisions, Nostr event design, and individual flows. The full audit pass at release time aligned every doc with shipped behaviour.
 
 ### Credits
 
