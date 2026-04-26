@@ -60,6 +60,8 @@ export function ImageUpload({
     if (inputRef.current) inputRef.current.value = "";
   };
 
+  const tErrors = useTranslations("imageUpload.errors");
+
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
     setError(null);
@@ -79,8 +81,26 @@ export function ImageUpload({
       const descriptor = await uploadToBlossom(file, signWithPrompt);
       onChange(descriptor);
     } catch (err) {
+      // Translate by stable code rather than surfacing the English
+      // `err.message` directly. The Spanish UI used to render
+      // "Network error uploading to Blossom" verbatim — now it gets
+      // "No pudimos conectar con el servidor de imágenes…".
+      //
+      // next-intl 3.x doesn't throw on missing keys: it returns the
+      // key literal and logs a warning. So a `try/catch` alone would
+      // silently set the error message to the raw code (e.g.
+      // "server_rejected") on a bundle drift. Compare the lookup
+      // result against the input key — if they match, fall back to
+      // the friendly generic instead of leaking the code text.
       if (err instanceof BlossomUploadError) {
-        setError(err.message);
+        let translated: string | null = null;
+        try {
+          const out = tErrors(err.code);
+          if (out && out !== err.code) translated = out;
+        } catch {
+          /* fall through to generic */
+        }
+        setError(translated ?? t("uploadFailed"));
       } else {
         setError(t("uploadFailed"));
       }
@@ -139,6 +159,7 @@ export function ImageUpload({
           className={styles.dropzone}
           onClick={handlePick}
           disabled={uploading}
+          aria-busy={uploading}
         >
           <span className={styles.dropzoneTitle}>
             {uploading ? t("uploading") : t("chooseFile")}
@@ -147,6 +168,25 @@ export function ImageUpload({
             {t("hint", { max: maxSizeMB })}
           </span>
         </button>
+      )}
+
+      {/*
+        Indeterminate progress bar while the Blossom upload runs.
+        Blossom's HTTP API doesn't stream progress events back so a
+        true percentage isn't available — the indeterminate stripe is
+        an honest signal that something is happening without lying
+        about how far along it is. role="progressbar" announces the
+        busy state to screen readers.
+      */}
+      {uploading && (
+        <div
+          className={styles.progress}
+          role="progressbar"
+          aria-busy="true"
+          aria-label={t("uploading")}
+        >
+          <div className={styles.progressBar} />
+        </div>
       )}
 
       {error && <p className={styles.error}>{error}</p>}

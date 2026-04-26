@@ -11,7 +11,7 @@ type ParticipantRow = InferSelectModel<typeof participants>;
 
 // POST /api/completions/[id]/verify — creator approves or rejects a completion
 export const POST = createVerifySubmissionHandler<
-  { status: "approved" | "rejected" },
+  { status: "approved" | "rejected"; reject_reason?: string | null },
   CompletionRow,
   ChallengeRow,
   { participation: ParticipantRow | undefined }
@@ -55,6 +55,11 @@ export const POST = createVerifySubmissionHandler<
       status: body.status,
       reviewed_by: session.user_id,
       reviewed_at: new Date(),
+      // Only persist reject_reason on rejections; an approval should
+      // wipe any stale reason left over from a previous review (the
+      // resubmit path may re-flip a row from rejected back to pending,
+      // and we don't want the old note to bleed onto a fresh review).
+      reject_reason: body.status === "rejected" ? body.reject_reason ?? null : null,
     };
   },
   async extraWrites({ db, challenge, extra, status }) {
@@ -74,7 +79,7 @@ export const POST = createVerifySubmissionHandler<
         .where(eq(participants.id, participation.id)),
     ];
   },
-  notification({ submission, challenge, session, status }) {
+  notification({ submission, challenge, session, status, rejectReason }) {
     // Ping the submitter with the verdict. Client renders approved vs
     // rejected from metadata.status, so we only need one notification type.
     if (submission.user_id === session.user_id) return null;
@@ -88,6 +93,9 @@ export const POST = createVerifySubmissionHandler<
         challenge: challenge.title,
         challenge_id: challenge.id,
         completion_id: submission.id,
+        // Carry the reason through metadata so the bell + the
+        // submitter's challenge-detail view can render it inline.
+        ...(rejectReason ? { reject_reason: rejectReason } : {}),
       },
     };
   },

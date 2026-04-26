@@ -16,9 +16,21 @@ const POLL_MS = 30_000;
 // based on metadata.status. Everything else is a 1:1 key lookup.
 function resolveKey(n: Notification): string {
   if (n.type === "completion_verified" || n.type === "checkpoint_verified") {
-    const status = (n.metadata as { status?: string } | null)?.status;
-    const suffix = status === "rejected" ? "rejected" : "approved";
-    return `${n.type}_${suffix}`;
+    const meta = n.metadata as
+      | { status?: string; reject_reason?: unknown }
+      | null;
+    const status = meta?.status;
+    if (status === "rejected") {
+      // Pick the *_with_reason key when the creator left a note so the
+      // submitter sees "your proof was rejected: <reason>" instead of a
+      // generic line. Falls back to the plain rejected key when the
+      // metadata has no reason (older rows, auto-rejections).
+      const reason =
+        typeof meta?.reject_reason === "string" &&
+        meta.reject_reason.trim().length > 0;
+      return reason ? `${n.type}_rejected_with_reason` : `${n.type}_rejected`;
+    }
+    return `${n.type}_approved`;
   }
   return n.type;
 }
@@ -39,11 +51,13 @@ function extractVars(
   const checkpoint =
     str(metadata.checkpoint) ?? str(metadata.checkpoint_title);
   const badge = str(metadata.badge);
+  const rejectReason = str(metadata.reject_reason);
 
   if (name !== undefined) vars.name = name;
   if (challenge !== undefined) vars.challenge = challenge;
   if (checkpoint !== undefined) vars.checkpoint = checkpoint;
   if (badge !== undefined) vars.badge = badge;
+  if (rejectReason !== undefined) vars.reason = rejectReason;
 
   return vars;
 }

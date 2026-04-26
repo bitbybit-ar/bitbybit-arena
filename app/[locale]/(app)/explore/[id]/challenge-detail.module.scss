@@ -718,11 +718,91 @@
   font-size: $font-size-base;
 }
 
+// Banner shown to badge winners on the challenge page. Sits above the
+// main grid so a freshly-approved participant sees it immediately on
+// their next render — no need to navigate to my-challenges to discover
+// they earned something.
+.badgeBanner {
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
+  padding: $spacing-12 $spacing-16;
+  margin-bottom: $spacing-16;
+  background: alpha($color-secondary, 0.12);
+  border: 1px solid alpha($color-secondary, 0.4);
+  border-radius: $border-radius-md;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.badgeBannerBody {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2;
+  flex: 1;
+
+  strong {
+    font-size: $font-size-md;
+    color: $color-text-primary;
+  }
+
+  span {
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+  }
+}
+
+// Stack the verify-like error message with its retry CTA so a flaky
+// relay round-trip doesn't force the user back up to the primary
+// "Verify like" button to try again.
+.verifyErrorBlock {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+  align-items: flex-start;
+  margin-top: $spacing-8;
+}
+
 .confirmActions {
   display: flex;
   justify-content: flex-end;
   gap: $spacing-12;
   flex-wrap: wrap;
+}
+
+// Reject-completion confirm modal — gives the creator a textarea to
+// explain why they're rejecting. Mirrors the checkpoint variant in
+// CheckpointSubmissionCard so both reject paths feel the same.
+.rejectReasonLabel {
+  display: block;
+  margin-bottom: $spacing-4;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $color-text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rejectReasonInput {
+  width: 100%;
+  margin-bottom: $spacing-16;
+  padding: $spacing-8 $spacing-12;
+  border-radius: $border-radius-md;
+  border: 1px solid $color-border;
+  background: alpha($color-text-primary, 4%);
+  color: $color-text-primary;
+  font-size: $font-size-sm;
+  font-family: $font-body;
+  resize: vertical;
+  min-height: 96px;
+  outline: none;
+
+  &:focus {
+    border-color: $color-primary;
+  }
 }
 
 .rewardBlock {

@@ -93,7 +93,21 @@ export function FundPotModal({
   // unmount or when `invoice` changes. The mounted-ref guard for
   // post-unmount fetch resolutions lives inside the hook itself
   // (see lib/hooks/useZapPolling.ts).
-  useZapPolling({ invoice: invoice || null, onSuccess });
+  //
+  // The hook also returns `expired = true` once it gives up after
+  // ~10 minutes of polling without a `paid` response. We surface that
+  // in the QR view so the user knows the invoice is stale and gets a
+  // "Generate a new invoice" CTA instead of staring at an indefinite
+  // "waiting" spinner.
+  const { expired } = useZapPolling({
+    invoice: invoice || null,
+    onSuccess,
+  });
+
+  const handleRegenerateInvoice = () => {
+    setInvoice("");
+    setStatus("idle");
+  };
 
   const handleFund = useCallback(async () => {
     if (!hasLightning || !creatorLightningAddress) {
@@ -174,24 +188,42 @@ export function FundPotModal({
         </div>
       ) : status === "no-webln" ? (
         <div className={styles.invoiceState}>
-          <p className={styles.description}>{t("noWebln")}</p>
-          <div className={styles.qrWrapper}>
-            <QRCodeSVG
-              value={invoice}
-              size={200}
-              bgColor="transparent"
-              fgColor="var(--color-text-primary)"
-              level="M"
-            />
-          </div>
-          <p className={styles.pollingHint}>{t("waitingPayment")}</p>
-          <div className={styles.invoiceBox}>
-            <code className={styles.invoiceText}>{invoice}</code>
-          </div>
-          <button className={styles.copyBtn} onClick={() => copy(invoice)}>
-            <CopyIcon size={16} />
-            {copied ? t("copiedInvoice") : t("copyInvoice")}
-          </button>
+          {expired ? (
+            // Invoice timed out without a `paid` response. Surface a
+            // dedicated state instead of leaving the user staring at a
+            // QR code that won't settle anymore.
+            <>
+              <p className={styles.errorText}>{t("invoiceExpired")}</p>
+              <button
+                className={styles.fundBtn}
+                onClick={handleRegenerateInvoice}
+              >
+                <BoltIcon size={18} color="white" />
+                {t("regenerateInvoice")}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className={styles.description}>{t("noWebln")}</p>
+              <div className={styles.qrWrapper}>
+                <QRCodeSVG
+                  value={invoice}
+                  size={200}
+                  bgColor="transparent"
+                  fgColor="var(--color-text-primary)"
+                  level="M"
+                />
+              </div>
+              <p className={styles.pollingHint}>{t("waitingPayment")}</p>
+              <div className={styles.invoiceBox}>
+                <code className={styles.invoiceText}>{invoice}</code>
+              </div>
+              <button className={styles.copyBtn} onClick={() => copy(invoice)}>
+                <CopyIcon size={16} />
+                {copied ? t("copiedInvoice") : t("copyInvoice")}
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <>

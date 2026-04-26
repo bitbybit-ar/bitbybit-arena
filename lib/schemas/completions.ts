@@ -18,11 +18,32 @@ import { HttpUrlSchema } from "./primitives";
 
 const ApprovalStatusSchema = z.enum(["approved", "rejected"]);
 
-const MAX_REJECT_REASON_LEN = 500;
+// Exported so client-side textareas can hard-cap matching the server
+// schema. Single source of truth — bumping this value updates both
+// the maxLength attribute and the Zod validator at once.
+export const MAX_REJECT_REASON_LEN = 500;
 
-/** POST /api/completions/[id]/verify — creator approves or rejects. */
+/**
+ * POST /api/completions/[id]/verify — creator approves or rejects.
+ *
+ * Mirrors the checkpoint variant: an optional `reject_reason` the
+ * creator can show the participant on the rejected state, capped at
+ * 500 chars and normalised so empty/whitespace stores as null.
+ */
 export const VerifyCompletionBodySchema = z.object({
   status: ApprovalStatusSchema,
+  reject_reason: z
+    .string()
+    .max(
+      MAX_REJECT_REASON_LEN,
+      `reject_reason must be at most ${MAX_REJECT_REASON_LEN} characters`
+    )
+    .nullish()
+    .transform((v) => {
+      if (v == null) return null;
+      const trimmed = v.trim();
+      return trimmed.length === 0 ? null : trimmed;
+    }),
 });
 
 export type VerifyCompletionBody = z.infer<typeof VerifyCompletionBodySchema>;

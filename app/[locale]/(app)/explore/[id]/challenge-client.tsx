@@ -58,7 +58,9 @@ import { useSession } from "@/lib/contexts/session-context";
 import { useSignerContext } from "@/lib/signer-context";
 import { useToast } from "@/components/ui/toast";
 import { translateApiError } from "@/lib/api/translate-error";
+import { MAX_REJECT_REASON_LEN } from "@/lib/schemas/completions";
 import type {
+  AchievementItem,
   ChallengeCheckpointCompletion,
   Checkpoint,
   CheckpointCompletion,
@@ -173,6 +175,11 @@ export default function ChallengeClient() {
     useState<BlossomDescriptor | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  // Pending badge for the current user on THIS challenge — drives the
+  // "You earned a badge!" banner that nudges them toward Achievements
+  // to publish kind:30008. Empty when the user has no badge yet, or
+  // already accepted it.
+  const [hasPendingBadge, setHasPendingBadge] = useState(false);
   // Tab is mirrored in the URL (`?tab=manage`) so creators can deep-
   // link straight to the Manage view from notifications. Source of
   // truth is the query string; the JSX reads via `activeTab` and we
@@ -210,6 +217,17 @@ export default function ChallengeClient() {
   const [shareContext, setShareContext] = useState<ShareContext | null>(null);
   const [showCreatorJoinWarning, setShowCreatorJoinWarning] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  // Distribute-reward confirm modal: distinct state from showLeaveConfirm
+  // because the actions, copy, and (most importantly) the destructive
+  // semantics differ — paying out real Lightning sats deserves its own
+  // gate, not a generic "are you sure".
+  const [showRewardConfirm, setShowRewardConfirm] = useState(false);
+  // Reject-completion confirm modal state. `rejectTargetId` doubles as
+  // the open/closed flag (null = closed) and the id we'll send to the
+  // verify endpoint when the creator clicks Reject. The reason draft
+  // is required (the submit handler refuses to send an empty string).
+  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
+  const [rejectReasonDraft, setRejectReasonDraft] = useState("");
   const [zapLoadingId, setZapLoadingId] = useState<string | null>(null);
   const [zapInvoice, setZapInvoice] = useState<{ pr: string; sats: number } | null>(null);
   // Per-submitter lud16 lookup state. "loading" hides the zap CTA until
@@ -332,6 +350,41 @@ export default function ChallengeClient() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // Detect whether the signed-in user has an UNACCEPTED badge for this
+  // challenge — i.e. the creator approved their proof and we wrote a
+  // kind:8 award, but the user hasn't published the kind:30008 profile-
+  // badges merge yet (which happens in my-challenges → Achievements).
+  // We surface this with a banner on the challenge page so the user
+  // doesn't have to navigate away to discover they've won something.
+  //
+  // Pulled into a stable callback (not inlined in the effect) so the
+  // award + approval paths can re-run it explicitly after a new badge
+  // could have been minted, without depending on `completions` and
+  // refetching after every unrelated state change.
+  const refreshPendingBadge = useCallback(async () => {
+    if (!sessionUser) {
+      setHasPendingBadge(false);
+      return;
+    }
+    try {
+      const res = await fetch("/api/my-badges?limit=50");
+      if (!res.ok) return;
+      const json = await res.json();
+      if (!json.success) return;
+      const items: AchievementItem[] = json.data?.items ?? [];
+      const match = items.find(
+        (b) => b.challenge?.id === challengeId && !b.accepted_at
+      );
+      setHasPendingBadge(!!match);
+    } catch {
+      /* non-blocking — banner just stays hidden */
+    }
+  }, [sessionUser, challengeId]);
+
+  useEffect(() => {
+    void refreshPendingBadge();
+  }, [refreshPendingBadge]);
+
   // Click handler for the Join button. Creators joining their own
   // challenge see a warning modal first (they don't pay themselves if
   // they win); everyone else joins immediately.
@@ -357,26 +410,43 @@ export default function ChallengeClient() {
       }
     }
     setActionLoading("join");
-    await fetch(`/api/challenges/${challengeId}/join`, { method: "POST" });
-    if (challenge) {
-      try {
-        const signed = await signWithPrompt(
-          buildJoinEvent(challenge.creator.nostr_pubkey, challenge.slug)
-        );
-        await publishSignedEvent(signed);
-      } catch { /* non-blocking */ }
-    }
-    await fetchAll();
-    setActionLoading(null);
-    // No needsSigner gate: if the user cancelled re-sign-in we've
-    // already returned above, and `needsSigner` in this closure is
-    // stale — for nsec/bunker users who just re-attached it still
-    // reads `true` from the render where the handler was created.
-    if (challenge) {
-      setShareContext({
-        kind: "challenge-joined",
-        challenge: { id: challenge.id, title: challenge.title },
+    try {
+      const res = await fetch(`/api/challenges/${challengeId}/join`, {
+        method: "POST",
       });
+      const json = await res.json().catch(() => ({ success: false }));
+      if (!json.success) {
+        // Surface the API code (already_joined, challenge_completed, etc)
+        // through the i18n layer; only fall back to the generic copy
+        // when the server didn't emit a code we know how to translate.
+        showToast(translateApiError(json, tErr, t("joinFailed")), "error");
+        return;
+      }
+      if (challenge) {
+        try {
+          const signed = await signWithPrompt(
+            buildJoinEvent(challenge.creator.nostr_pubkey, challenge.slug)
+          );
+          await publishSignedEvent(signed);
+        } catch {
+          /* non-blocking — DB row is already in place */
+        }
+      }
+      await fetchAll();
+      // Open the share modal only AFTER the join API confirmed success.
+      // Previously the modal would pop on every click regardless of
+      // whether the join actually went through, which made a 4xx feel
+      // like a successful join.
+      if (challenge) {
+        setShareContext({
+          kind: "challenge-joined",
+          challenge: { id: challenge.id, title: challenge.title },
+        });
+      }
+    } catch {
+      showToast(t("joinFailed"), "error");
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -400,9 +470,21 @@ export default function ChallengeClient() {
       }
     }
     setActionLoading("withdraw");
-    await fetch(`/api/challenges/${challengeId}/join`, { method: "DELETE" });
-    await fetchAll();
-    setActionLoading(null);
+    try {
+      const res = await fetch(`/api/challenges/${challengeId}/join`, {
+        method: "DELETE",
+      });
+      const json = await res.json().catch(() => ({ success: false }));
+      if (!json.success) {
+        showToast(translateApiError(json, tErr, t("withdrawFailed")), "error");
+        return;
+      }
+      await fetchAll();
+    } catch {
+      showToast(t("withdrawFailed"), "error");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleSubmitProof = async () => {
@@ -415,36 +497,57 @@ export default function ChallengeClient() {
       }
     }
     setActionLoading("proof");
-    await fetch(`/api/challenges/${challengeId}/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        content: proofContent || null,
-        image_url: proofImageDescriptor?.url ?? null,
-      }),
-    });
-    if (challenge) {
-      try {
-        const signed = await signWithPrompt(
-          buildCompletionEvent({
-            creatorPubkey: challenge.creator.nostr_pubkey,
-            challengeSlug: challenge.slug,
-            content: proofContent,
-            imageDescriptor: proofImageDescriptor ?? undefined,
-          })
-        );
-        await publishSignedEvent(signed);
-      } catch { /* non-blocking */ }
-    }
-    setProofContent("");
-    setProofImageDescriptor(null);
-    await fetchAll();
-    setActionLoading(null);
-    if (challenge) {
-      setShareContext({
-        kind: "challenge-completed",
-        challenge: { id: challenge.id, title: challenge.title },
+    // Snapshot the form values so a successful submit can clear them
+    // AFTER the relay publish step. Clearing too early loses the user's
+    // text if the submit succeeds at the API but the publish step
+    // throws — they'd have to retype everything to retry. We only
+    // commit the clear once the API path returns ok.
+    const submittedContent = proofContent;
+    const submittedImage = proofImageDescriptor;
+    try {
+      const res = await fetch(`/api/challenges/${challengeId}/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: submittedContent || null,
+          image_url: submittedImage?.url ?? null,
+        }),
       });
+      const json = await res.json().catch(() => ({ success: false }));
+      if (!json.success) {
+        showToast(translateApiError(json, tErr, t("submitProofFailed")), "error");
+        return;
+      }
+      // API committed the proof — safe to clear the draft and proceed.
+      setProofContent("");
+      setProofImageDescriptor(null);
+      if (challenge) {
+        try {
+          const signed = await signWithPrompt(
+            buildCompletionEvent({
+              creatorPubkey: challenge.creator.nostr_pubkey,
+              challengeSlug: challenge.slug,
+              content: submittedContent,
+              imageDescriptor: submittedImage ?? undefined,
+            })
+          );
+          await publishSignedEvent(signed);
+        } catch {
+          /* non-blocking — DB row is already in place */
+        }
+      }
+      await fetchAll();
+      showToast(t("submitProofSuccess"), "success");
+      if (challenge) {
+        setShareContext({
+          kind: "challenge-completed",
+          challenge: { id: challenge.id, title: challenge.title },
+        });
+      }
+    } catch {
+      showToast(t("submitProofFailed"), "error");
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -780,8 +883,17 @@ export default function ChallengeClient() {
     return receiptId ?? undefined;
   };
 
+  // Modal trigger — does NOT pay anything yet, just opens the confirm
+  // dialog. The actual payout starts when the user clicks "Pay winners"
+  // inside the modal, which calls `handleClaimReward` directly.
+  const requestClaimReward = () => {
+    if (!challenge) return;
+    setShowRewardConfirm(true);
+  };
+
   const handleClaimReward = async () => {
     if (!challenge) return;
+    setShowRewardConfirm(false);
     setRewardError(null);
     setRewardStatus(null);
     if (needsSigner) {
@@ -834,12 +946,23 @@ export default function ChallengeClient() {
         return;
       }
 
+      // Per-winner counters used to surface "X of N paid" in the
+      // status line — the loop reports finer-grained progress than
+      // the QR modal alone, which only tells the user about the
+      // current invoice.
+      let paidCount = 0;
+      let stampFailures = 0;
+      setRewardStatus(t("rewardProgress", { paid: 0, total: payable.length }));
       for (let i = 0; i < payable.length; i++) {
         try {
           const receiptEventId = await payWinner(
             payable[i],
             i + 1,
             payable.length
+          );
+          paidCount += 1;
+          setRewardStatus(
+            t("rewardProgress", { paid: paidCount, total: payable.length })
           );
           // Per-winner PATCH right after the zap settles — server
           // stamps `participants.rewarded_at` so a mid-loop crash
@@ -848,28 +971,56 @@ export default function ChallengeClient() {
           // return one); when we manage to capture it via the
           // post-payment relay subscription we pass it through here.
           try {
-            await fetch(`/api/challenges/${challengeId}/reward`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                user_id: payable[i].user_id,
-                ...(receiptEventId
-                  ? { receipt_event_id: receiptEventId }
-                  : {}),
-              }),
-            });
+            const stampRes = await fetch(
+              `/api/challenges/${challengeId}/reward`,
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  user_id: payable[i].user_id,
+                  ...(receiptEventId
+                    ? { receipt_event_id: receiptEventId }
+                    : {}),
+                }),
+              }
+            );
+            if (!stampRes.ok) {
+              // Server didn't record the payment. The zap already
+              // landed in the recipient's wallet — a retry is safe
+              // because the POST /reward endpoint skips winners
+              // whose participants.rewarded_at is set, but THIS row
+              // wasn't stamped, so it WILL be re-offered. Surface a
+              // single warning at the end of the loop.
+              stampFailures += 1;
+            }
           } catch {
-            // Don't blow up the whole loop for a stamp failure — the
-            // zap already went through. Worst case: a retry re-offers
-            // this winner, which is a documented edge case.
+            // Same rationale as the !ok branch above.
+            stampFailures += 1;
           }
         } catch (err) {
           if (err instanceof Error && err.message === "payout_cancelled") {
-            setRewardError(t("rewardCancelled"));
+            // Tell the creator how many winners actually got paid
+            // before the cancel — the loop is idempotent on retry, so
+            // the message also reassures them that re-running won't
+            // double-pay anyone.
+            setRewardError(
+              t("rewardCancelledSummary", {
+                paid: paidCount,
+                total: payable.length,
+              })
+            );
             return;
           }
           throw err;
         }
+      }
+
+      if (stampFailures > 0) {
+        // Non-fatal: the recipient already got the sats but the server
+        // doesn't know it. We use setRewardStatus (not setRewardError)
+        // because the user-facing outcome is still "rewards paid" —
+        // just with a caveat about retry behavior.
+        setRewardStatus(t("rewardStampWarning"));
       }
 
       // Explicit "all winners paid" signal — the server only stamps
@@ -1079,13 +1230,47 @@ export default function ChallengeClient() {
     }
   };
 
-  const handleVerify = async (completionId: string, status: "approved" | "rejected") => {
+  // Reject-with-reason flow: the inline button no longer fires the
+  // verify API directly. It opens a confirm modal with a textarea so
+  // the submitter sees a useful note instead of a silent rejection.
+  // Approvals stay direct — there's nothing for the creator to write.
+  const handleApprove = (completionId: string) =>
+    runVerify(completionId, "approved", null);
+
+  const handleReject = (completionId: string) => {
+    setRejectTargetId(completionId);
+    setRejectReasonDraft("");
+  };
+
+  const confirmRejectCompletion = async () => {
+    const targetId = rejectTargetId;
+    if (!targetId) return;
+    const reason = rejectReasonDraft.trim();
+    if (!reason) {
+      showToast(t("rejectReasonRequired"), "error");
+      return;
+    }
+    setRejectTargetId(null);
+    setRejectReasonDraft("");
+    await runVerify(targetId, "rejected", reason);
+  };
+
+  const runVerify = async (
+    completionId: string,
+    status: "approved" | "rejected",
+    rejectReason: string | null
+  ) => {
     setActionLoading(completionId);
     try {
       const res = await fetch(`/api/completions/${completionId}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({
+          status,
+          ...(status === "rejected" && rejectReason
+            ? { reject_reason: rejectReason }
+            : {}),
+        }),
       });
       const json = await res.json().catch(() => ({ success: false }));
       if (!json.success) {
@@ -1127,7 +1312,15 @@ export default function ChallengeClient() {
       }
     }
     const winner = participants.find((p) => p.user_id === userId);
-    if (!winner?.user.nostr_pubkey) return;
+    if (!winner?.user.nostr_pubkey) {
+      // The DB row for this badge can still be created (we already
+      // approved the proof), but without a Nostr pubkey we have no
+      // recipient to publish kind:8 to. Surface a toast instead of
+      // failing silently — otherwise the creator clicks Approve and
+      // sees absolutely nothing happen.
+      showToast(t("badgeAwardMissingPubkey"), "error");
+      return;
+    }
 
     const awardRes = await fetch(`/api/challenges/${challengeId}/award`, {
       method: "POST",
@@ -1177,6 +1370,11 @@ export default function ChallengeClient() {
         }),
       }).catch(() => {});
       showToast(t("badgeAwardSent"), "success");
+      // The recipient of the award (when they're the signed-in user)
+      // should see the awardee banner without having to refresh the
+      // page. Inexpensive — one /api/my-badges call instead of one
+      // per completions update.
+      void refreshPendingBadge();
     } catch {
       // DB row is already in place — let the creator know publishing failed
       // so they can retry from the participant list.
@@ -1306,6 +1504,32 @@ export default function ChallengeClient() {
       </div>
 
       <div className={styles.main}>
+
+        {/*
+          Banner shown when the signed-in user has earned a badge for
+          THIS challenge but hasn't accepted it yet. Without this nudge
+          a freshly-approved participant has no idea they need to do
+          one more click to publish kind:30008 and have the badge show
+          up in other Nostr clients. Hidden once the user accepts (the
+          /api/my-badges row gets `accepted_at` and the next refetch
+          drops it from the unaccepted list).
+        */}
+        {hasPendingBadge && (
+          <div className={styles.badgeBanner} role="status">
+            <BoltIcon size={18} color="var(--color-secondary)" />
+            <div className={styles.badgeBannerBody}>
+              <strong>{t("youEarnedBadge")}</strong>
+              <span>{t("youEarnedBadgeBody")}</span>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => router.push("/my-challenges?tab=achievements")}
+            >
+              {t("youEarnedBadgeCta")}
+            </Button>
+          </div>
+        )}
 
         {!showManage && (
           <div className={styles.grid}>
@@ -1625,7 +1849,29 @@ export default function ChallengeClient() {
                             ? t("verifying")
                             : t("verifyLikeButton")}
                         </Button>
-                        {verifyError && <p className={styles.error}>{verifyError}</p>}
+                        {verifyError && (
+                          // Pair the error message with an inline retry
+                          // button so a transient relay miss doesn't
+                          // require scrolling back up to find the
+                          // primary CTA again. The button reuses the
+                          // same handler — the user just clicks once
+                          // more after they've made sure the like is
+                          // actually published from their Nostr client.
+                          <div className={styles.verifyErrorBlock}>
+                            <p className={styles.error}>{verifyError}</p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setVerifyError(null);
+                                void handleVerifyLike();
+                              }}
+                              disabled={actionLoading === "verifyLike"}
+                            >
+                              {t("verifyLikeRetry")}
+                            </Button>
+                          </div>
+                        )}
                       </Section>
                     )}
 
@@ -1921,7 +2167,7 @@ export default function ChallengeClient() {
               republishResultLoading={actionLoading === "republishResult"}
               rewardStatus={rewardStatus}
               rewardError={rewardError}
-              onClaimReward={handleClaimReward}
+              onClaimReward={requestClaimReward}
               onRepublishResult={handleRepublishResult}
             />
           </div>
@@ -1992,11 +2238,11 @@ export default function ChallengeClient() {
                 loading: actionLoading === c.id,
                 onApprove:
                   isCreator && c.status === "pending"
-                    ? () => handleVerify(c.id, "approved")
+                    ? () => handleApprove(c.id)
                     : undefined,
                 onReject:
                   isCreator && c.status === "pending"
-                    ? () => handleVerify(c.id, "rejected")
+                    ? () => handleReject(c.id)
                     : undefined,
                 zapTarget: c as CompletionItem | null,
               }));
@@ -2173,12 +2419,113 @@ export default function ChallengeClient() {
             >
               {tCommon("cancel")}
             </Button>
-            <Button onClick={confirmLeave}>
-              {tCommon("continue")}
+            {/*
+              Destructive "Leave" instead of generic "Continue" so a
+              user scanning the modal knows what's about to happen.
+              The destructive variant tints the button red to match
+              the rest of the leave/abandon affordances.
+            */}
+            <Button variant="danger" onClick={confirmLeave}>
+              {t("leaveDestructive")}
             </Button>
           </div>
         </Modal>
       )}
+
+      {rejectTargetId && (
+        <Modal
+          onClose={() => {
+            setRejectTargetId(null);
+            setRejectReasonDraft("");
+          }}
+          title={t("rejectConfirmTitle")}
+          size="sm"
+        >
+          <p className={styles.confirmMessage}>
+            {t("rejectConfirmDescription")}
+          </p>
+          <label
+            htmlFor="reject-reason-input"
+            className={styles.rejectReasonLabel}
+          >
+            {t("rejectReasonLabel")}
+          </label>
+          <textarea
+            id="reject-reason-input"
+            className={styles.rejectReasonInput}
+            value={rejectReasonDraft}
+            onChange={(e) => setRejectReasonDraft(e.target.value)}
+            placeholder={t("rejectReasonPlaceholder")}
+            rows={4}
+            maxLength={MAX_REJECT_REASON_LEN}
+            autoFocus
+          />
+          <div className={styles.confirmActions}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRejectTargetId(null);
+                setRejectReasonDraft("");
+              }}
+            >
+              {tCommon("cancel")}
+            </Button>
+            <Button
+              variant="danger"
+              onClick={confirmRejectCompletion}
+              disabled={rejectReasonDraft.trim().length === 0}
+            >
+              {t("rejectConfirmCta")}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {showRewardConfirm && challenge && (() => {
+        // Mirror the server's distribution math (app/api/challenges/[id]
+        // /reward/route.ts) so the confirm dialog tells the truth:
+        //   - first_to_complete → 1 winner
+        //   - split             → every completed participant
+        //   - tiered            → up to 3 (top finishers)
+        // We count `participants.status === "completed"` because that's
+        // exactly the set the server picks from. Default to 1 when the
+        // distribution mode is missing or "none" — clicking Pay should
+        // never show "Pay 0 winners" for a challenge that has any sats
+        // staked.
+        const completedCount = participants.filter(
+          (p) => p.status === "completed"
+        ).length;
+        let winnerCount = 1;
+        if (challenge.prize_distribution === "split") {
+          winnerCount = Math.max(1, completedCount);
+        } else if (challenge.prize_distribution === "tiered") {
+          winnerCount = Math.max(1, Math.min(3, completedCount));
+        }
+        return (
+        <Modal
+          onClose={() => setShowRewardConfirm(false)}
+          title={t("rewardConfirmTitle", { count: winnerCount })}
+          size="sm"
+        >
+          <p className={styles.confirmMessage}>
+            {t("rewardConfirmDescription", {
+              amount: challenge.prize_amount_sats.toLocaleString(locale),
+            })}
+          </p>
+          <div className={styles.confirmActions}>
+            <Button
+              variant="outline"
+              onClick={() => setShowRewardConfirm(false)}
+            >
+              {tCommon("cancel")}
+            </Button>
+            <Button onClick={handleClaimReward}>
+              {t("rewardConfirmCta")}
+            </Button>
+          </div>
+        </Modal>
+        );
+      })()}
 
       {zapInvoice && (
         <Modal

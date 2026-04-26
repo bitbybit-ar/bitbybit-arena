@@ -127,6 +127,10 @@
         "title": "Prueba rechazada",
         "body": "Tu prueba en \"{challenge}\" fue rechazada."
       },
+      "completion_verified_rejected_with_reason": {
+        "title": "Prueba rechazada",
+        "body": "Tu prueba en \"{challenge}\" fue rechazada: {reason}"
+      },
       "checkpoint_submitted": {
         "title": "Prueba de checkpoint para revisar",
         "body": "Alguien envió una prueba para el checkpoint \"{checkpoint}\" en \"{challenge}\"."
@@ -138,6 +142,10 @@
       "checkpoint_verified_rejected": {
         "title": "Checkpoint rechazado",
         "body": "Tu prueba del checkpoint \"{checkpoint}\" en \"{challenge}\" fue rechazada."
+      },
+      "checkpoint_verified_rejected_with_reason": {
+        "title": "Checkpoint rechazado",
+        "body": "Tu prueba del checkpoint \"{checkpoint}\" en \"{challenge}\" fue rechazada: {reason}"
       },
       "prize_awarded": {
         "title": "¡Ganaste sats!",
@@ -158,7 +166,15 @@
     "invalidType": "Tipo de imagen no soportado. Usá PNG, JPG, WEBP o GIF.",
     "tooLarge": "Esa imagen es demasiado grande (máx {max}MB).",
     "uploadFailed": "No se pudo subir la imagen. Intentá de nuevo.",
-    "previewAlt": "Vista previa de la imagen subida"
+    "previewAlt": "Vista previa de la imagen subida",
+    "errors": {
+      "empty_file": "Ese archivo está vacío.",
+      "network": "No pudimos conectar con el servidor de imágenes. Revisá tu conexión y probá de nuevo.",
+      "server_rejected": "El servidor de imágenes rechazó la subida. Probá con otra imagen.",
+      "invalid_response": "El servidor de imágenes devolvió una respuesta inesperada. Intentá de nuevo.",
+      "missing_url": "El servidor de imágenes no devolvió una URL. Intentá de nuevo.",
+      "auth_failed": "No se pudo firmar la subida — reconectá tu signer de Nostr."
+    }
   },
   "landing": {
     "hero": {
@@ -602,6 +618,33 @@
     "verifyError": "No se pudo registrar la revisión. Intentá de nuevo.",
     "badgeAwardSent": "Badge enviado por Nostr ✨",
     "badgeAwardFailed": "El badge quedó registrado pero no se pudo publicar en Nostr. Probá de nuevo desde la lista de participantes.",
+    "badgeAwardMissingPubkey": "No se pudo publicar el badge — el ganador no tiene clave pública de Nostr registrada.",
+    "joinFailed": "No se pudo unir al desafío. Intentá de nuevo.",
+    "withdrawFailed": "No se pudo abandonar el desafío. Intentá de nuevo.",
+    "submitProofSuccess": "¡Prueba enviada!",
+    "submitProofFailed": "No se pudo enviar tu prueba. Intentá de nuevo.",
+    "verifyLikeRetry": "Reintentar verificación",
+    "leaveDestructive": "Abandonar",
+    "rejectReasonRequired": "Agregá un motivo breve para que el participante sepa qué corregir.",
+    "rejectConfirmTitle": "¿Rechazar esta prueba?",
+    "rejectConfirmDescription": "El participante va a ver tu motivo y puede volver a enviar. Esto no se puede deshacer.",
+    "rejectConfirmCta": "Rechazar prueba",
+    "multiSignNotice": "Vamos a pedirte que firmes {total} eventos ({step}/{total}).",
+    "multiSignStep1": "Paso {step}/{total}: firmando el desafío",
+    "multiSignStep2": "Paso {step}/{total}: firmando el badge",
+    "multiSignStep3": "Paso {step}/{total}: firmando el objetivo de financiamiento",
+    "badgePublishFailed": "No se pudo publicar la definición del badge en Nostr. Los premios reintentarán al primer reclamo.",
+    "endsBeforeStart": "La fecha de fin no puede ser anterior a la de inicio.",
+    "youEarnedBadge": "¡Ganaste un badge!",
+    "youEarnedBadgeBody": "Aceptalo en Nostr para mostrarlo en tu perfil.",
+    "youEarnedBadgeCta": "Abrir Logros",
+    "rewardConfirmTitle": "¿Pagar a {count, plural, one {# ganador} other {# ganadores}}?",
+    "rewardConfirmDescription": "Esto envía pagos Lightning reales por {amount} sats y no se puede deshacer.",
+    "rewardConfirmCta": "Pagar a los ganadores",
+    "rewardProgress": "{paid} de {total} pagados",
+    "rewardCancelledSummary": "Pago cancelado — se pagaron {paid} de {total} ganadores. Volvé a hacer click en Pagar a los ganadores para retomar; no vamos a pagar dos veces.",
+    "rewardStampWarning": "No se pudo registrar uno o más pagos en el servidor. Reintentar es seguro — los ganadores ya pagados se saltean automáticamente.",
+    "invoiceExpired": "Esta factura expiró. Generá una nueva para seguir financiando el pozo.",
     "proofTooShort": "La prueba debe tener al menos 5 caracteres.",
     "rewardDisplayTitle": "Recompensa",
     "badgeAwarded": "Badge que ganás",
@@ -691,7 +734,9 @@
     "copiedInvoice": "¡Copiada!",
     "success": "¡Pozo financiado!",
     "errorInvoice": "No pudimos obtener una factura Lightning. Intentá de nuevo.",
-    "errorNoCreatorLud16": "El creador todavía no tiene una dirección Lightning en su perfil de Nostr."
+    "errorNoCreatorLud16": "El creador todavía no tiene una dirección Lightning en su perfil de Nostr.",
+    "invoiceExpired": "Esta factura expiró. Generá una nueva para seguir financiando el pozo.",
+    "regenerateInvoice": "Generar una nueva factura"
   },
   "myChallenges": {
     "title": "Mis desafíos",
