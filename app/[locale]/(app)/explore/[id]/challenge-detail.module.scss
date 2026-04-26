@@ -216,6 +216,29 @@
   color: $color-text-primary;
 }
 
+// Stack the Tu progreso section's children with explicit gap. <Section>
+// itself only sets padding, so without this wrapper the children
+// (progress bar, completion banner, submissions block) collapse
+// against each other vertically.
+.progressLayout {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-16;
+}
+
+.mySubmissionsBlock {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+}
+
+.mySubmissionsTitle {
+  font-family: $font-display;
+  font-size: $font-size-base;
+  font-weight: $font-weight-bold;
+  margin: 0;
+}
+
 .mySubmissionList {
   display: flex;
   flex-direction: column;
@@ -231,6 +254,31 @@
   border-radius: $border-radius-md;
   align-items: center;
   font-size: $font-size-sm;
+  // Reset <button> defaults so the row reads as a plain card while
+  // still being keyboard-activatable.
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+
+  &:hover {
+    border-color: $color-primary;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+
+  // The Tag has its own margin-bottom for use in cards; reset it
+  // inside this grid cell so it sits flush with the row baseline,
+  // and pin it to the right edge so the status pill aligns with the
+  // row's right padding instead of floating mid-cell.
+  > :last-child {
+    justify-self: end;
+    margin-bottom: 0;
+  }
 }
 
 .mySubmissionDate {
@@ -402,6 +450,36 @@
 .submissionModalActions {
   display: flex;
   gap: $spacing-8;
+}
+
+// Modal title row: avatar + linked display name. Renders inside the
+// Modal's <h3 class="title">, so we keep the spacing tight and rely
+// on the parent's font sizing for the text.
+.submissionModalHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-12;
+}
+
+.submissionModalHeaderLink {
+  color: $color-primary;
+  text-decoration: none;
+  border-bottom: 1px solid alpha($color-primary, 30%);
+  transition: border-color 120ms ease;
+
+  &:hover,
+  &:focus-visible {
+    border-bottom-color: $color-primary;
+  }
+}
+
+// Status breakdown shown right under the "Pruebas (N)" header so a
+// viewer can see at a glance how many proofs are still pending the
+// creator's review vs already approved.
+.proofsCountSummary {
+  margin: 0 0 $spacing-12;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
 }
 
 .challengeCard {

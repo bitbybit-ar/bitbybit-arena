@@ -12,7 +12,7 @@ type ModalSize = "sm" | "md" | "lg";
 interface ModalProps {
   children: React.ReactNode;
   onClose: () => void;
-  title?: string;
+  title?: React.ReactNode;
   /**
    * Fallback accessible label when the modal has no visible `title`.
    * If neither is provided the modal is announced without a name.
