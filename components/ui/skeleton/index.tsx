@@ -23,6 +23,12 @@ interface SkeletonProps {
 // module's stylesheet. Doesn't carry layout opinions — callers compose
 // rectangles to match the real content's footprint, which keeps CLS
 // near zero when the real data hydrates.
+//
+// The wrapper that owns the loading region (usually <SkeletonGroup>)
+// is the one that announces "Loading X…" to screen readers. Individual
+// skeleton rectangles inside that group stay silent and are hidden
+// from assistive tech via aria-hidden, otherwise SR users would hear
+// a "busy" beacon for every shape on the page.
 export function Skeleton({
   width,
   height,
@@ -30,14 +36,16 @@ export function Skeleton({
   className,
   ariaLabel,
 }: SkeletonProps) {
+  const labeled = !!ariaLabel;
   return (
     <div
       className={cn(styles.skeleton, circle && styles.circle, className)}
       style={{ width, height }}
-      role={ariaLabel ? "status" : undefined}
+      role={labeled ? "status" : undefined}
       aria-label={ariaLabel}
-      aria-live={ariaLabel ? "polite" : undefined}
-      aria-busy="true"
+      aria-live={labeled ? "polite" : undefined}
+      aria-busy={labeled ? true : undefined}
+      aria-hidden={labeled ? undefined : true}
     />
   );
 }

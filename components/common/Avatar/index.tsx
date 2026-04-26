@@ -64,37 +64,44 @@ export function Avatar({
   const showImage = !!src && !failed;
 
   // Decorative `alt=""` callers want the avatar muted from screen readers
-  // entirely (e.g. the name appears next to it in a list). We honor that
-  // in BOTH branches: when the image is shown, the empty alt does the job;
-  // when we fall back to initials, we mark the wrapper aria-hidden so the
-  // letter isn't announced as random text. For non-empty `alt`, we always
-  // expose the avatar with a meaningful name — the previous code hid the
-  // wrapper in the fallback state, which left users with assistive tech
-  // unable to identify the user being represented by the initial.
+  // entirely (e.g. the name appears next to it in a list). The wrapper
+  // itself carries no role/label so screen readers don't announce a
+  // generic "image" beacon — the labeling lives on the inner element
+  // that actually represents the avatar:
+  //  - image branch: the <img alt={alt}> announces itself
+  //  - fallback branch: a labeled <span role="img" aria-label> wraps
+  //    the visible initial so the letter doesn't get spelled out
+  // This avoids the role="img" nesting (wrapper + inner img both
+  // labeled) that confuses some screen readers.
   const decorative = alt === "";
   return (
     <span
       className={cn(styles.avatar, sizeClass[size], statusClass[status], className)}
-      role={decorative ? undefined : "img"}
-      aria-label={decorative ? undefined : alt}
       aria-hidden={decorative ? true : undefined}
     >
       {showImage ? (
         // Existing call sites render user avatars with plain <img> (behind
         // an eslint-disable for next/image), so this primitive mirrors
         // that choice to avoid triggering the image-domains config.
-        // The image itself carries `alt=""` because the wrapper above is
-        // already labeled — letting both the wrapper and the inner img
-        // announce the name would double-read it on every avatar.
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={src ?? undefined}
-          alt=""
+          alt={alt}
           className={styles.image}
           onError={() => setFailed(true)}
         />
+      ) : decorative ? (
+        // Decorative fallback: keep the initial visually but stay silent.
+        // The outer wrapper is already aria-hidden, so this span needs
+        // no further muting — left as plain text.
+        initialFor(name)
       ) : (
-        <span aria-hidden="true">{initialFor(name)}</span>
+        // Labeled fallback: the initial alone reads as a stray letter,
+        // so we wrap it as a single role="img" region with the caller's
+        // name as its accessible name.
+        <span role="img" aria-label={alt}>
+          <span aria-hidden="true">{initialFor(name)}</span>
+        </span>
       )}
     </span>
   );

@@ -216,7 +216,7 @@
         "error": "Error al enviar el zap. Intentá de nuevo.",
         "errorNoAddress": "La dirección Lightning no está configurada todavía.",
         "errorInvalidAddress": "No se pudo resolver la dirección Lightning. Puede que no esté activa todavía.",
-        "noWebln": "No se encontró una wallet Lightning. Copiá la invoice manualmente.",
+        "noWebln": "No se detectó una extensión de wallet — escaneá el QR o copiá la factura para pagar desde cualquier billetera Lightning. Detectamos el pago automáticamente.",
         "copyInvoice": "Copiar invoice",
         "copiedInvoice": "¡Invoice copiada!",
         "waitingPayment": "Esperando el pago..."
@@ -637,7 +637,7 @@
     "completions": "Pruebas",
     "noCompletions": "Todavía no hay pruebas enviadas.",
     "pendingReview": "Pendiente de revisión",
-    "verifyCompletions": "Revisar pruebas",
+    "verifyCompletions": "Verificar pruebas",
     "approving": "Aprobando...",
     "rejecting": "Rechazando...",
     "awardBadges": "Otorgar badges",

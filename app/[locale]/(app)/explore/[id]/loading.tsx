@@ -1,30 +1,26 @@
 import { getTranslations } from "next-intl/server";
 import { Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
+import shells from "@/components/ui/skeleton/loading-shells.module.scss";
 
 // Challenge-detail skeleton. Two-column layout on desktop matches the
-// real page; on mobile both columns stack via the inline grid template.
+// real page; on mobile both columns stack via the shells.detailGrid
+// breakpoint.
 export default async function ChallengeDetailLoading() {
   const t = await getTranslations("loadingStates");
   return (
-    <div style={{ padding: 24 }}>
+    <div className={shells.shell}>
       <SkeletonGroup ariaLabel={t("challengeDetail")}>
         <Skeleton height={32} width="60%" />
-        <div style={{ height: 12 }} />
+        <div className={shells.spacerMd} />
         <Skeleton height={20} width="35%" />
-        <div style={{ height: 24 }} />
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 3fr) minmax(0, 2fr)",
-            gap: 24,
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className={shells.spacerXl} />
+        <div className={shells.detailGrid}>
+          <div className={shells.detailColumn}>
             <Skeleton height={180} />
             <Skeleton height={120} />
             <Skeleton height={80} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className={shells.detailColumn}>
             <Skeleton height={140} />
             <Skeleton height={200} />
           </div>

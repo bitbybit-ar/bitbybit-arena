@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
+import shells from "@/components/ui/skeleton/loading-shells.module.scss";
 import styles from "./explore.module.scss";
 
 // Renders a content-shaped placeholder while the explore page's server
@@ -11,16 +12,10 @@ export default async function ExploreLoading() {
     <div className={styles.page}>
       <SkeletonGroup ariaLabel={t("exploreList")}>
         <Skeleton height={36} width="40%" />
-        <div style={{ height: 16 }} />
+        <div className={shells.spacerLg} />
         <Skeleton height={48} />
-        <div style={{ height: 24 }} />
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 24,
-          }}
-        >
+        <div className={shells.spacerXl} />
+        <div className={shells.cardGrid}>
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} height={220} />
           ))}
