@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { Tag } from "@/components/ui/tag";
 import { BoltIcon } from "@/components/icons";
@@ -21,6 +21,7 @@ export function ChallengeCard({ challenge, zapGoalData }: ChallengeCardProps) {
   const tCreate = useTranslations("createChallenge");
   const tCommon = useTranslations("common");
   const tExplore = useTranslations("explore");
+  const locale = useLocale();
 
   const hasBadge = !!challenge.badge_image_url || !!challenge.badge_name;
   const hasPrize = challenge.prize_amount_sats > 0;
@@ -49,7 +50,7 @@ export function ChallengeCard({ challenge, zapGoalData }: ChallengeCardProps) {
         </span>
         {challenge.ends_at && (
           <span className={styles.metaItem}>
-            {formatDate(challenge.ends_at)}
+            {formatDate(challenge.ends_at, locale)}
           </span>
         )}
       </div>
@@ -79,7 +80,7 @@ export function ChallengeCard({ challenge, zapGoalData }: ChallengeCardProps) {
             {hasPrize && (
               <span className={styles.rewardPrize}>
                 <BoltIcon size={14} />
-                {challenge.prize_amount_sats.toLocaleString()}{" "}
+                {challenge.prize_amount_sats.toLocaleString(locale)}{" "}
                 {tCommon("sats")}
               </span>
             )}
@@ -171,8 +172,8 @@ function typeVariant(type: string): "purple" | "gold" | "green" | "red" {
   }
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+function formatDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
   });

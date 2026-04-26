@@ -14,26 +14,42 @@ interface LnurlInvoiceResponse {
   pr: string; // BOLT11 payment request
 }
 
+export type LnurlErrorCode =
+  | "lnurl_invalid_address"
+  | "lnurl_endpoint_failed"
+  | "lnurl_invalid_response"
+  | "lnurl_invoice_failed"
+  | "lnurl_no_invoice";
+
+// Throws a stable, locale-neutral `code` so callers can translate to
+// the active locale instead of leaking English to the user.
+export class LnurlError extends Error {
+  constructor(public readonly code: LnurlErrorCode) {
+    super(code);
+    this.name = "LnurlError";
+  }
+}
+
 /**
  * Resolve a Lightning address (user@domain) to its LNURL-pay endpoint metadata.
  */
 export async function fetchLnurlPayEndpoint(lightningAddress: string): Promise<LnurlPayResponse> {
   const [user, domain] = lightningAddress.split("@");
   if (!user || !domain) {
-    throw new Error("Invalid Lightning address");
+    throw new LnurlError("lnurl_invalid_address");
   }
 
   const url = `https://${domain}/.well-known/lnurlp/${user}`;
   const res = await fetch(url);
 
   if (!res.ok) {
-    throw new Error("Failed to fetch LNURL-pay endpoint");
+    throw new LnurlError("lnurl_endpoint_failed");
   }
 
   const data = await res.json();
 
   if (data.tag !== "payRequest") {
-    throw new Error("Invalid LNURL-pay response");
+    throw new LnurlError("lnurl_invalid_response");
   }
 
   return data as LnurlPayResponse;
@@ -68,13 +84,13 @@ export async function fetchInvoice(
   const res = await fetch(url.toString());
 
   if (!res.ok) {
-    throw new Error("Failed to fetch invoice");
+    throw new LnurlError("lnurl_invoice_failed");
   }
 
   const data: LnurlInvoiceResponse = await res.json();
 
   if (!data.pr) {
-    throw new Error("No invoice returned");
+    throw new LnurlError("lnurl_no_invoice");
   }
 
   return data.pr;

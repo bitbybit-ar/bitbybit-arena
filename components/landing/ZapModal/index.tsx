@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
 import { Modal } from "@/components/ui/modal";
 import { BoltIcon, CopyIcon } from "@/components/icons";
@@ -43,6 +43,7 @@ const CONFETTI_PARTICLES = Array.from({ length: CONFETTI_COUNT }, (_, i) => ({
 export function ZapModal({ onClose }: ZapModalProps) {
   const t = useTranslations("landing.support.zapModal");
   const tc = useTranslations("common");
+  const locale = useLocale();
 
   const [amount, setAmount] = useState(100);
   const [customAmount, setCustomAmount] = useState("");
@@ -191,7 +192,7 @@ export function ZapModal({ onClose }: ZapModalProps) {
                 aria-pressed={!customAmount && amount === preset}
               >
                 <BoltIcon size={12} />
-                {preset.toLocaleString()}
+                {preset.toLocaleString(locale)}
               </button>
             ))}
           </div>
@@ -231,7 +232,7 @@ export function ZapModal({ onClose }: ZapModalProps) {
             <BoltIcon size={18} color="white" />
             {status === "sending"
               ? t("sending")
-              : `${t("send")} ${activeAmount.toLocaleString()} sats`}
+              : `${t("send")} ${activeAmount.toLocaleString(locale)} sats`}
           </button>
         </>
       )}

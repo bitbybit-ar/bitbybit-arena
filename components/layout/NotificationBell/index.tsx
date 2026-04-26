@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { BellIcon } from "@/components/icons";
 import { useClickOutside } from "@/lib/hooks/useClickOutside";
@@ -59,6 +59,7 @@ function challengeHref(
 
 export function NotificationBell() {
   const t = useTranslations("notifications");
+  const locale = useLocale();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [authenticated, setAuthenticated] = useState(true);
   const [open, setOpen] = useState(false);
@@ -179,7 +180,7 @@ export function NotificationBell() {
                     <strong className={styles.title}>{title}</strong>
                     {body && <p className={styles.body}>{body}</p>}
                     <time className={styles.time} dateTime={n.created_at}>
-                      {new Date(n.created_at).toLocaleString()}
+                      {new Date(n.created_at).toLocaleString(locale)}
                     </time>
                   </>
                 );

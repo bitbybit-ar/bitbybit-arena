@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useParams, useSearchParams, notFound } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { useRouter } from "@/i18n/routing";
@@ -132,6 +132,7 @@ export default function ChallengeClient() {
   const tCommon = useTranslations("common");
   const tCreate = useTranslations("createChallenge");
   const tErr = useTranslations("errors.codes");
+  const locale = useLocale();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -821,9 +822,12 @@ export default function ChallengeClient() {
       );
       await fetchAll();
     } catch (err) {
-      setRewardError(
-        err instanceof Error ? err.message : t("rewardError")
-      );
+      // Never surface raw err.message — it can be English (network
+      // errors, LNURL codes) and would render in the active locale's
+      // UI as untranslated text. Log for debugging, show a translated
+      // generic instead.
+      console.error("Reward payout failed:", err);
+      setRewardError(t("rewardError"));
     } finally {
       setActionLoading(null);
     }
@@ -1296,7 +1300,7 @@ export default function ChallengeClient() {
                   {challenge.ends_at && (
                     <div className={styles.detailRow}>
                       <span className={styles.detailLabel}>{t("ends")}</span>
-                      <span>{new Date(challenge.ends_at).toLocaleDateString()}</span>
+                      <span>{new Date(challenge.ends_at).toLocaleDateString(locale)}</span>
                     </div>
                   )}
                   <div className={styles.detailRow}>
@@ -1367,7 +1371,7 @@ export default function ChallengeClient() {
                             {t("prizePool")}
                           </span>
                           <span className={styles.rewardPrizeAmount}>
-                            {challenge.prize_amount_sats.toLocaleString()}{" "}
+                            {challenge.prize_amount_sats.toLocaleString(locale)}{" "}
                             {tCommon("sats")}
                           </span>
                           {challenge.prize_distribution &&
@@ -1480,7 +1484,7 @@ export default function ChallengeClient() {
                                   <span className={styles.mySubmissionDate}>
                                     {new Date(
                                       c.submitted_at
-                                    ).toLocaleDateString()}
+                                    ).toLocaleDateString(locale)}
                                   </span>
                                   <span
                                     className={styles.mySubmissionContent}

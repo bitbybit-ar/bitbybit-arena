@@ -18,6 +18,17 @@ import {
 
 const NIP46_TIMEOUT_MS = 60_000;
 
+export type BunkerLoginErrorCode = "bunker_invalid_url";
+
+// Throws a stable, locale-neutral `code` so callers can translate to
+// the active locale instead of leaking English to the user.
+export class BunkerLoginError extends Error {
+  constructor(public readonly code: BunkerLoginErrorCode) {
+    super(code);
+    this.name = "BunkerLoginError";
+  }
+}
+
 /**
  * Relays used for the NIP-46 rendezvous channel.
  * `relay.nsec.app` MUST come first: nsec.app and most bunker apps listen
@@ -149,7 +160,7 @@ export async function connectWithBunkerURL(
 ): Promise<BunkerSigner> {
   const bp = await parseBunkerInput(bunkerInput.trim());
   if (!bp) {
-    throw new Error("Invalid bunker URL");
+    throw new BunkerLoginError("bunker_invalid_url");
   }
 
   const clientSecretKey = getLocalClientSecret();

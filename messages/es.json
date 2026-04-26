@@ -90,6 +90,14 @@
     "switchToEnglish": "Switch to English",
     "switchToSpanish": "Cambiar a español"
   },
+  "metadata": {
+    "settings": "Configuración",
+    "explore": "Explorar desafíos",
+    "myChallenges": "Mis desafíos",
+    "create": "Crear desafío",
+    "about": "Acerca de",
+    "signIn": "Iniciar sesión"
+  },
   "notifications": {
     "ariaLabel": "Notificaciones",
     "empty": "No tenés notificaciones todavía.",
