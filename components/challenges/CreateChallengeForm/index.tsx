@@ -21,6 +21,8 @@ import type { NostrEvent } from "@/lib/nostr/types";
 import { DEFAULT_RELAYS } from "@/lib/nostr/relays";
 import { isSignerCancellation } from "@/lib/nostr/auth-errors";
 import { useSignerContext } from "@/lib/signer-context";
+import { useToast } from "@/components/ui/toast";
+import { translateApiError } from "@/lib/api/translate-error";
 import { ShareOnNostrModal } from "@/components/share/ShareOnNostrModal";
 import type { VerificationMethod } from "@/lib/types";
 import { slugify } from "@/lib/utils";
@@ -53,7 +55,9 @@ interface CreateChallengeFormProps {
 
 export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) {
   const t = useTranslations("createChallenge");
+  const tErr = useTranslations("errors.codes");
   const router = useRouter();
+  const { showToast } = useToast();
   const { needsSigner, signWithPrompt, requestReSignIn, signer } = useSignerContext();
 
   const [title, setTitle] = useState("");
@@ -211,7 +215,7 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
 
       const json = await res.json();
       if (!json.success) {
-        setError(json.error);
+        setError(translateApiError(json, tErr, t("createFailed")));
         return;
       }
 
@@ -281,6 +285,7 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
         }
       }
 
+      showToast(t("success"), "success");
       setShareContext({ id: json.data.id, title });
     } catch {
       setError(t("createFailed"));

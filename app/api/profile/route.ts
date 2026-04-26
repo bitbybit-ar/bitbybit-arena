@@ -38,11 +38,23 @@ export const PUT = apiHandler(async (req: NextRequest, { session, db }) => {
 
   const { notification_prefs: _ignored, ...rest } = body;
 
+  // Any manual profile save that touches an identity field (display_name,
+  // username, avatar, about, lightning_address) marks onboarding done.
+  // Locale/notification-prefs-only PUTs don't flip the flag — those are
+  // preferences, not identity completion.
+  const touchedIdentity =
+    rest.display_name !== undefined ||
+    rest.username !== undefined ||
+    rest.avatar_url !== undefined ||
+    rest.about !== undefined ||
+    rest.lightning_address !== undefined;
+
   const [updated] = await db
     .update(users)
     .set({
       ...rest,
       ...(mergedPrefs ? { notification_prefs: mergedPrefs } : {}),
+      ...(touchedIdentity ? { profile_completed: true } : {}),
       updated_at: new Date(),
     })
     .where(eq(users.id, session!.user_id))

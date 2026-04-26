@@ -120,6 +120,13 @@
       "when": 1776988426783,
       "tag": "0016_tidy_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1777593600000,
+      "tag": "0017_add_users_profile_completed",
+      "breakpoints": true
     }
   ]
 }

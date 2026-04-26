@@ -1,0 +1,62 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+
+.intro {
+  margin: 0 0 $spacing-24;
+  color: $color-text-secondary;
+  font-size: $font-size-md;
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-12;
+  margin-bottom: $spacing-20;
+}
+
+.actionInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $spacing-2;
+  text-align: left;
+}
+
+.actionLabel {
+  font-weight: $font-weight-bold;
+  font-size: $font-size-md;
+}
+
+.actionHint {
+  font-weight: $font-weight-normal;
+  font-size: $font-size-xs;
+  opacity: 0.85;
+  white-space: normal;
+}
+
+.skip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-8;
+  width: 100%;
+  padding: $spacing-8;
+  background: transparent;
+  border: none;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: color 0.2s;
+
+  &:hover:not(:disabled) {
+    color: $color-text-primary;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

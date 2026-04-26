@@ -12,6 +12,9 @@ export interface SessionUser {
   // Method the user originally authenticated with. `null` for sessions
   // issued before this field was added — treat as "no preference".
   signer_type: SignerType | null;
+  // First-time onboarding flag. False until the user has either saved
+  // a profile manually or hydrated real kind:0 metadata from relays.
+  profile_completed: boolean;
 }
 
 interface SessionContextValue {

@@ -35,6 +35,13 @@ export const users = pgTable(
       .$type<Record<string, boolean>>()
       .notNull()
       .default(sql`'{}'::jsonb`),
+    // True once the user has either (a) saved a profile manually,
+    // (b) successfully synced kind:0 metadata from relays, or (c)
+    // hydrated a real display_name from relays during their first
+    // login. Stays false while the user is on the placeholder
+    // identity (`Nostr <pubkey-prefix>`) so the UI can prompt them
+    // to finish onboarding.
+    profile_completed: boolean("profile_completed").notNull().default(false),
     deleted_at: timestamp("deleted_at"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),

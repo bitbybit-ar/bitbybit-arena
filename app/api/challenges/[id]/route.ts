@@ -96,7 +96,10 @@ export const DELETE = apiHandler(async (_req: NextRequest, { session, db, params
     );
 
   if (activeCount.count > 0) {
-    throw new BadRequestError("Cannot delete a challenge with active participants");
+    throw new BadRequestError(
+      "Cannot delete a challenge with active participants",
+      "cannot_delete_active_challenge"
+    );
   }
 
   await db.delete(challenges).where(eq(challenges.id, params.id));

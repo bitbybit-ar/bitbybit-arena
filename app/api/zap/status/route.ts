@@ -19,7 +19,7 @@ export const POST = apiHandler(
 
     const paymentHash = extractPaymentHash(invoice);
     if (!paymentHash) {
-      throw new BadRequestError("Could not extract payment hash");
+      throw new BadRequestError("Could not extract payment hash", "invalid_invoice");
     }
 
     const client = new NWCClient({ nostrWalletConnectUrl: NWC_URL });
