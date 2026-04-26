@@ -1,154 +1,70 @@
-# About Page
+# About page
 
-## Overview
+Public page at `/[locale]/about`. No auth required. Linked from the landing page and the footer.
 
-Public page at `/about`. Tells the story of BitByBit, introduces the team, and connects both projects (Habits + Arena). No auth required.
+The page is a server component that just composes five client subcomponents in order:
+
+```tsx
+// app/[locale]/about/page.tsx
+<Story />
+<Projects />
+<Team />
+<LaCrypta />
+<OpenSource />
+```
+
+All copy lives under the `about.*` namespace in `messages/es.json` and `messages/en.json`. Each subcomponent uses `useScrollReveal` and decorates with `Bubble` and `Block` components consistent with the landing-page identity (Bubbles for the "Habits" lineage, Blocks for the "Arena" lineage).
 
 ## Sections
 
-### 1. Project Story
+### 1. Story (`components/about/Story/index.tsx`)
 
-**Title:** "The BitByBit Story"
+Four-paragraph narrative rendered with a `**bold**` markdown-style helper (`renderBold`) so individual phrases inside the i18n string can be emphasised without splitting the string into multiple keys.
 
-Content (adapt to both languages):
+- i18n keys: `about.story.title`, `about.story.p1`–`about.story.p4`.
+- Visual: `BlockTower` (5 medium blocks, animated) on the right; two `Bubble`s (gold + Bolt, green + Heart) on the left at low opacity.
 
-BitByBit started during the FOUNDATIONS hackathon by La Crypta in March 2026. The idea was simple: what if kids could earn real bitcoin for building good habits? That became **BitByBit Habits** — a family habit tracker where sponsors reward kids with sats via Lightning Network.
+### 2. Projects (`components/about/Projects/index.tsx`)
 
-The name "BitByBit" reflects the philosophy: small consistent actions, stacked over time, create big results. Like stacking sats, like building blocks.
+Side-by-side comparison table, BitByBit Habits vs. BitByBit Arena. Eight rows: hackathon, theme, auth, users, rewards, data, status, link. The "link" row is the only one that renders an `<a>` (to https://bitbybit.com.ar); the rest are plain text from i18n.
 
-For the second La Crypta hackathon (Nostr theme), we took the same idea — real rewards for real effort — and brought it to the open Nostr network. **BitByBit Arena** lets anyone create public challenges, compete with others, and earn badges and sats. No families, no permissions — just the open protocol.
+- i18n keys: `about.projects.title`, `about.projects.habitsName` / `arenaName`, plus per-row `habits<Row>` / `arena<Row>` strings.
+- Visual: three floating `Block`s (purple + Flag, gold + Trophy, green + Bolt) and a `PixelDissolve` at the section boundary.
 
-Both projects share the same codebase quality, the same team, and the same belief: Bitcoin should reward action, not just speculation.
+### 3. Team (`components/about/Team/index.tsx`)
 
-**Visual:** Block tower animation beside the text (subtle, decorative). A few bubbles around the section.
+Four cards in a 2×2 grid (single column on mobile). Members are hardcoded in the component, each pointing at a GitHub avatar:
 
-### 2. The Two Projects
+| key | github | colour |
+|-----|--------|--------|
+| `anix` | `analiaacostaok` | purple |
+| `llopo` | `fabricio333` | gold |
+| `wander` | `Pizza-Wder` | green |
+| `leon` | `leonacostaok` | red |
 
-Side-by-side comparison (similar to the About section on landing, but more detailed).
+- i18n keys: `about.team.title`, plus per-member `name` / `role` / `bio` under `about.team.members.<key>.*`.
+- Avatars: `https://github.com/<username>.png` via `next/image`.
+- Visual: two solid `Bubble`s (purple, gold) at the right edge.
 
-| | BitByBit Habits | BitByBit Arena |
-|--|-----------------|---------------------|
-| **Hackathon** | FOUNDATIONS (#1) — Lightning | Hackathon #2 — Nostr |
-| **Theme** | Private, family | Public, social |
-| **Auth** | Email/password + Nostr | Nostr only |
-| **Users** | Sponsors + Kids | Any Nostr identity |
-| **Rewards** | Sponsor pays kid via NWC | Creator funds prize, community zaps |
-| **Data** | Private database | Public Nostr events + DB cache |
-| **Status** | v1.0.0 released | In development |
-| **Link** | [bitbybit.com.ar](https://bitbybit.com.ar) | You're here |
+### 4. La Crypta (`components/about/LaCrypta/index.tsx`)
 
-### 3. The Team
+Single card crediting La Crypta as the community behind both BitByBit hackathons.
 
-**Title:** "Who We Are"
+- i18n keys: `about.lacrypta.title`, `about.lacrypta.description`, `about.lacrypta.visitSite`.
+- Logo: `https://github.com/lacrypta.png?size=64`.
+- Link: https://hackaton.lacrypta.ar.
+- Visual: one floating gold + Bolt `Block` and a `PixelDissolve`.
 
-| Member | Role | Short Bio | Links |
-|--------|------|-----------|-------|
-| **Anix** | Lead Dev | Full-stack developer. Designed the architecture and wrote most of the code for both projects. | GitHub, Nostr |
-| **Llopo** | Dev | Developer contributing to backend and Lightning integration. | GitHub, Nostr |
-| **Wander** | Dev / UX | Developer and UX. Worked on the user experience and frontend. | GitHub, Nostr |
-| **Leon** | PM | Project manager. Keeps the team on track and coordinates hackathon deliverables. | GitHub, Nostr |
+### 5. OpenSource (`components/about/OpenSource/index.tsx`)
 
-**Visual per member:**
-- Avatar (from GitHub or Nostr profile picture)
-- Name + role badge (colored pill)
-- One-line bio
-- Links as small icons (GitHub, Nostr)
-- Card with subtle hover effect
+Repo links + invitation to contribute. Two `<a>`s with `GithubIcon`s:
 
-**Layout:** Grid of 4 cards. 2x2 on desktop, single column on mobile.
+- https://github.com/bitbybit-ar/bitbybit-arena
+- https://github.com/bitbybit-ar/bitbybit-habits
 
-### 4. La Crypta & Hackathons
+- i18n keys: `about.openSource.title`, `description`, `contribute`, `arenaRepo`, `habitsRepo`.
+- No PixelDissolve at the bottom — this is the last section before the footer.
 
-Brief section acknowledging La Crypta as the community that made this possible.
+## SEO
 
-- La Crypta logo
-- "Both BitByBit projects were born at La Crypta hackathons — a Bitcoin community in Argentina that organizes events to build on Lightning and Nostr."
-- Link to [hackaton.lacrypta.ar](https://hackaton.lacrypta.ar)
-
-### 5. Open Source
-
-- "BitByBit is fully open source. All code is public on GitHub."
-- Links to both repos
-- Invitation to contribute or open issues
-
----
-
-## Page Layout
-
-```
-┌─────────────────────────────────────────┐
-│  Navbar                                 │
-├─────────────────────────────────────────┤
-│                                         │
-│  The BitByBit Story            ○        │
-│  [narrative text]          ○            │
-│                    ■                    │
-│                   ■ ■                   │
-│                  ■ ■ ■                  │
-│                                         │
-├─────────────────────────────────────────┤
-│                                         │
-│  Two Projects                           │
-│  ┌─────────────┐  ┌─────────────┐      │
-│  │  Habits     │  │  Arena      │      │
-│  │  ...        │  │ ...         │      │
-│  └─────────────┘  └─────────────┘      │
-│                                         │
-├─────────────────────────────────────────┤
-│                                    ○    │
-│  Who We Are                            │
-│  ┌──────┐ ┌──────┐                     │
-│  │ Anix │ │Llopo │                     │
-│  └──────┘ └──────┘                     │
-│  ┌──────┐ ┌──────┐                     │
-│  │Wander│ │ Leon │                     │
-│  └──────┘ └──────┘                     │
-│                                         │
-├─────────────────────────────────────────┤
-│                                         │
-│  La Crypta & Open Source         ○      │
-│  [logos + links]                        │
-│                                         │
-├─────────────────────────────────────────┤
-│  Footer                                 │
-└─────────────────────────────────────────┘
-```
-
----
-
-## Navigation
-
-- Linked from the landing page (About section "Learn more" link)
-- Linked from the footer
-- Linked from Navbar (add "About" link when we add more nav items post-MVP)
-
----
-
-## i18n Keys Needed
-
-```
-about.story.title
-about.story.content (can be multiple paragraphs)
-about.projects.title
-about.projects.habits.*
-about.projects.challenges.*
-about.team.title
-about.team.members.anix.* (name, role, bio)
-about.team.members.llopo.*
-about.team.members.wander.*
-about.team.members.leon.*
-about.lacrypta.title
-about.lacrypta.description
-about.openSource.title
-about.openSource.description
-```
-
----
-
-## Implementation Notes
-
-- Server component (no client interactivity needed, just content)
-- Scroll reveal animations on each section
-- Decorative bubbles and blocks scattered throughout
-- Team member avatars loaded from GitHub (`https://github.com/<username>.png`)
-- Responsive: cards stack on mobile
+`generateMetadata` in `app/[locale]/about/page.tsx` sets `title` from the `metadata.about` i18n key and emits hreflang alternates via `alternatesFor(locale, "/about")` from `lib/seo.ts`.

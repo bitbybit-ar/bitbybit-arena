@@ -17,7 +17,8 @@ Since auth is Nostr-only, the profile is synced from Nostr relays. Users can edi
 | **Avatar URL** | Nostr kind:0 `picture` | Yes | Valid HTTP/HTTPS URL |
 | **About** | Nostr kind:0 `about` | Yes | Short bio |
 | **Lightning Address** | Nostr kind:0 `lud16` | Yes | Needed to receive zaps |
-| **Language** | Local preference | Yes | es / en |
+
+Language lives in the separate **Preferences** section below — it is a server-persisted user preference (`users.locale`), not a kind:0 metadata field, and saves through its own per-section sentinel so toggling language doesn't disable the Profile form.
 
 **Nostr Sync:**
 - "Sync from Relays" button — fetches latest kind:0 metadata and updates local profile
@@ -33,7 +34,7 @@ Since auth is Nostr-only, the profile is synced from Nostr relays. Users can edi
 
 ### 3. Danger Zone
 
-- **Delete Account** — Removes user data from the database. Nostr identity and events on relays are unaffected (we don't control those). Requires confirmation modal.
+- **Delete Account** — Soft-deletes the account. The `users` row is **kept** (so existing FK references from challenges, participants, completions, badges, and notifications stay intact and the public history remains coherent). The handler scrubs PII: `username` becomes `deleted_<shortId>`, `display_name` becomes `"[deleted]"`, and `avatar_url`, `about`, `lightning_address`, `nostr_metadata`, `nostr_metadata_updated_at` are nulled. `deleted_at` is stamped. The session cookie is cleared. Implementation: `DELETE /api/profile` in `app/api/profile/route.ts`. Nostr identity and events on relays are unaffected (we don't control those). Requires a confirmation modal in the UI.
 
 ---
 

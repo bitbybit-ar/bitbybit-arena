@@ -33,35 +33,57 @@ bitbybit-arena/
   app/
     [locale]/                  <- Rutas con i18n (es, en)
       (auth)/                  <- Login con Nostr
-      (app)/                   <- App principal (2 tabs)
-        explore/               <- Explorar + crear desafios
-        my-challenges/         <- Desafios del usuario
+      (app)/                   <- App principal (Explore + My Challenges como bottom-tabs;
+                                  Create y Settings via boton/menu)
+        explore/               <- Listado + filtros + sort, mas [id] detail
+        my-challenges/         <- Tabs Joined / Created / Achievements
+        create/                <- Formulario de creacion de desafio
+        settings/              <- Perfil + preferencias + notificaciones + danger zone
+      about/                   <- Pagina publica About
       layout.tsx               <- Layout con providers
       page.tsx                 <- Landing page
     api/                       <- API routes (NO dentro de [locale])
-      auth/                    <- Nostr auth (NIP-98 HTTP Auth)
-      challenges/              <- CRUD, join, completions, checkpoints, award, reward
-      completions/             <- Creator approve/reject
-      profile/                 <- Sync + publish kind:0 metadata
-      my-badges/               <- Badges earned by the logged-in user
-      my-challenges/           <- Challenges the logged-in user created
-      tags/                    <- Popular-tags discovery
-      zap/                     <- NWC invoice status polling
+      auth/                    <- nostr (NIP-98 HTTP Auth), session, signout
+      challenges/              <- list+create, [id] CRUD, join, completions,
+                                  checkpoints, award, reward, zap-goal-progress,
+                                  pending-checkpoint-submissions, participants
+      completions/[id]/verify  <- Creator approve/reject (no-checkpoints)
+      checkpoint-completions/[id]/verify
+      badges/[id]              <- Accept-on-Nostr (stamp accepted_at)
+      profile/                 <- GET/PUT/DELETE + sync subroute
+      my-badges/, my-challenges/
+      notifications/, tags/popular/, zap/status/
     layout.tsx                 <- Root layout
   components/
-    common/                    <- Bubble, Block, BlockTower (design system)
+    common/                    <- Bubble, Block, BlockTower, PixelIcon,
+                                  PixelDissolve, Avatar, ImageUpload, etc.
     icons/                     <- SVG icons como React components
-    landing/                   <- Hero, HowItWorks, About, Partners, Support
-    layout/                    <- Navbar, Footer, NostrLoginModal
+    landing/                   <- Hero, HowItWorks, About, Partners, Support, ZapModal
+    layout/                    <- Navbar, Footer, ReSignInModal,
+                                  SignerProviderClient, NotificationBell
+    auth/                      <- ExtensionSignerButton, NostrConnectPanel,
+                                  NsecSignerForm, SignerMethodButtons
+    challenges/                <- ChallengeCard, CreateChallengeForm,
+                                  CheckpointItem, FundPotModal, ZapGoalProgress, etc.
+    about/                     <- Story, Projects, Team, LaCrypta, OpenSource
+    onboarding/                <- OnboardingGate, WelcomeModal
+    share/, ui/
   i18n/                        <- Configuracion next-intl
   lib/
-    api/                       <- apiHandler wrapper, errores
-    db/                        <- Drizzle ORM schema y conexion
-    hooks/                     <- useNostr, useScrollReveal
-    nostr/                     <- types, verify, relays, metadata
-    auth.ts                    <- Sesiones JWT
+    api/                       <- apiHandler wrapper, errores, rate-limit,
+                                  verification-methods helper
+    db/                        <- Drizzle ORM schema, conexion, checkpoints helper
+    hooks/                     <- useScrollReveal, useFollowList,
+                                  useZapGoalProgress, etc.
+    nostr/                     <- events, verify, signers, fetch-events,
+                                  verify-like, verify-hashtag-post, lnurl,
+                                  blossom, nip46-login, relays, metadata
+    schemas/                   <- Zod request/response schemas
+    contexts/theme-context.tsx <- Theme provider (light/dark/system)
+    auth.ts, auth-constants.ts <- Sesiones JWT + SESSION_COOKIE_NAME
+    signer-context.tsx         <- Signer activo + completeLoginWithSigner
     types.ts                   <- Interfaces TypeScript compartidas
-    theme-context.tsx          <- Theme provider (light/dark)
+    lightning.ts, seo.ts, env.ts, notifications.ts, utils.ts
   messages/                    <- es.json, en.json
   styles/                      <- SCSS foundation
     _colors.scss               <- Color aliases + alpha() helper
@@ -151,7 +173,7 @@ bitbybit-arena/
 - Nostr solamente: NIP-07 extension, NIP-46 bunker, o nsec pegado (signer en memoria)
 - NIP-98 HTTP Auth (kind 27235). Evento firmado viaja en `Authorization: Nostr <base64(evento)>`; validacion en `lib/nostr/verify.ts:validateNip98AuthEvent`
 - signer_type viaja dentro del evento firmado como tag custom `["arena_signer", ...]` — MITM no puede reescribirlo
-- Replay window: ±60s sobre `created_at`; `u` tag matchea URL, `method` tag matchea POST
+- Replay window: ±30s sobre `created_at` (`CLOCK_SKEW_SECONDS` en `lib/nostr/verify.ts`); `u` tag matchea URL, `method` tag matchea POST
 - Cookie de sesion: `__Host-session` en produccion (Secure + Path=/ + sin Domain, enforced por el browser), `session` en dev. Constante: `SESSION_COOKIE_NAME` en `lib/auth.ts`
 - JWT con jose (HS256, 7 dias). `AUTH_SECRET` es REQUERIDO en produccion (el modulo tira al cargar si falta)
 - Auto-create user on first Nostr login

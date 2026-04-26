@@ -41,7 +41,7 @@ Server-side, `validateNip98AuthEvent` in `lib/nostr/verify.ts` checks:
 - `kind === 27235`.
 - The `u` tag matches the exact request URL (`req.nextUrl.toString()`).
 - The `method` tag matches the HTTP method (`POST`).
-- `created_at` is within ±60 s of server time (NIP-98 replay window).
+- `created_at` is within ±30 s of server time (`CLOCK_SKEW_SECONDS` in `lib/nostr/verify.ts` — tighter than the NIP-98 default to narrow the replay window).
 - An `["arena_signer", ...]` tag is present with one of `"extension" | "nip46" | "nsec"`. Because this tag is inside the signed event, a MITM can't rewrite it on the wire — the signer_type is tamper-evident.
 
 On success, the route `upsert`s the `users` row (keyed by pubkey) and issues a session cookie signed with `AUTH_SECRET` (JWT via `jose`, 7-day expiry).

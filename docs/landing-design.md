@@ -202,7 +202,7 @@ Source: `components/landing/Hero/index.tsx`. Always dark, even in light mode.
 - Headline (two lines): **"Entrá a la Arena."** (purple) / **"Conquistá Sats."** (gold)
 - Subtitle / manifesto: *"¿Y si cualquiera pudiera desafiar a cualquiera, y las victorias vivieran en Nostr para siempre?"*
 - CTA primary: **"Explorar la Arena"** → `/explore`
-- CTA secondary: **"Lanzar un desafío"** → `/explore`
+- CTA secondary: **"Lanzar un desafío"** → `/create` for signed-in users, `/signin?next=/create` otherwise (computed in `Hero/index.tsx` so anonymous visitors land on the signin page and bounce straight to create after auth)
 
 **Visual elements:**
 - **Pixel sword** (`PixelIcon shape="sword" blockSize={16} animate`) sits to the right of the headline. Blocks assemble with the drop animation.
@@ -229,7 +229,7 @@ Source: `components/landing/HowItWorks/index.tsx`.
 |---|-------------|-----------|-------|-------------|
 | 1 | Purple | `flag` | **Creá** | "Definí las reglas, duración y fondeá con sats. Tu arena se publica en Nostr para que cualquiera la descubra." |
 | 2 | Green | `shield` | **Batallá** | "Entrá a desafíos, enviá tu prueba de victoria y seguí tu progreso." |
-| 3 | Gold | `trophy` | **Ganá** | "Conquistá desafíos para ganar badges NIP-58 en tu identidad Nostr. Tus victorias se celebran en toda la red." |
+| 3 | Gold | `trophy` | **Ganá** | "Conquistá desafíos para ganar sats y badges que viven en tu identidad Nostr. Tus victorias se celebran en toda la red." |
 
 **Layout:** Three cards in a row on desktop, stacked on mobile. Each card has:
 - Colored numbered badge in the top-left (solid square tile, not glass).

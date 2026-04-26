@@ -1,0 +1,2626 @@
+openapi: 3.1.0
+info:
+  title: BitByBit Arena API
+  version: 0.1.0
+  description: |
+    HTTP API for BitByBit Arena — a Nostr-native challenge platform.
+
+    ## Auth
+
+    Two complementary schemes:
+
+    - **`nostrAuth`** — NIP-98 HTTP Auth (kind 27235). Used **only** by
+      `POST /api/auth/nostr` to exchange a signed Nostr event for a
+      session cookie. Header shape: `Authorization: Nostr <base64(signedEvent)>`.
+    - **`cookieAuth`** — httpOnly session cookie (`__Host-session` in
+      production, `session` in dev) issued by the login endpoint above.
+      Required on every other route that mutates state or reads
+      user-specific data.
+
+    Public read routes (challenge list/detail, participants, popular
+    tags, zap-goal-progress) are unauthenticated.
+
+    ## Response envelope
+
+    Every response is wrapped in the same shape:
+
+    ```jsonc
+    // 2xx
+    { "success": true,  "data": <payload> }
+    // 4xx / 5xx
+    { "success": false, "error": "<message>", "code": "<machine-readable-code>" }
+    ```
+
+    Error `code` values come from a stable enum in `lib/api/errors.ts` so
+    the client can map them to localized strings without parsing the
+    English `error` text. Common codes: `unauthorized`, `forbidden`,
+    `not_found`, `bad_request`, `conflict`, `rate_limit`, `internal`.
+
+    ## Pagination
+
+    Cursor-based. List endpoints return `{ items, nextCursor }` where
+    `nextCursor` is either an ISO-8601 timestamp of the last row's
+    sort key, an opaque id, or `null` when there are no more pages.
+
+  contact:
+    name: BitByBit
+    url: https://arena.bitbybit.com.ar
+  license:
+    name: MIT
+
+servers:
+  - url: https://arena.bitbybit.com.ar
+    description: Production
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: auth
+    description: Nostr login, session, sign-out
+  - name: challenges
+    description: Challenge CRUD, list, join, participants, zap goal progress
+  - name: checkpoints
+    description: Per-checkpoint submissions and creator review
+  - name: completions
+    description: Proof submissions and creator approval
+  - name: badges
+    description: NIP-58 badges earned by the viewer
+  - name: profile
+    description: Current user profile and Nostr metadata sync
+  - name: notifications
+    description: In-app notification feed
+  - name: tags
+    description: Discovery tags
+  - name: zap
+    description: Lightning / NWC helpers
+
+# Default security: most routes need a session cookie. Login overrides
+# with `nostrAuth`, public read routes override with `[]`.
+security:
+  - cookieAuth: []
+
+paths:
+  # ---------------------------------------------------------------- auth
+  /api/auth/nostr:
+    post:
+      tags: [auth]
+      summary: Exchange a NIP-98 signed event for a session cookie
+      description: |
+        Verifies a NIP-98 HTTP Auth event (kind 27235) presented in the
+        `Authorization: Nostr <base64(event)>` header, finds or creates
+        the user row keyed by `pubkey`, hydrates kind:0 metadata from
+        relays (best effort, 2.5s timeout), and sets the session cookie.
+
+        The signed event must include:
+          - `["u", "<this URL>"]`
+          - `["method", "POST"]`
+          - `["arena_signer", "extension" | "nsec" | "nip46"]`
+          - `created_at` within ±30 s of server time
+      security:
+        - nostrAuth: []
+      responses:
+        "200":
+          description: Session created (cookie set in response)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [user_id, username, display_name, nostr_pubkey]
+                        properties:
+                          user_id:
+                            type: string
+                            format: uuid
+                          username:
+                            type: string
+                          display_name:
+                            type: string
+                          nostr_pubkey:
+                            type: string
+                            description: 64-char lowercase hex
+              example:
+                success: true
+                data:
+                  user_id: 6d2f6f5e-72fa-4f4f-9d2c-58a5bcd4d0e4
+                  username: nostr_3a1f29bc
+                  display_name: Alice
+                  nostr_pubkey: 3a1f29bc4b6c0d0e2f8aa10bbc3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8091a2b3
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: __Host-session=eyJhbGciOi...; HttpOnly; Secure; Path=/; SameSite=Strict
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      x-codeSamples:
+        - lang: curl
+          source: |
+            # Pseudocode — `event` is a NIP-98 kind-27235 event you
+            # signed client-side with your Nostr signer.
+            curl -X POST https://arena.bitbybit.com.ar/api/auth/nostr \
+              -H "Authorization: Nostr $(printf %s "$EVENT_JSON" | base64)"
+
+  /api/auth/session:
+    get:
+      tags: [auth]
+      summary: Read the current session
+      description: |
+        Returns the decoded JWT claims (user id, display name, locale,
+        signer type, profile-completed flag) for the cookie-bearing
+        caller. Used by the client on boot to hydrate the user
+        context without a second round-trip.
+      responses:
+        "200":
+          description: Session payload
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AuthSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/auth/signout:
+    post:
+      tags: [auth]
+      summary: Clear the session cookie
+      description: |
+        Idempotent. The handler runs with `requireAuth: false` so a
+        stale or expired session still resolves cleanly — the client
+        only cares that the cookie is gone afterwards.
+      security: []
+      responses:
+        "200":
+          description: Cookie cleared
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          ok:
+                            type: boolean
+                            example: true
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # -------------------------------------------------------------- badges
+  /api/badges/{id}:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+    patch:
+      tags: [badges]
+      summary: Mark a badge as accepted on the recipient's Nostr profile
+      description: |
+        Called by the client after it publishes a kind:30008 Profile
+        Badges event that includes this badge's (a, e) pair. Only the
+        badge recipient can flip their own `accepted_at`.
+      responses:
+        "200":
+          description: Updated badge row
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Badge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ---------------------------------------------------------- challenges
+  /api/challenges:
+    get:
+      tags: [challenges]
+      summary: List challenges (public)
+      description: |
+        Cursor-paginated list with search, type/tag/verification filters,
+        and a sort selector. When `follow_pubkeys` is supplied, rows
+        whose creator or any active participant matches the follow
+        list are boosted to the top. With `only_following=true`, the
+        list is hard-filtered to that set.
+
+        Cursor pagination is timestamp-based (`created_at`) for the
+        default sorts. When the follow boost is active the `cursor`
+        is interpreted as an integer offset (the boost breaks
+        timestamp monotonicity).
+      security: []
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Substring match against title and description
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ChallengeStatus"
+        - name: type
+          in: query
+          description: |
+            Single value or comma-separated list of challenge types.
+          schema:
+            type: string
+            example: streak,one_time
+        - name: tag
+          in: query
+          schema: { type: string }
+          description: Single tag exact match
+        - name: tags
+          in: query
+          schema: { type: string }
+          description: Comma-separated tags (OR-matched)
+        - name: verification
+          in: query
+          schema:
+            $ref: "#/components/schemas/VerificationMethod"
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [newest, ending_soon, most_participants, most_active, trending]
+            default: newest
+        - name: cursor
+          in: query
+          schema: { type: string }
+          description: ISO-8601 timestamp from the previous page (or numeric offset when follow boost is active)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: follow_pubkeys
+          in: query
+          description: Comma-separated 64-hex pubkeys of accounts the viewer follows. Capped at 1000 entries.
+          schema: { type: string }
+        - name: only_following
+          in: query
+          description: |
+            When `true`, hard-filters to challenges whose creator or
+            active participants are in `follow_pubkeys`. Requires
+            `follow_pubkeys` to be non-empty.
+          schema:
+            type: string
+            enum: ["true", "false"]
+      responses:
+        "200":
+          description: Paged list of challenge cards
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ChallengeListPage"
+              example:
+                success: true
+                data:
+                  items:
+                    - id: 6d2f6f5e-72fa-4f4f-9d2c-58a5bcd4d0e4
+                      slug: 30-day-pushup-streak
+                      title: 30-day pushup streak
+                      description: A pushup a day, every day, for 30 days. Photo or like as proof.
+                      type: streak
+                      status: open
+                      tags: [fitness, streak]
+                      goal: 30
+                      unit: days
+                      verification_methods: [creator_approval, nostr_action]
+                      checkpoint_mode: none
+                      prize_amount_sats: 21000
+                      prize_distribution: split
+                      ends_at: "2026-05-25T00:00:00.000Z"
+                      created_at: "2026-04-25T15:00:00.000Z"
+                      participant_count: 14
+                      creator_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+                      creator:
+                        username: alice
+                        display_name: Alice
+                        avatar_url: https://blossom.primal.net/abc.jpg
+                  nextCursor: "2026-04-20T12:00:00.000Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+    post:
+      tags: [challenges]
+      summary: Create a challenge
+      description: |
+        Creates the row plus any optional checkpoints in one implicit
+        transaction. When `checkpoint_mode != "none"`, `goal` is set to
+        `checkpoints.length` and `unit` is forced to `"checkpoints"`.
+
+        If `prize_amount_sats > 0`, `prize_distribution` must be one
+        of `first_to_complete`, `split`, `tiered`.
+
+        If `verification_methods` includes `nostr_action`,
+        `nostr_action_target_event_id` is required (64-hex). If it
+        includes `nostr_hashtag`, `nostr_hashtag` is required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChallengeRequest"
+            example:
+              title: Read 5 books in 60 days
+              description: Pick five non-fiction books and post a one-paragraph takeaway for each.
+              type: creative
+              tags: [reading, learning]
+              verification_methods: [creator_approval]
+              checkpoint_mode: sequential
+              checkpoints:
+                - title: Book 1
+                  description: First book — finish and write your takeaway.
+                  verification_methods: [creator_approval]
+                - title: Book 2
+                  verification_methods: [creator_approval]
+                - title: Book 3
+                  verification_methods: [creator_approval]
+                - title: Book 4
+                  verification_methods: [creator_approval]
+                - title: Book 5
+                  verification_methods: [creator_approval]
+              prize_amount_sats: 50000
+              prize_distribution: tiered
+              zap_goal_event_id: 9b4f2e8c1a3d5f7e6b8c0d1e2f3a4b5c6d7e8f9012345678901234567890abcd
+              badge_name: Five-Book Finisher
+              badge_image_url: https://blossom.primal.net/badge-5books.png
+              starts_at: "2026-05-01T00:00:00.000Z"
+              ends_at: "2026-06-30T00:00:00.000Z"
+      responses:
+        "201":
+          description: Challenge created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Challenge"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/challenges/{id}:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+    get:
+      tags: [challenges]
+      summary: Get a single challenge with its checkpoints
+      description: |
+        Returns the challenge row plus participant/completion counts,
+        the ordered checkpoint list, and (if the caller is signed in
+        and joined) their own checkpoint completion rows. Public —
+        no session required.
+      security: []
+      responses:
+        "200":
+          description: Challenge detail
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ChallengeDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [challenges]
+      summary: Partial update of a challenge (creator only)
+      description: |
+        Despite the verb, behaves like PATCH — every field is optional.
+        Sending an empty body returns 400 (`No fields to update`).
+        `null` clears nullable columns (e.g. `badge_name: null`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChallengeRequest"
+      responses:
+        "200":
+          description: Updated challenge row
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Challenge"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [challenges]
+      summary: Delete a challenge (creator only, no active participants)
+      description: |
+        Refuses with 400 `cannot_delete_active_challenge` if there is
+        at least one participant whose status is still `active`.
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          deleted:
+                            type: boolean
+                            example: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/challenges/{id}/award:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+    post:
+      tags: [challenges, badges]
+      summary: Award NIP-58 badges to participants (creator only)
+      description: |
+        Atomic: inserts badge rows for `user_ids` who don't already
+        have one for this challenge AND flips their participant
+        status to `completed`. Recipients are notified.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_ids]
+              properties:
+                user_ids:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    format: uuid
+            example:
+              user_ids:
+                - 6d2f6f5e-72fa-4f4f-9d2c-58a5bcd4d0e4
+                - a1b2c3d4-e5f6-7890-abcd-ef0123456789
+      responses:
+        "201":
+          description: Badge rows created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Badge"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    patch:
+      tags: [challenges, badges]
+      summary: Record a kind:8 badge award event id (creator only)
+      description: |
+        After the client signs and publishes the badge award event,
+        it calls this endpoint to persist the event id on the badge
+        row so it stops being dead storage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, nostr_event_id]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                nostr_event_id:
+                  type: string
+                  description: 64-char lowercase hex (kind:8 event id)
+      responses:
+        "200":
+          description: Badge updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Badge"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/challenges/{id}/checkpoint-completions:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+    get:
+      tags: [checkpoints]
+      summary: Every checkpoint completion row for a challenge (creator only)
+      description: |
+        Returns all checkpoint completions for the challenge — across
+        statuses — with the submitter's user info attached. Drives
+        the per-user submission-details modal in the Manage tab.
+        Bounded by checkpoint × participant count, so no pagination.
+      responses:
+        "200":
+          description: Flat list, no pagination
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ChallengeCheckpointCompletion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/challenges/{id}/checkpoints/{checkpointId}/complete:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+      - name: checkpointId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [checkpoints]
+      summary: Submit proof for a checkpoint (participant)
+      description: |
+        Branches on the checkpoint's `verification_methods`:
+          - `nostr_action` — server fetches the kind:7 reaction from
+            relays and auto-approves (`like_not_found` if missing).
+          - `nostr_hashtag` — server finds the kind:1 with the matching
+            `#t` and auto-approves.
+          - `creator_approval` / `automatic` — manual proof: text ≥ 5
+            chars, an image URL, or both. `automatic` skips creator
+            review entirely.
+
+        Sequential mode refuses unless every checkpoint with a lower
+        `order` is already approved for this participant
+        (`checkpoint_prior_required`). Re-submitting a `rejected`
+        row updates it in place; re-submitting `approved` or
+        `pending` returns 400.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitCheckpointCompletionRequest"
+      responses:
+        "201":
+          description: Checkpoint completion created or updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CheckpointCompletion"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/challenges/{id}/completions:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+    get:
+      tags: [completions]
+      summary: List proofs for a challenge (public)
+      security: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/CompletionStatus"
+      responses:
+        "200":
+          description: Completions ordered by submitted_at ASC
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Completion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [completions]
+      summary: Submit a proof of completion (participant)
+      description: |
+        Same branching as the checkpoint variant. For manual proofs,
+        either `content` (≥ 5 chars after trim) or `image_url` is
+        required. The unique partial index on
+        `(challenge_id, user_id, proof_event_id)` collapses
+        accidental double-clicks on "verify my like" into a single
+        row — concurrent dupes return 400 `duplicate_proof`.
+
+        Auto-approved completions (`automatic`, `nostr_action`,
+        `nostr_hashtag`) bump `participant.progress` and may flip
+        the participant to `completed` when the goal is reached.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitCompletionRequest"
+            example:
+              content: Day 12 — 25 pushups in the park, photo attached.
+              image_url: https://blossom.primal.net/9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c.jpg
+              method: creator_approval
+      responses:
+        "201":
+          description: Completion created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Completion"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/challenges/{id}/join:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+    post:
+      tags: [challenges]
+      summary: Join a challenge
+      description: |
+        Refuses with 400 if the challenge isn't `open` or `in_progress`.
+        Re-joining after a previous `withdrawn` reactivates the same
+        participant row (progress reset to 0). Already-active joins
+        return 409 `already_joined`.
+      responses:
+        "201":
+          description: Participant created or reactivated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Participant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [challenges]
+      summary: Withdraw from a challenge
+      description: |
+        400 `already_withdrawn` if the participant is already
+        withdrawn, 400 `cannot_withdraw_completed` if their status
+        is `completed`, 404 if no participation row exists.
+      responses:
+        "200":
+          description: Participant marked as withdrawn
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Participant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/challenges/{id}/participants:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+    get:
+      tags: [challenges]
+      summary: List active participants (public)
+      description: Excludes withdrawn rows. Ordered by `joined_at` ASC.
+      security: []
+      responses:
+        "200":
+          description: Active participants
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ParticipantWithUser"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/challenges/{id}/pending-checkpoint-submissions:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+    get:
+      tags: [checkpoints]
+      summary: Paged pending checkpoint submissions (creator only)
+      description: |
+        Cursor-paginated. Cursor is the UUID of the last row from the
+        previous page; ordering uses the `(created_at, id)` tuple
+        entirely inside Postgres so a row with sub-millisecond
+        precision can't straddle the boundary.
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Paged list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [items, nextCursor]
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/PendingCheckpointSubmission"
+                          nextCursor:
+                            type: [string, "null"]
+                            description: UUID of the last row on the page, or null
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/challenges/{id}/reward:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+    post:
+      tags: [challenges, zap]
+      summary: Compute the winner list and amounts (creator only)
+      description: |
+        Read-only. Returns the list of unpaid winners with their
+        Lightning addresses and the amount each should receive,
+        derived from the challenge's `prize_distribution`. The
+        client signs a NIP-57 zap request per winner, pays via WebLN
+        (or QR + `/api/zap/status`), and PATCHes back to record
+        each receipt.
+
+        Distribution math runs against the *full* completer list so
+        per-winner amounts stay fixed across retries — a
+        5000/3000/2000 tiered split stays 5000/3000/2000 even if
+        only 2000 is still unpaid. Already-rewarded winners are
+        filtered out before the lud16 lookup so a retry doesn't
+        re-validate paid winners.
+
+        `retained: true` means the winner is the challenge creator.
+        The UI skips retained entries in the zap queue and labels
+        them as "X sats retained by creator".
+      responses:
+        "200":
+          description: Winners list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/RewardComputation"
+              example:
+                success: true
+                data:
+                  challenge_id: 6d2f6f5e-72fa-4f4f-9d2c-58a5bcd4d0e4
+                  prize_distribution: tiered
+                  total_prize_sats: 10000
+                  winners:
+                    - user_id: a1b2c3d4-e5f6-7890-abcd-ef0123456789
+                      nostr_pubkey: 3a1f29bc4b6c0d0e2f8aa10bbc3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8091a2b3
+                      display_name: Alice
+                      lightning_address: alice@getalby.com
+                      amount_sats: 5000
+                      retained: false
+                    - user_id: b2c3d4e5-f6a7-8901-bcde-f01234567890
+                      nostr_pubkey: 4b2c30cd5c7d1e1f3a9bb21cce4d5f6a7b8c9d0e1f2a3b4c5d6e7f8091a2b3c4
+                      display_name: Bob
+                      lightning_address: bob@walletofsatoshi.com
+                      amount_sats: 3000
+                      retained: false
+                    - user_id: c3d4e5f6-a7b8-9012-cdef-012345678901
+                      nostr_pubkey: 5c3d41de6d8e2f203abc132ddf5e6f0a8b9c0d1e2f3a4b5c6d7e8f9012a3b4c5
+                      display_name: Carol (creator)
+                      lightning_address: null
+                      amount_sats: 2000
+                      retained: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      tags: [challenges, zap]
+      summary: Stamp a winner paid or close out the challenge (creator only)
+      description: |
+        Atomic via `db.batch`. The body must request at least one
+        action — empty body returns 400.
+
+        Actions:
+          - `user_id` alone — stamp `participants.rewarded_at` for
+            that winner so a retried POST /reward skips them.
+          - `user_id` + `receipt_event_id` — also record the
+            kind:9735 receipt id on the winner's most recent
+            approved completion.
+          - `all_winners_paid: true` — stamp
+            `challenges.rewards_paid_at` (the only way to flip the
+            challenge-level paid state) and mop up any still-unmarked
+            completed participants (typically the retained creator).
+          - Any combination is valid in a single request.
+
+        `receipt_event_id` without `user_id` is a 400.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordRewardRequest"
+            example:
+              user_id: a1b2c3d4-e5f6-7890-abcd-ef0123456789
+              receipt_event_id: 5b2f1e8c0a3d4f6e7b8c0d1e2f3a4b5c6d7e8f9012345678901234567890abcd
+              all_winners_paid: true
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          ok:
+                            type: boolean
+                            example: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/challenges/{id}/zap-goal-progress:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+    get:
+      tags: [challenges, zap]
+      summary: NIP-75 zap goal progress for one challenge (public)
+      description: |
+        Reads the kind 9735 zap receipts that reference the
+        challenge's NIP-75 zap goal event from relays and returns
+        an aggregated progress snapshot. Returns a zero-filled
+        snapshot when the challenge has no `zap_goal_event_id`.
+      security: []
+      responses:
+        "200":
+          description: Progress snapshot
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ZapGoalProgress"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/challenges/zap-goal-progress:
+    post:
+      tags: [challenges, zap]
+      summary: Batch zap goal progress (public)
+      description: |
+        Batch variant of the single-id endpoint. Takes up to 40
+        challenge ids and returns a map keyed by the same ids so
+        callers can index without re-walking. `null` is returned
+        for ids that don't resolve to a challenge.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 40
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        "200":
+          description: Map of id → progress | null
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties:
+                          oneOf:
+                            - $ref: "#/components/schemas/ZapGoalProgress"
+                            - type: "null"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  # ----------------------------------------------- checkpoint-completions
+  /api/checkpoint-completions/{id}/verify:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+    post:
+      tags: [checkpoints]
+      summary: Approve or reject a pending checkpoint completion (creator only)
+      description: |
+        On approval, recomputes the participant's checkpoint progress
+        atomically. `reject_reason` is only persisted when status is
+        `rejected`; on approve, any stale rejection note is cleared.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyDecisionRequest"
+      responses:
+        "200":
+          description: Updated checkpoint completion
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CheckpointCompletion"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ---------------------------------------------------------- completions
+  /api/completions/{id}/verify:
+    parameters:
+      - $ref: "#/components/parameters/PathId"
+    post:
+      tags: [completions]
+      summary: Approve or reject a pending completion (creator only)
+      description: |
+        On approval, also bumps the submitter's `participant.progress`
+        and flips them to `completed` when the goal is reached. All
+        writes go through `db.batch` so a partial crash can't leave
+        the row approved with stale progress.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyDecisionRequest"
+      responses:
+        "200":
+          description: Updated completion
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Completion"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ----------------------------------------------------------- my-badges
+  /api/my-badges:
+    get:
+      tags: [badges]
+      summary: List badges the current user has earned
+      description: |
+        Cursor pagination — `cursor` is the ISO `awarded_at` of the
+        last row from the previous page. Default limit 20, max 50.
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Paged badge list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [items, nextCursor]
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/AchievementItem"
+                          nextCursor:
+                            type: [string, "null"]
+                            format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # -------------------------------------------------------- my-challenges
+  /api/my-challenges:
+    get:
+      tags: [challenges]
+      summary: Challenges the current user created and/or joined
+      description: |
+        Returns two parallel pages — `created` and `joined`.
+        Pagination is per tab; pass `scope=created` or `scope=joined`
+        with `cursor` to advance one tab. Without `scope`, both pages
+        are returned for the initial load.
+      parameters:
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [created, joined]
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Required when paginating; must be paired with `scope`
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Two-tab page
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [created, joined]
+                        properties:
+                          created:
+                            $ref: "#/components/schemas/MyChallengePage"
+                          joined:
+                            $ref: "#/components/schemas/MyChallengePage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # -------------------------------------------------------- notifications
+  /api/notifications:
+    get:
+      tags: [notifications]
+      summary: List the current user's notifications
+      description: Newest first, capped at 50. `unread=true` filters to unread only.
+      parameters:
+        - name: unread
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+      responses:
+        "200":
+          description: Notification list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Notification"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [notifications]
+      summary: Mark one notification as read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Updated row
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Notification"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [notifications]
+      summary: Mark all notifications as read
+      description: |
+        Co-located on the collection route to avoid a one-verb sub-route.
+        No body required.
+      responses:
+        "200":
+          description: All unread notifications marked read
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          ok:
+                            type: boolean
+                            example: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # -------------------------------------------------------------- profile
+  /api/profile:
+    get:
+      tags: [profile]
+      summary: Get the current user's full profile row
+      responses:
+        "200":
+          description: User row
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UserRow"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags: [profile]
+      summary: Partial profile update
+      description: |
+        At least one field must be present (empty body returns 400
+        `No fields to update`). `notification_prefs` is merged into
+        the stored object — sending `{ "challenge_joined": false }`
+        only flips that one toggle. Touching any identity field
+        (display_name / username / avatar / about / lightning_address)
+        also marks `profile_completed: true`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Updated user row
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UserRow"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [profile]
+      summary: Soft-delete the current user
+      description: |
+        Scrubs PII (display name, avatar, about, lightning address,
+        cached Nostr metadata) but keeps the row so foreign keys in
+        challenges/participants/completions/badges stay valid. The
+        session cookie is cleared. Nostr events on relays are
+        untouched — those aren't ours to delete.
+      responses:
+        "200":
+          description: Account scrubbed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          deleted:
+                            type: boolean
+                            example: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/profile/sync:
+    post:
+      tags: [profile]
+      summary: Sync kind:0 metadata from relays into the local user row
+      description: |
+        Read-only against Nostr (no kind:0 publish). Strict rate
+        limit (5 / 15 min) because each call opens WebSockets to
+        multiple relays. Returns 400 `no_metadata_found` when the
+        pubkey has no published kind:0.
+      responses:
+        "200":
+          description: Updated user row
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UserRow"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  # ----------------------------------------------------------------- tags
+  /api/tags/popular:
+    get:
+      tags: [tags]
+      summary: Most-used tags across all challenges (public)
+      security: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Tags ordered by descending count
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          required: [tag, count]
+                          properties:
+                            tag:
+                              type: string
+                            count:
+                              type: integer
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  # ------------------------------------------------------------------ zap
+  /api/zap/status:
+    post:
+      tags: [zap]
+      summary: Check whether a BOLT11 invoice has been paid (public)
+      description: |
+        Uses the server's NWC connection (if configured) to look up
+        the invoice's payment hash. Falls back to `listTransactions`
+        when the wallet doesn't support `lookupInvoice`. When NWC is
+        not configured server-side, always returns `{ paid: false }`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invoice]
+              properties:
+                invoice:
+                  type: string
+                  description: BOLT11 invoice
+      responses:
+        "200":
+          description: Payment status
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [paid]
+                        properties:
+                          paid:
+                            type: boolean
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+# ====================================================================
+components:
+  securitySchemes:
+    nostrAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        NIP-98 HTTP Auth. Format: `Nostr <base64(JSON.stringify(event))>`
+        where `event` is a kind-27235 Nostr event signed by the user.
+        Required only on `POST /api/auth/nostr`.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: __Host-session
+      description: |
+        httpOnly session cookie issued by `POST /api/auth/nostr`. In
+        production the cookie name is `__Host-session` (Secure, Path=/,
+        SameSite=Strict, no Domain attribute). In development the name
+        is `session`. JWT, 7-day expiry.
+
+  parameters:
+    PathId:
+      name: id
+      in: path
+      required: true
+      description: UUID of the resource
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Validation or business-rule error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            success: false
+            error: "title: Title must be at least 3 characters"
+            code: bad_request
+    Unauthorized:
+      description: Missing or invalid session cookie
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            success: false
+            error: Unauthorized
+            code: unauthorized
+    Forbidden:
+      description: Authenticated but not allowed for this resource
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            success: false
+            error: Only the creator can edit this challenge
+            code: forbidden
+    NotFound:
+      description: Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            success: false
+            error: Challenge not found
+            code: not_found
+    Conflict:
+      description: Conflict with current resource state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            success: false
+            error: You have already joined this challenge
+            code: already_joined
+    RateLimited:
+      description: Too many requests; see `Retry-After` header
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            description: Seconds until the rate-limit window resets
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            success: false
+            error: Too many requests. Try again later.
+            code: rate_limit
+    ServerError:
+      description: Unhandled server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            success: false
+            error: Internal server error
+            code: internal
+
+  schemas:
+    # ---- Envelope shapes -------------------------------------------------
+    SuccessEnvelope:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          description: Operation-specific payload (overridden by each operation)
+
+    ErrorEnvelope:
+      type: object
+      required: [success, error, code]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+          description: Human-readable English message (the client localises by `code`)
+        code:
+          $ref: "#/components/schemas/ApiErrorCode"
+
+    ApiErrorCode:
+      type: string
+      description: Stable machine-readable error code from `lib/api/errors.ts`
+      enum:
+        - unauthorized
+        - rate_limit
+        - internal
+        - not_found
+        - forbidden
+        - bad_request
+        - conflict
+        - challenge_not_accepting_participants
+        - already_joined
+        - already_withdrawn
+        - cannot_withdraw_completed
+        - challenge_cancelled
+        - challenge_completed
+        - must_join_first
+        - missing_target_event
+        - like_not_found
+        - missing_hashtag
+        - hashtag_post_not_found
+        - proof_too_short
+        - duplicate_proof
+        - cannot_delete_active_challenge
+        - award_not_participants
+        - already_awarded
+        - missing_pubkey
+        - no_metadata_found
+        - invalid_invoice
+        - auth_missing_header
+        - auth_invalid_scheme
+        - auth_invalid_base64
+        - auth_invalid_signature
+        - auth_clock_skew
+        - network_error
+        - checkpoint_already_completed
+        - checkpoint_in_review
+        - checkpoint_prior_required
+
+    # ---- Enums ----------------------------------------------------------
+    ChallengeType:
+      type: string
+      enum: [one_time, streak, competition, race, creative]
+
+    ChallengeStatus:
+      type: string
+      enum: [open, in_progress, completed, cancelled]
+
+    CheckpointMode:
+      type: string
+      enum: [none, sequential, parallel]
+
+    CompletionStatus:
+      type: string
+      enum: [pending, approved, rejected]
+
+    PrizeDistribution:
+      type: string
+      enum: [first_to_complete, split, tiered, none]
+
+    VerificationMethod:
+      type: string
+      enum: [creator_approval, automatic, nostr_action, nostr_hashtag]
+
+    NotificationType:
+      type: string
+      enum:
+        - challenge_joined
+        - completion_submitted
+        - completion_verified
+        - checkpoint_submitted
+        - checkpoint_verified
+        - prize_awarded
+        - badge_earned
+
+    SignerType:
+      type: string
+      enum: [extension, nsec, nip46]
+
+    Locale:
+      type: string
+      enum: [es, en]
+
+    # ---- Domain -------------------------------------------------------
+    AuthSession:
+      type: object
+      required: [user_id, username, display_name, locale, nostr_pubkey]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: [string, "null"]
+          format: uri
+        locale:
+          $ref: "#/components/schemas/Locale"
+        nostr_pubkey:
+          type: string
+          description: 64-char lowercase hex
+        signer_type:
+          oneOf:
+            - $ref: "#/components/schemas/SignerType"
+            - type: "null"
+        profile_completed:
+          type: boolean
+
+    User:
+      type: object
+      required: [id, nostr_pubkey, username, display_name, locale, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nostr_pubkey:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: [string, "null"]
+          format: uri
+        about:
+          type: [string, "null"]
+        lightning_address:
+          type: [string, "null"]
+        locale:
+          $ref: "#/components/schemas/Locale"
+        notification_prefs:
+          $ref: "#/components/schemas/NotificationPrefs"
+        created_at:
+          type: string
+          format: date-time
+
+    UserRow:
+      description: |
+        Full Drizzle row returned by `GET /api/profile` and friends.
+        Adds the soft-delete and metadata-cache columns to `User`.
+      allOf:
+        - $ref: "#/components/schemas/User"
+        - type: object
+          properties:
+            nostr_metadata:
+              type: [object, "null"]
+              description: Cached kind:0 content blob from relays
+              additionalProperties: true
+            nostr_metadata_updated_at:
+              type: [string, "null"]
+              format: date-time
+            profile_completed:
+              type: boolean
+            deleted_at:
+              type: [string, "null"]
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    NotificationPrefs:
+      type: object
+      description: |
+        Partial map of `NotificationType` → boolean. Missing keys mean
+        enabled, explicit `false` mutes that type.
+      additionalProperties:
+        type: boolean
+
+    Challenge:
+      type: object
+      required:
+        - id
+        - creator_id
+        - slug
+        - title
+        - description
+        - type
+        - tags
+        - verification_methods
+        - checkpoint_mode
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        creator_id:
+          type: string
+          format: uuid
+        nostr_event_id:
+          type: [string, "null"]
+        slug:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        image_url:
+          type: [string, "null"]
+          format: uri
+        type:
+          $ref: "#/components/schemas/ChallengeType"
+        tags:
+          type: array
+          items:
+            type: string
+        goal:
+          type: [integer, "null"]
+        unit:
+          type: [string, "null"]
+        verification_methods:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/VerificationMethod"
+        nostr_action_target_event_id:
+          type: [string, "null"]
+        nostr_hashtag:
+          type: [string, "null"]
+        checkpoint_mode:
+          $ref: "#/components/schemas/CheckpointMode"
+        prize_amount_sats:
+          type: integer
+          minimum: 0
+        prize_distribution:
+          oneOf:
+            - $ref: "#/components/schemas/PrizeDistribution"
+            - type: "null"
+        zap_goal_event_id:
+          type: [string, "null"]
+        rewards_paid_at:
+          type: [string, "null"]
+          format: date-time
+        result_nostr_event_id:
+          type: [string, "null"]
+        badge_nostr_event_id:
+          type: [string, "null"]
+        badge_name:
+          type: [string, "null"]
+        badge_image_url:
+          type: [string, "null"]
+          format: uri
+        status:
+          $ref: "#/components/schemas/ChallengeStatus"
+        starts_at:
+          type: [string, "null"]
+          format: date-time
+        ends_at:
+          type: [string, "null"]
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        # Computed projections returned by list / detail endpoints
+        participant_count:
+          type: integer
+        completion_count:
+          type: integer
+        creator:
+          oneOf:
+            - $ref: "#/components/schemas/UserSummary"
+            - type: "null"
+
+    UserSummary:
+      type: object
+      required: [username, display_name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: [string, "null"]
+          format: uri
+        nostr_pubkey:
+          type: string
+
+    ChallengeListPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Challenge"
+        nextCursor:
+          type: [string, "null"]
+
+    ChallengeDetail:
+      allOf:
+        - $ref: "#/components/schemas/Challenge"
+        - type: object
+          properties:
+            checkpoints:
+              type: array
+              items:
+                $ref: "#/components/schemas/Checkpoint"
+            my_checkpoint_completions:
+              type: array
+              description: Empty array when the caller is unauthenticated or not a participant
+              items:
+                $ref: "#/components/schemas/CheckpointCompletion"
+
+    Checkpoint:
+      type: object
+      required: [id, challenge_id, order, title, verification_methods]
+      properties:
+        id:
+          type: string
+          format: uuid
+        challenge_id:
+          type: string
+          format: uuid
+        order:
+          type: integer
+          minimum: 0
+        title:
+          type: string
+        description:
+          type: [string, "null"]
+        verification_methods:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/VerificationMethod"
+        nostr_action_target_event_id:
+          type: [string, "null"]
+        nostr_hashtag:
+          type: [string, "null"]
+        created_at:
+          type: string
+          format: date-time
+
+    Participant:
+      type: object
+      required: [id, challenge_id, user_id, progress, points, status, joined_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        challenge_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        nostr_event_id:
+          type: [string, "null"]
+        progress:
+          type: integer
+          minimum: 0
+        points:
+          type: integer
+        status:
+          type: string
+          enum: [active, completed, withdrawn]
+        completed_at:
+          type: [string, "null"]
+          format: date-time
+        rewarded_at:
+          type: [string, "null"]
+          format: date-time
+        joined_at:
+          type: string
+          format: date-time
+
+    ParticipantWithUser:
+      allOf:
+        - $ref: "#/components/schemas/Participant"
+        - type: object
+          properties:
+            user:
+              $ref: "#/components/schemas/UserSummary"
+
+    Completion:
+      type: object
+      required:
+        - id
+        - challenge_id
+        - user_id
+        - status
+        - submitted_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        challenge_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        nostr_event_id:
+          type: [string, "null"]
+        step:
+          type: [integer, "null"]
+        content:
+          type: [string, "null"]
+        image_url:
+          type: [string, "null"]
+          format: uri
+        proof_event_id:
+          type: [string, "null"]
+        reward_zap_receipt_id:
+          type: [string, "null"]
+        status:
+          $ref: "#/components/schemas/CompletionStatus"
+        reviewed_by:
+          type: [string, "null"]
+          format: uuid
+        reviewed_at:
+          type: [string, "null"]
+          format: date-time
+        submitted_at:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/UserSummary"
+
+    CheckpointCompletion:
+      type: object
+      required:
+        - id
+        - participant_id
+        - checkpoint_id
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        participant_id:
+          type: string
+          format: uuid
+        checkpoint_id:
+          type: string
+          format: uuid
+        proof_event_id:
+          type: [string, "null"]
+        content:
+          type: [string, "null"]
+        image_url:
+          type: [string, "null"]
+          format: uri
+        status:
+          $ref: "#/components/schemas/CompletionStatus"
+        reject_reason:
+          type: [string, "null"]
+        completed_at:
+          type: [string, "null"]
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    PendingCheckpointSubmission:
+      type: object
+      required:
+        - id
+        - checkpoint_id
+        - participant_id
+        - created_at
+        - participant
+      properties:
+        id:
+          type: string
+          format: uuid
+        checkpoint_id:
+          type: string
+          format: uuid
+        participant_id:
+          type: string
+          format: uuid
+        content:
+          type: [string, "null"]
+        image_url:
+          type: [string, "null"]
+          format: uri
+        proof_event_id:
+          type: [string, "null"]
+        created_at:
+          type: string
+          format: date-time
+        participant:
+          type: object
+          required: [user]
+          properties:
+            user:
+              $ref: "#/components/schemas/UserSummary"
+
+    ChallengeCheckpointCompletion:
+      allOf:
+        - $ref: "#/components/schemas/CheckpointCompletion"
+        - type: object
+          properties:
+            user:
+              $ref: "#/components/schemas/UserSummary"
+
+    Badge:
+      type: object
+      required: [id, challenge_id, user_id, badge_name, awarded_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        challenge_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        badge_name:
+          type: string
+        badge_image_url:
+          type: [string, "null"]
+          format: uri
+        nostr_event_id:
+          type: [string, "null"]
+          description: kind:8 badge award event id
+        awarded_at:
+          type: string
+          format: date-time
+        accepted_at:
+          type: [string, "null"]
+          format: date-time
+
+    AchievementItem:
+      allOf:
+        - $ref: "#/components/schemas/Badge"
+        - type: object
+          required: [challenge, issuer]
+          properties:
+            challenge:
+              type: object
+              required: [id, slug, title]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                slug:
+                  type: string
+                title:
+                  type: string
+                badge_nostr_event_id:
+                  type: [string, "null"]
+            issuer:
+              $ref: "#/components/schemas/UserSummary"
+
+    Notification:
+      type: object
+      required: [id, user_id, type, title, read, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/NotificationType"
+        title:
+          type: string
+        body:
+          type: [string, "null"]
+        read:
+          type: boolean
+        metadata:
+          type: [object, "null"]
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+
+    MyChallengePage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Challenge"
+              - type: object
+                properties:
+                  role:
+                    type: string
+                    enum: [creator, participant]
+                  participant_count:
+                    type: integer
+                  checkpoints_total:
+                    type: integer
+                  checkpoints_approved:
+                    type: integer
+                  checkpoints_pending:
+                    type: integer
+                  participation:
+                    $ref: "#/components/schemas/Participant"
+        nextCursor:
+          type: [string, "null"]
+          format: date-time
+
+    ZapGoalProgress:
+      type: object
+      description: |
+        Aggregated NIP-75 zap goal snapshot, cached for 45s per
+        serverless instance. Source: `ZapGoalProgressData` in
+        `lib/nostr/zap-goal-progress.ts`. A row that has no
+        `zap_goal_event_id` still produces a valid zero-filled snapshot
+        rather than `null`, so the UI can render "0 / X sats" without
+        a conditional branch per caller.
+      required:
+        - challenge_id
+        - goal_event_id
+        - goal_sats
+        - raised_sats
+        - zapper_count
+        - recent_zappers
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+        goal_event_id:
+          type: [string, "null"]
+          description: |
+            The kind:9041 NIP-75 event id this snapshot aggregates over.
+            Null when the creator hasn't published a zap goal yet (the
+            "Republish zap goal" button is shown in the UI for that
+            case).
+        goal_sats:
+          type: integer
+          minimum: 0
+          description: |
+            The target prize pool in sats. Mirrors `prize_amount_sats`
+            on the challenge row.
+        raised_sats:
+          type: integer
+          minimum: 0
+          description: |
+            Sum of every kind:9735 receipt's parsed amount that
+            `e`-tags `goal_event_id`.
+        zapper_count:
+          type: integer
+          minimum: 0
+          description: Distinct zapper pubkeys observed across all receipts.
+        recent_zappers:
+          type: array
+          maxItems: 8
+          description: |
+            Up to the 8 most recent unique zappers, newest first, for
+            the avatar strip on the Explore detail panel.
+          items:
+            $ref: "#/components/schemas/ZapGoalProgressZapper"
+      additionalProperties: false
+
+    ZapGoalProgressZapper:
+      type: object
+      required: [pubkey, amount_sats, message, received_at]
+      properties:
+        pubkey:
+          type: string
+          description: 64-char hex Nostr pubkey of the zapper.
+        amount_sats:
+          type: integer
+          minimum: 0
+        message:
+          type: string
+          description: |
+            Optional zap message. Empty string when the zapper didn't
+            attach one — never null, so consumers can render unconditionally.
+        received_at:
+          type: integer
+          description: |
+            Unix timestamp (seconds) when the receipt was emitted.
+            Drives the "newest first" order in `recent_zappers`.
+      additionalProperties: false
+
+    RewardComputation:
+      type: object
+      required:
+        - challenge_id
+        - prize_distribution
+        - total_prize_sats
+        - winners
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+        prize_distribution:
+          $ref: "#/components/schemas/PrizeDistribution"
+        total_prize_sats:
+          type: integer
+          minimum: 0
+        winners:
+          type: array
+          items:
+            $ref: "#/components/schemas/RewardWinner"
+
+    RewardWinner:
+      type: object
+      required: [user_id, nostr_pubkey, display_name, amount_sats, retained]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        nostr_pubkey:
+          type: string
+        display_name:
+          type: string
+        lightning_address:
+          type: [string, "null"]
+          description: Null when `retained=true` (the creator isn't paid themselves)
+        amount_sats:
+          type: integer
+          minimum: 0
+        retained:
+          type: boolean
+          description: True when the winner is the challenge creator
+
+    # ---- Request bodies -----------------------------------------------
+    CreateChallengeRequest:
+      type: object
+      required: [title, description]
+      properties:
+        slug:
+          type: string
+          description: 1-100 chars `[a-z0-9-]`. Server falls back to `slugify(title)` when absent.
+        nostr_event_id:
+          type: string
+          description: 64-hex id of the kind:30100 challenge definition event the client just published
+        title:
+          type: string
+          minLength: 3
+          maxLength: 200
+        description:
+          type: string
+          minLength: 10
+        type:
+          $ref: "#/components/schemas/ChallengeType"
+        tags:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            description: 1-30 chars `[a-z0-9-]` after normalisation
+        goal:
+          type: [integer, "null"]
+          minimum: 0
+        unit:
+          type: [string, "null"]
+        verification_methods:
+          type: array
+          minItems: 1
+          default: [creator_approval]
+          items:
+            $ref: "#/components/schemas/VerificationMethod"
+        nostr_action_target_event_id:
+          type: [string, "null"]
+          description: Required when `verification_methods` includes `nostr_action`
+        nostr_hashtag:
+          type: [string, "null"]
+          description: Required when `verification_methods` includes `nostr_hashtag`
+        checkpoint_mode:
+          $ref: "#/components/schemas/CheckpointMode"
+        checkpoints:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/CheckpointInput"
+        prize_amount_sats:
+          type: integer
+          minimum: 0
+        prize_distribution:
+          $ref: "#/components/schemas/PrizeDistribution"
+        zap_goal_event_id:
+          type: string
+          description: 64-hex id of the NIP-75 kind:9041 zap goal event
+        badge_name:
+          type: [string, "null"]
+          maxLength: 100
+        badge_image_url:
+          type: [string, "null"]
+          format: uri
+        starts_at:
+          type: [string, "null"]
+          format: date-time
+        ends_at:
+          type: [string, "null"]
+          format: date-time
+
+    CheckpointInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 3
+        description:
+          type: [string, "null"]
+        verification_methods:
+          type: array
+          minItems: 1
+          default: [creator_approval]
+          items:
+            $ref: "#/components/schemas/VerificationMethod"
+        nostr_action_target_event_id:
+          type: [string, "null"]
+        nostr_hashtag:
+          type: [string, "null"]
+
+    UpdateChallengeRequest:
+      type: object
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 3
+        description:
+          type: string
+          minLength: 10
+        type:
+          $ref: "#/components/schemas/ChallengeType"
+        verification_methods:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/VerificationMethod"
+        status:
+          $ref: "#/components/schemas/ChallengeStatus"
+        prize_distribution:
+          $ref: "#/components/schemas/PrizeDistribution"
+        tags:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+        goal:
+          type: [integer, "null"]
+          minimum: 0
+        unit:
+          type: [string, "null"]
+        prize_amount_sats:
+          type: integer
+          minimum: 0
+        badge_name:
+          type: [string, "null"]
+        badge_image_url:
+          type: [string, "null"]
+          format: uri
+        badge_nostr_event_id:
+          type: [string, "null"]
+        result_nostr_event_id:
+          type: [string, "null"]
+        starts_at:
+          type: [string, "null"]
+          format: date-time
+        ends_at:
+          type: [string, "null"]
+          format: date-time
+        zap_goal_event_id:
+          type: [string, "null"]
+
+    SubmitCompletionRequest:
+      type: object
+      properties:
+        content:
+          type: [string, "null"]
+          description: Free-text proof. ≥ 5 chars after trim if `image_url` is absent.
+        image_url:
+          type: [string, "null"]
+          format: uri
+          description: http(s) URL ≤ 2048 chars (typically Blossom-hosted)
+        step:
+          type: [integer, "null"]
+          description: Optional step number for streak-style challenges
+        method:
+          $ref: "#/components/schemas/VerificationMethod"
+
+    SubmitCheckpointCompletionRequest:
+      type: object
+      properties:
+        content:
+          type: [string, "null"]
+        image_url:
+          type: [string, "null"]
+          format: uri
+        method:
+          $ref: "#/components/schemas/VerificationMethod"
+
+    VerifyDecisionRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [approved, rejected]
+        reject_reason:
+          type: [string, "null"]
+          maxLength: 500
+          description: |
+            Only persisted when `status=rejected`. Empty/whitespace
+            normalises to null. Cleared on approve.
+
+    UpdateProfileRequest:
+      type: object
+      minProperties: 1
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+        username:
+          type: string
+          minLength: 3
+        avatar_url:
+          type: [string, "null"]
+          format: uri
+        about:
+          type: [string, "null"]
+        lightning_address:
+          type: [string, "null"]
+        locale:
+          $ref: "#/components/schemas/Locale"
+        notification_prefs:
+          $ref: "#/components/schemas/NotificationPrefs"
+
+    RecordRewardRequest:
+      type: object
+      description: |
+        Body must include either `user_id` (mark a winner paid) or
+        `all_winners_paid: true` (mark the challenge paid). Empty
+        body returns 400.
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        receipt_event_id:
+          type: string
+          description: kind:9735 zap receipt id (64-hex). Requires `user_id`.
+        all_winners_paid:
+          type: boolean

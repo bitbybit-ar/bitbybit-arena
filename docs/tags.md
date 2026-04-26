@@ -24,7 +24,7 @@ Tags use the standard `t` tag from NIP-01, making challenges discoverable by any
 
 ### In the Database
 
-Tags are stored as a **text array** on the challenges table. This enables fast filtering with PostgreSQL array operators (`@>`, `&&`).
+Tags are stored as a **text array** on the challenges table. PostgreSQL array operators (`@>`, `&&`) are used for filtering — the `tag` query param on `GET /api/challenges` runs `tags @> ARRAY[<tag>]` against the column.
 
 ```sql
 -- Find challenges with tag "fitness"
@@ -34,55 +34,39 @@ SELECT * FROM challenges WHERE tags @> ARRAY['fitness'];
 SELECT * FROM challenges WHERE tags && ARRAY['fitness', 'health'];
 ```
 
-### Drizzle Schema Addition
+### Drizzle Schema
 
 ```typescript
 tags: text("tags").array().notNull().default([]),
 ```
 
-With an index for fast lookups:
-```typescript
-index("challenges_tags_idx").using("gin", table.tags),
-```
+There is **no GIN index on `tags` today** — at current scale the table is small enough that the planner sequential-scans cheaply, and the existing B-tree indexes (`creator_id`, `status`, `type`, `ends_at`) already cut most queries down before the array predicate runs. If tag filtering becomes a hot path, add `index("challenges_tags_idx").using("gin", table.tags)` in a follow-up migration.
 
 ## Tag Rules
 
 - **Lowercase only** — normalized on input (`"Fitness"` → `"fitness"`)
 - **No spaces** — use hyphens (`"cold-shower"`, not `"cold shower"`)
-- **Max 5 tags per challenge** — keeps things focused
+- **Max 10 tags per challenge** — `MAX_TAGS` in `lib/schemas/primitives.ts`
 - **Max 30 characters per tag**
-- **Alphanumeric + hyphens only** — no special characters
-- **No duplicates** on same challenge
+- **Alphanumeric + hyphens only** — no special characters (`TAG_RE = /^[a-z0-9-]{1,30}$/`)
+- **No duplicates** on same challenge — deduplicated case-insensitively after normalisation
 
-## Suggested Tags (Seed List)
+## Tag suggestions
 
-Pre-populated suggestions shown when creating a challenge. Users can also type custom tags.
-
-| Category | Tags |
-|----------|------|
-| **Fitness** | `fitness`, `running`, `workout`, `yoga`, `cold-shower`, `steps`, `cycling`, `swimming` |
-| **Learning** | `learning`, `reading`, `coding`, `language`, `writing`, `study` |
-| **Creative** | `creative`, `photography`, `art`, `music`, `design`, `video` |
-| **Health** | `health`, `meditation`, `nutrition`, `sleep`, `hydration`, `no-sugar` |
-| **Social** | `social`, `community`, `volunteering`, `kindness`, `networking` |
-| **Productivity** | `productivity`, `habits`, `morning-routine`, `no-phone`, `journaling` |
-| **Bitcoin** | `bitcoin`, `lightning`, `nostr`, `stacking-sats`, `node-running` |
-| **Fun** | `fun`, `cooking`, `travel`, `gaming`, `outdoor`, `challenge` |
+Tags are free-form. There is **no static seed list** — the `TagInput` component accepts any input that passes the validation rules above. The only "suggestion" surface today is `GET /api/tags/popular` (see API section below), which returns the most-used tags across the live database. A curated seed list (categorised by Fitness / Learning / Creative / etc.) is a candidate post-MVP addition.
 
 ## UI
 
 ### Challenge Creation Form
-- Tag input field with autocomplete from the seed list
-- Type to search or create custom tags
+- Tag input field — free-form, accepts any tag that matches the validation rules above
 - Tags displayed as colored pills below the input
 - Remove tag by clicking the X on the pill
-- Counter showing "3/5 tags"
+- Counter showing the current count vs `MAX_TAGS`
 
 ### Explore Page — Filter by Tags
-- Tags appear as clickable chips in the filter bar
-- Show popular tags (most used) as quick filters
-- Multi-select: clicking multiple tags shows challenges matching **any** of them (OR logic)
-- Active tag filters shown as dismissable pills above results
+- Popular tags from `GET /api/tags/popular` rendered as clickable chips in the filter bar
+- Single-select today (the API takes one `tag` query param and runs `tags @> ARRAY[<tag>]`)
+- Active tag filter shown as a dismissable pill above results
 
 ### Challenge Card
 - Tags displayed as small pills at the bottom of the card
