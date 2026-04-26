@@ -136,9 +136,16 @@ As a recipient:
 
 This step has two parts — a supporter funding the pot (any logged-in user) and the creator paying out winners.
 
-### Before you start — fast path for the payout loop
+### Before you start — customize the seed, then run it
 
-`npm run db:seed` provisions a ready-to-payout challenge titled **"Demo: Tiered Prize Payout"**. Three mock participants are already `completed` with staggered `completed_at` timestamps so the tiered 50/30/20 split is deterministic — a judge can open the challenge as its creator and jump straight to "Distribute rewards" without walking through join + proof + approve first.
+`scripts/seed.ts` is a **template** you should adapt before running. It ships with 11 example challenges (a mix of fitness, learning, creative, and Bitcoin/Nostr themes — Spanish + English) and 8 mock users. Edit the `MOCK_CHALLENGES` array to suit your test plan: change titles / descriptions / tags / verification methods / prize amounts / participant counts. Useful patterns already in the file you can copy:
+
+- **`nostr_action`** — pin a target kind:1 event you control, participants like it from any client, server auto-verifies (e.g. "Boost La Crypta on Nostr").
+- **`nostr_hashtag`** — pick a `#t` hashtag, participants post a kind:1 note carrying it, server auto-verifies (e.g. "Hackathon #2 de La Crypta — Nostr" with `arenahackathon`).
+- **`creator_approval`** — text + optional image proof, you review (e.g. "Ship an open source project" with a tiered prize for the top 3).
+- **Demo: Tiered Prize Payout** — `automatic` verification with three pre-completed mock participants and staggered `completed_at` timestamps so the tiered 50/30/20 split is deterministic. Open it as its creator and jump straight to **Distribute rewards** without walking through join + proof + approve first.
+
+**Keep prize amounts tiny — 21 sats (`first_to_complete`) or 100 sats (`tiered`, splits cleanly to 50/30/20).** They need to be payable from any wallet you have around during testing. The seeded examples already follow this pattern. If you scale them up, you'll be the one paying the invoices — the app doesn't custody anything.
 
 Two env vars control who owns the demo challenge and where winner payouts route — both live in `.env.local` (see `.env.example`):
 

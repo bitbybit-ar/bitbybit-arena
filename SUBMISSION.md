@@ -51,8 +51,25 @@ If you skipped `npm install` above (or want a clean lockfile-pinned install for 
 ```bash
 npm ci
 npm run db:migrate
+```
+
+**Customize the seed before running it.** `scripts/seed.ts` is an **example** — it ships with 11 challenges (a mix of fitness, learning, creative, and Bitcoin/Nostr-themed), 8 mock users, and a ready-to-payout demo challenge for the NIP-57 flow. You should edit the `MOCK_CHALLENGES` array to suit how you want to evaluate the project: change titles, descriptions, tags, verification methods, prize amounts, participant counts. Mix Spanish and English copy if you want to exercise the i18n surface.
+
+A couple of useful patterns to copy:
+- **Boost La Crypta on Nostr** — verification method `nostr_action`, points at a real La Crypta note id you pin via `nostr_action_target_event_id` (kind:7 reaction auto-verifies).
+- **Hackathon #2 de La Crypta — Nostr** — `nostr_hashtag` with `nostr_hashtag: "arenahackathon"` (kind:1 note carrying `#arenahackathon` auto-verifies).
+- **Ship an open source project** — `creator_approval` with text + image proof, tiered payout among the top 3 submissions.
+- **Demo: Tiered Prize Payout** — `automatic` verification with three pre-completed mock participants, so you can jump straight to **Distribute rewards** without walking through join + proof + approve first.
+
+**Keep prize amounts tiny — 21 sats or 100 sats is plenty.** They have to be payable from any wallet you have around, and the math on the tiered split (50% / 30% / 20%) is cleanest at 100 sats (50/30/20). The seeded examples already follow this pattern. If you scale them up, just remember **you'll be the one paying the invoices** during the demo — the app doesn't custody anything.
+
+When you're happy with the seed file, run:
+
+```bash
 npm run db:seed
 ```
+
+The seeder is idempotent — it wipes any prior `mock-` rows before inserting.
 
 The seeder logs the owner pubkey at startup:
 
@@ -82,7 +99,7 @@ Verification: look up the challenge's `zap_goal_event_id` on `njump.me/<event-id
 ### 5.2 Creator payout (NIP-57)
 
 1. Open **"Demo: Tiered Prize Payout"** in Explore. You'll see it as the creator (because `SEED_OWNER_PUBKEY` matched) — three mock participants are already completed with staggered times so the podium is deterministic.
-2. Click **Distribute rewards**. Server computes: 1st = 5000 sats, 2nd = 3000 sats, 3rd = 2000 sats.
+2. Click **Distribute rewards**. Server computes: 1st = 30 sats, 2nd = 18 sats, 3rd = 12 sats (60-sat pot, 50/30/20% tiered split — kept tiny on purpose so a judge can pay it from any wallet).
 3. Pay each invoice (WebLN auto-pays; the QR fallback polls `/api/zap/status` with your NWC wallet). All three payouts route to `NEXT_PUBLIC_ZAP_LIGHTNING_ADDRESS`.
 4. After the last winner, the client publishes a `kind:30101` Challenge Result event with winner + stats tags.
 
