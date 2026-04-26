@@ -18,7 +18,7 @@ A Nostr-native client (`arena.bitbybit.com.ar`) where anyone can create timed ch
 
 ## 1. Prereqs
 
-- Node 20+
+- Node 20+ (CI runs 22 — anything in that range works)
 - A Nostr identity (extension like Alby / nos2x, or an `nsec1…` you can paste, or Amber/nsec.app for NIP-46)
 - **For payout testing**: a Lightning address you control (any Alby / Primal / Mutiny / Phoenix account gives you a `you@getalby.com`-style address)
 - A Neon Postgres URL (or any Postgres — the app uses the serverless driver but plain Postgres works locally)
@@ -46,7 +46,10 @@ Optional:
 
 ## 3. Migrate and seed
 
+If you skipped `npm install` above (or want a clean lockfile-pinned install for repro), run it now:
+
 ```bash
+npm ci
 npm run db:migrate
 npm run db:seed
 ```
@@ -85,13 +88,12 @@ Verification: look up the challenge's `zap_goal_event_id` on `njump.me/<event-id
 
 Verification: the event id is persisted on `challenges.result_nostr_event_id`; fetch it from any relay or `njump.me`.
 
-**Crash-safety**: if the payout loop is interrupted (tab close, signer abort), only already-paid winners are marked `rewarded_at` on the server. A retry re-issues POST `/reward` and the server returns only the unpaid winners, at their original amounts — no double-payment.
+**Crash-safety (with one residual gap)**: the server only stamps `rewards_paid_at` when the client explicitly `PATCH`es `{all_winners_paid: true}` after the last payout settles, so the challenge can never silently flip into "paid" state on a partial run. The residual gap: per-winner `reward_zap_receipt_id` bookkeeping isn't wired up yet (`docs/nostr-flows.md:202–204`), so if you pay winner 1 and the tab closes before winner 2, retrying `Distribute rewards` re-offers all three winners — including winner 1, who's already received their sats. Workaround for the demo: pay all three in one go without closing the tab. Closing this gap cleanly is tracked as a follow-up.
 
 ### 5.3 Badges (NIP-58)
 
-1. Still on the demo challenge, click **Award badges**, pick winners.
-2. The client publishes one `kind:8` award per recipient, `a`-tagging a `kind:30009` badge definition (lazy-published on first award if it wasn't emitted at creation).
-3. Sign in as one of the winners (different nsec / browser profile) → **My Challenges → Achievements** → **Accept on Nostr** → a `kind:30008` profile-badges event goes out, merged with any prior accepted badges.
+1. Still on the demo challenge, click **Award badges**, pick winners. The client publishes one `kind:8` award per recipient, `a`-tagging a `kind:30009` badge definition (lazy-published on first award if it wasn't emitted at creation).
+2. To exercise the **recipient** flow (Accept on Nostr → `kind:30008` profile-badges event with merge-preserve), the demo seeded participants are mocks and you don't hold their private keys, so create a quick second challenge instead: open `/create` from a different nsec / browser profile, join + complete it from your main account, award yourself, then sign back in as your main account and click **My Challenges → Achievements → Accept on Nostr**. The full walkthrough in [`docs/testing-plan.md`](./docs/testing-plan.md) Step 10 covers this end-to-end.
 
 ## Where to look in the code
 
