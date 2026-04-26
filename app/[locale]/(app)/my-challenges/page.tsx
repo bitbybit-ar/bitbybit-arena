@@ -91,6 +91,18 @@ export default function MyChallengesPage() {
   const [tab, setTab] = useState<Tab>(() =>
     initialTabFromUrl(searchParams?.get("tab") ?? null)
   );
+
+  // Re-sync the tab state when the URL changes after mount so an
+  // in-place navigation (router.replace, history popstate, the
+  // awardee banner CTA opening this page while it's already mounted)
+  // doesn't leave the active tab stale. The `?tab=` param is the
+  // single source of truth — local clicks on the Tabs component
+  // still call setTab() directly so we keep instant feedback.
+  const urlTab = searchParams?.get("tab") ?? null;
+  useEffect(() => {
+    const next = initialTabFromUrl(urlTab);
+    setTab((prev) => (prev === next ? prev : next));
+  }, [urlTab]);
   const [shareContext, setShareContext] = useState<ShareContext | null>(null);
 
   const fetchAll = useCallback(() => {

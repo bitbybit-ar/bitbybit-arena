@@ -65,9 +65,14 @@ export function SignerMethodButtons({
     ? `${styles.methods} ${styles.animate}`
     : styles.methods;
 
-  const showExtension = allowedMethods.includes("extension");
-  const showNip46 = allowedMethods.includes("nip46");
-  const showNsec = allowedMethods.includes("nsec");
+  // Single Set lookup beats three Array.includes() calls for the
+  // common case where the parent passes an array. O(1) per check
+  // instead of O(n) × 3, and reads more clearly when more methods
+  // get added to the picker.
+  const allowed = new Set(allowedMethods);
+  const showExtension = allowed.has("extension");
+  const showNip46 = allowed.has("nip46");
+  const showNsec = allowed.has("nsec");
 
   return (
     <div className={wrapperClassName}>
