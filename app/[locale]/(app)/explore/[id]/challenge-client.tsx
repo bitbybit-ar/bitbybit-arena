@@ -1461,81 +1461,100 @@ export default function ChallengeClient() {
                   {challenge.checkpoint_mode === "none" && (
                     <Section>
                       <SectionTitle>{t("yourProgressTitle")}</SectionTitle>
-                      {myProgressInfo.goal ? (
-                        <div className={styles.progressTrack}>
-                          <div className={styles.progressBar}>
-                            <div
-                              className={styles.progressFill}
-                              style={{ width: `${myProgressInfo.pct ?? 0}%` }}
-                            />
+                      <div className={styles.progressLayout}>
+                        {/* Skip the bare progress count for one-shot
+                            challenges (no goal AND no unit) — rendering a
+                            lone "1" above the completion banner adds
+                            visual noise without communicating anything
+                            the banner doesn't already say. */}
+                        {myProgressInfo.goal ? (
+                          <div className={styles.progressTrack}>
+                            <div className={styles.progressBar}>
+                              <div
+                                className={styles.progressFill}
+                                style={{ width: `${myProgressInfo.pct ?? 0}%` }}
+                              />
+                            </div>
+                            <span className={styles.progressCount}>
+                              {t("yourProgressCount", {
+                                progress: myProgressInfo.myProgress,
+                                goal: myProgressInfo.goal,
+                              })}
+                            </span>
                           </div>
+                        ) : challenge.unit ? (
                           <span className={styles.progressCount}>
-                            {t("yourProgressCount", {
+                            {t("yourProgressUncapped", {
                               progress: myProgressInfo.myProgress,
-                              goal: myProgressInfo.goal,
+                              unit: challenge.unit,
                             })}
                           </span>
-                        </div>
-                      ) : (
-                        <span className={styles.progressCount}>
-                          {t("yourProgressUncapped", {
-                            progress: myProgressInfo.myProgress,
-                            unit: challenge.unit ?? "",
-                          })}
-                        </span>
-                      )}
-                      {myProgressInfo.completed && (
-                        <p className={styles.completedBanner}>
-                          {t("challengeCompleted")}
-                        </p>
-                      )}
-                      {myProgressInfo.myCompletions.length === 0 ? (
-                        <p className={styles.emptyText}>
-                          {t("noMySubmissions")}
-                        </p>
-                      ) : (
-                        <>
-                          <h3 className={styles.sectionTitle}>
-                            {t("mySubmissionsTitle")}
-                          </h3>
-                          <div className={styles.mySubmissionList}>
-                            {[...myProgressInfo.myCompletions]
-                              .reverse()
-                              .map((c) => (
-                                <div
-                                  key={c.id}
-                                  className={styles.mySubmissionRow}
-                                >
-                                  <span className={styles.mySubmissionDate}>
-                                    {new Date(
-                                      c.submitted_at
-                                    ).toLocaleDateString(locale)}
-                                  </span>
-                                  <span
-                                    className={styles.mySubmissionContent}
-                                    title={c.content ?? ""}
-                                  >
-                                    {c.content ||
-                                      (c.image_url
-                                        ? t("proofImageAlt")
-                                        : "—")}
-                                  </span>
-                                  <Tag
-                                    variant={
-                                      c.status === "approved"
-                                        ? "green"
-                                        : c.status === "rejected"
-                                          ? "red"
-                                          : "gold"
+                        ) : null}
+                        {myProgressInfo.completed && (
+                          <p className={styles.completedBanner}>
+                            {t("challengeCompleted")}
+                          </p>
+                        )}
+                        {myProgressInfo.myCompletions.length === 0 ? (
+                          <p className={styles.emptyText}>
+                            {t("noMySubmissions")}
+                          </p>
+                        ) : (
+                          <div className={styles.mySubmissionsBlock}>
+                            <h3 className={styles.mySubmissionsTitle}>
+                              {t("mySubmissionsTitle")}
+                            </h3>
+                            <div className={styles.mySubmissionList}>
+                              {[...myProgressInfo.myCompletions]
+                                .reverse()
+                                .map((c) => (
+                                  // Whole row is a button so participants
+                                  // can re-open their own submission in the
+                                  // same modal the Pruebas avatars use,
+                                  // without having to dig into Manage.
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    className={styles.mySubmissionRow}
+                                    onClick={() =>
+                                      sessionUser &&
+                                      setRosterUserId(sessionUser.user_id)
                                     }
+                                    aria-label={`${tCommon(c.status)} — ${
+                                      c.content || t("proofImageAlt")
+                                    }`}
                                   >
-                                    {tCommon(c.status)}
-                                  </Tag>
-                                </div>
-                              ))}
+                                    <span className={styles.mySubmissionDate}>
+                                      {new Date(
+                                        c.submitted_at
+                                      ).toLocaleDateString(locale)}
+                                    </span>
+                                    <span
+                                      className={styles.mySubmissionContent}
+                                      title={c.content ?? ""}
+                                    >
+                                      {c.content ||
+                                        (c.image_url
+                                          ? t("proofImageAlt")
+                                          : "—")}
+                                    </span>
+                                    <Tag
+                                      variant={
+                                        c.status === "approved"
+                                          ? "green"
+                                          : c.status === "rejected"
+                                            ? "red"
+                                            : "gold"
+                                      }
+                                    >
+                                      {tCommon(c.status)}
+                                    </Tag>
+                                  </button>
+                                ))}
+                            </div>
                           </div>
-                        </>
-                      )}
+                        )}
+                      </div>
                     </Section>
                   )}
 
@@ -1642,6 +1661,19 @@ export default function ChallengeClient() {
                   <SectionTitle>
                     {t("completions")} ({completions.length})
                   </SectionTitle>
+                  {/* Status breakdown so a viewer can tell at a glance
+                      how many proofs are still waiting on the creator
+                      vs already verified — without opening Manage. */}
+                  <p className={styles.proofsCountSummary}>
+                    {t("proofsCountSummary", {
+                      approved: completions.filter(
+                        (c) => c.status === "approved"
+                      ).length,
+                      pending: completions.filter(
+                        (c) => c.status === "pending"
+                      ).length,
+                    })}
+                  </p>
                   <AvatarStack
                     // Dedupe by user_id so a submitter with multiple
                     // entries (streak / multi-day) shows up once. The
@@ -1883,9 +1915,16 @@ export default function ChallengeClient() {
         // the modal can show full history; non-checkpoint pulls the
         // challenge-level completions (streak / one-shot proofs).
         const isCheckpointMode = challenge.checkpoint_mode !== "none";
-        const userName =
-          participants.find((p) => p.user_id === rosterUserId)?.user
-            .display_name ?? "";
+        const rosterUser =
+          participants.find((p) => p.user_id === rosterUserId)?.user;
+        const userName = rosterUser?.display_name ?? "";
+        // njump.me accepts the raw hex pubkey, so we can skip npub
+        // encoding entirely. Falls back to no link when the user has
+        // no pubkey on record (shouldn't happen for Nostr-auth users
+        // but guards the URL from a literal "undefined").
+        const userProfileUrl = rosterUser?.nostr_pubkey
+          ? `https://njump.me/${rosterUser.nostr_pubkey}`
+          : null;
         const entries = isCheckpointMode
           ? allCheckpointCompletions
               .filter((c) => c.user.id === rosterUserId)
@@ -1944,7 +1983,38 @@ export default function ChallengeClient() {
         return (
           <Modal
             onClose={() => setRosterUserId(null)}
-            title={t("submissionDetailsTitle", { name: userName })}
+            title={
+              <span className={styles.submissionModalHeader}>
+                <Avatar
+                  src={rosterUser?.avatar_url ?? null}
+                  name={userName}
+                  alt=""
+                  size="sm"
+                />
+                <span>
+                  {t.rich("submissionDetailsTitle", {
+                    name: userName,
+                    link: (chunks) =>
+                      userProfileUrl ? (
+                        <a
+                          href={userProfileUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className={styles.submissionModalHeaderLink}
+                          aria-label={t(
+                            "submissionDetailsProfileLinkLabel",
+                            { name: userName }
+                          )}
+                        >
+                          {chunks}
+                        </a>
+                      ) : (
+                        <>{chunks}</>
+                      ),
+                  })}
+                </span>
+              </span>
+            }
           >
             {entries.length === 0 ? (
               <p className={styles.submissionModalEmpty}>
