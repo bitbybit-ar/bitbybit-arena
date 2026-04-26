@@ -80,11 +80,12 @@
 
 .title {
   font-family: $font-display;
-  // Hard-pinned to 2rem to keep the page header in proportion with
-  // section titles (1.1rem) — the previous $font-size-2xl token
-  // (≈2.5rem) towered over the rest of the column on mobile and
-  // pushed the first card too far down.
-  font-size: 2rem;
+  // $font-size-display (2rem) is the shared page-header scale —
+  // matches AppPageHeader.title so settings reads as a peer of
+  // my-challenges/explore-detail. The previous $font-size-2xl token
+  // (≈2.5rem) towered over the section titles (1.1rem) and pushed
+  // the first card too far down on mobile.
+  font-size: $font-size-display;
   font-weight: $font-weight-extrabold;
   margin-bottom: $spacing-24;
 }
@@ -153,10 +154,7 @@
 
   > p {
     margin: 0;
-    // 14px reads as the body-copy size for a section description and
-    // sits between $font-size-xs (12px) and $font-size-base (16px) —
-    // neither of those tokens hit the requested 14px exactly.
-    font-size: 0.875rem;
+    font-size: $font-size-sm;
   }
 }
 

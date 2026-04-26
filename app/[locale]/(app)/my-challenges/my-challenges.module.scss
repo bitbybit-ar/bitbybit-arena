@@ -40,7 +40,10 @@
   text-align: left;
   text-decoration: none;
   color: inherit;
-  padding: $spacing-20;
+  // Match ChallengeCard so a "challenge tile" reads at the same
+  // visual weight whether the user is browsing Explore or their own
+  // joined/created list.
+  padding: $spacing-24;
   cursor: pointer;
 
   &:hover {
@@ -51,12 +54,12 @@
 .cardTop {
   display: flex;
   gap: $spacing-8;
-  margin-bottom: $spacing-4;
+  margin-bottom: $spacing-8;
 }
 
 .cardTitle {
   font-family: $font-display;
-  font-size: $font-size-md;
+  font-size: $font-size-lg;
   font-weight: $font-weight-bold;
   color: $color-text-primary;
   margin-bottom: $spacing-8;
