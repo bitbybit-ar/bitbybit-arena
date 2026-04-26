@@ -87,6 +87,7 @@ Plus a few side surfaces reachable from buttons / the avatar menu: `/create` (ch
 
 ## Documentation
 
+- [Changelog](CHANGELOG.md) — what shipped in v1.0.0, grouped by area, with the known limitations called out honestly.
 - [Judge walkthrough](docs/testing-plan.md) — **start here** if you're evaluating the project. Eleven numbered steps covering every major feature.
 - [API reference](docs/api.md) — OpenAPI 3.1 spec for every route under `app/api/`. The YAML lives at [`docs/openapi.yaml`](docs/openapi.yaml).
 - [Nostr flows](docs/nostr-flows.md) — end-to-end sequences for nostr-action proof, checkpoints, and zap rewards.
