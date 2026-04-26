@@ -186,7 +186,7 @@ Custom event kinds: `30100` (challenge definition), `7100` (challenge join), `71
 
 - **Anix** ([@analiaacostaok](https://github.com/analiaacostaok)) — solo developer. Architecture, implementation, design, and the v1.0.0 hackathon submission.
 
-Built at La Crypta, the Bitcoin community in Argentina that hosts the BitByBit hackathons.
+Built at La Crypta, the Bitcoin community in Argentina that hosted both hackathons.
 
 Sibling project: [bitbybit-habits](https://github.com/bitbybit-ar/bitbybit-habits) (Hackathon 1 FOUNDATIONS — Lightning).
 
