@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { PixelIcon } from "@/components/common/PixelIcon";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ export function AchievementCard({
   acceptingThis,
 }: AchievementCardProps) {
   const t = useTranslations("myChallenges");
+  const locale = useLocale();
 
   return (
     <div className={styles.achievementCard}>
@@ -58,7 +59,7 @@ export function AchievementCard({
             {achievement.challenge.title}
           </p>
           <p className={styles.achievementDate}>
-            {new Date(achievement.awarded_at).toLocaleDateString()}
+            {new Date(achievement.awarded_at).toLocaleDateString(locale)}
           </p>
         </div>
       </Link>

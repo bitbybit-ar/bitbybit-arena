@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { BoltIcon } from "@/components/icons";
 import styles from "./zap-goal-bar.module.scss";
 
@@ -35,6 +35,7 @@ export function ZapGoalBar({
   loading = false,
 }: ZapGoalBarProps) {
   const t = useTranslations("zapGoal");
+  const locale = useLocale();
   if (goalSats <= 0) return null;
 
   if (loading) {
@@ -76,10 +77,10 @@ export function ZapGoalBar({
       <div className={styles.label}>
         <span className={styles.raised}>
           <BoltIcon size={12} color="var(--color-secondary)" />
-          {raisedSats.toLocaleString()}
+          {raisedSats.toLocaleString(locale)}
         </span>
         <span className={styles.goal}>
-          {t("ofGoal", { goal: goalSats.toLocaleString() })}
+          {t("ofGoal", { goal: goalSats.toLocaleString(locale) })}
         </span>
         {zapperCount > 0 && (
           <span className={styles.zappers}>

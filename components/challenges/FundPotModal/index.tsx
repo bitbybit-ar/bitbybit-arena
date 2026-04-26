@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
 import { Modal } from "@/components/ui/modal";
 import { BoltIcon, CopyIcon } from "@/components/icons";
@@ -64,6 +64,7 @@ export function FundPotModal({
 }: FundPotModalProps) {
   const t = useTranslations("fundPot");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const { signWithPrompt } = useSignerContext();
   const { copied, copy } = useClipboard();
 
@@ -222,7 +223,7 @@ export function FundPotModal({
                 disabled={!hasLightning}
               >
                 <BoltIcon size={12} />
-                {p.toLocaleString()}
+                {p.toLocaleString(locale)}
               </button>
             ))}
           </div>
@@ -268,7 +269,7 @@ export function FundPotModal({
                 ? t("fetchingInvoice")
                 : status === "webln-paying"
                   ? t("paying")
-                  : `${t("fund")} ${activeAmount.toLocaleString()} sats`}
+                  : `${t("fund")} ${activeAmount.toLocaleString(locale)} sats`}
           </button>
         </>
       )}

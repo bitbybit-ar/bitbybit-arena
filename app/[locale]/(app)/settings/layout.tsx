@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { alternatesFor } from "@/lib/seo";
 
 export async function generateMetadata({
@@ -7,8 +8,9 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata" });
   return {
-    title: "Settings",
+    title: t("settings"),
     robots: { index: false, follow: true },
     alternates: alternatesFor(locale, "/settings"),
   };
