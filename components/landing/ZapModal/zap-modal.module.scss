@@ -31,7 +31,12 @@
   align-items: center;
   gap: $spacing-4;
   padding: $spacing-8 $spacing-12;
-  background: $color-bg;
+  // The modal card is already $color-surface; using $color-bg here
+  // produced a near-invisible button-on-card silhouette in dark mode
+  // (both tokens are dark navy variants). Switch to a tinted overlay
+  // of the primary text color so the button reads as a chip on both
+  // themes without depending on the bg/surface contrast.
+  background: alpha($color-text-primary, 6%);
   border: 1px solid $color-border;
   border-radius: $border-radius-md;
   font-family: $font-body;

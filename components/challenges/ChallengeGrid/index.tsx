@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { BlockLoader } from "@/components/ui/block-loader";
 import { PixelIcon } from "@/components/common/PixelIcon";
@@ -21,6 +22,12 @@ interface ChallengeGridProps {
    *  "filtered" variant when any filter is active, otherwise the
    *  default "no challenges yet" copy. */
   emptyMessage?: string;
+  /** Supporting copy under the empty-state title. Parents pass a hint
+   *  about what to do next ("create a challenge", "clear filters"). */
+  emptyDescription?: string;
+  /** Action button rendered inside the empty state (typically a CTA
+   *  back into the page that fixes the empty condition). */
+  emptyAction?: ReactNode;
   /** Optional per-card zap-goal progress the parent has pre-fetched.
    *  When absent, cards lazy-fetch individually (default behavior). */
   zapGoalDataMap?: Record<string, ZapGoalProgressData | null>;
@@ -33,6 +40,8 @@ export function ChallengeGrid({
   hasMore,
   onLoadMore,
   emptyMessage,
+  emptyDescription,
+  emptyAction,
   zapGoalDataMap,
 }: ChallengeGridProps) {
   const tCommon = useTranslations("common");
@@ -51,6 +60,8 @@ export function ChallengeGrid({
       <EmptyState
         icon={<PixelIcon shape="flag" blockSize={8} />}
         title={emptyMessage ?? tExplore("empty")}
+        description={emptyDescription}
+        action={emptyAction}
       />
     );
   }

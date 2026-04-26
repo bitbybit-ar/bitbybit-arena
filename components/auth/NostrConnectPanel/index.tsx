@@ -164,14 +164,36 @@ export function NostrConnectPanel({
     };
   }, []);
 
+  // Cheap shape check before we tear down the QR session and burn the
+  // round-trip to the bunker. Anything that looks plausibly like a
+  // NIP-46 URI (`bunker://<hex-or-npub>...`) passes here; the deeper
+  // parse still happens in `connectWithBunkerURL`. Catching the
+  // obvious typo case at submit time avoids the previous flash where
+  // a malformed URL reset the QR scan and wiped the user's input.
+  const looksLikeBunkerUrl = (raw: string): boolean => {
+    const trimmed = raw.trim();
+    if (!trimmed.startsWith("bunker://")) return false;
+    const remainder = trimmed.slice("bunker://".length);
+    if (remainder.length < 32) return false;
+    return true;
+  };
+
   const handleBunkerConnect = async () => {
-    if (!bunkerUrl.trim()) return;
+    const trimmed = bunkerUrl.trim();
+    if (!trimmed) return;
+    if (!looksLikeBunkerUrl(trimmed)) {
+      // Inline field error — do NOT abort the QR scan. The user can
+      // either fix the URL and resubmit or switch back to the QR
+      // path without losing the in-progress session.
+      setLocalError(t("connectInvalidBunker"));
+      return;
+    }
     abortRef.current?.abort();
     clearSlowHint();
     setStatus("connecting");
     setLocalError(null);
     try {
-      const bunker = await connectWithBunkerURL(bunkerUrl, {
+      const bunker = await connectWithBunkerURL(trimmed, {
         onAuthUrl: (url) => setAuthChallengeUrl(safeAuthUrl(url)),
       });
       await finalize(bunker);

@@ -117,7 +117,7 @@ bitbybit-arena/
 - **Font weights**: `$font-weight-normal` a `$font-weight-extrabold`
 
 #### Design System: NO Glassmorphism
-- Cards solidas: usar inline styles con `$color-surface`, `$color-border`, `$border-radius-lg` (no card mixins)
+- Cards solidas: usar el mixin `ceramic-card` de `_common-mixins.scss` para superficies elevadas. El mixin ya aplica `$color-surface`, `$color-border`, sombras suaves y `$border-radius-lg`, y las 26 modulos del proyecto lo consumen consistentemente. La guia anterior ("no card mixins") quedo obsoleta cuando el design system se consolido en torno a `ceramic-card`.
 - Elementos decorativos: **Bubbles** (circulos flotantes) y **Blocks** (del loader BitByBit) — como componentes en `components/common/`
 - Los Bubbles rompen la estructura de secciones y agregan movimiento organico
 - Los Blocks representan progreso y la marca "bit by bit"

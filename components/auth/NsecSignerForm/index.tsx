@@ -71,13 +71,20 @@ export function NsecSignerForm({
       const secretKey = parseSecretKey(nsecKey);
       const pubkey = getPublicKey(secretKey);
       if (expectedPubkey && pubkey !== expectedPubkey) {
+        // Wrong key for the existing session — keep the input so the
+        // user can edit a typo without re-pasting from scratch. The
+        // value clears only on actual auth success below.
         onError?.(reSignInError("mismatch"));
         return;
       }
       setNsecKey("");
       await onSigner(makeNsecSigner(secretKey, pubkey));
     } catch {
-      setNsecKey("");
+      // Invalid format / decode error: the previous behavior wiped
+      // the input on every failure, forcing a full re-paste for a
+      // single-character typo. Keep the value so the user can edit
+      // and retry. We still surface the localized "invalid key"
+      // message via onError.
       onError?.(loginError("nsecInvalidKey"));
     } finally {
       setBusy(false);

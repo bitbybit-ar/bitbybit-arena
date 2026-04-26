@@ -58,7 +58,11 @@
   gap: $spacing-8;
   padding: $spacing-12 $spacing-32;
   min-width: 220px;
-  color: $color-bg;
+  // Use the static-white token (theme-agnostic) instead of $color-bg
+  // (which becomes navy in dark mode and produces low-contrast
+  // navy-on-navy text). The ceramic surface itself is dark in both
+  // themes, so static white is the right foreground.
+  color: $static-white;
   border-radius: $border-radius-md;
   font-family: $font-body;
   font-size: $font-size-base;

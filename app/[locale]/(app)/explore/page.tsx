@@ -228,6 +228,28 @@ export default function ExplorePage() {
     selectedTags.length > 0 ||
     source === "following";
   const emptyMessage = filtersActive ? t("emptyFiltered") : t("empty");
+  // Wire description + action so the empty state nudges the user back
+  // into a useful state. When filters are active we offer a "clear
+  // filters" button that resets every filter at once; otherwise the
+  // primary affordance is to launch a new challenge.
+  const emptyDescription = filtersActive
+    ? t("emptyFilteredBody")
+    : t("emptyBody");
+  const clearAllFilters = () => {
+    setSearch("");
+    setTypes([]);
+    setSelectedTags([]);
+    setSource("everyone");
+  };
+  const emptyAction = filtersActive ? (
+    <Button size="sm" variant="outline" onClick={clearAllFilters}>
+      {t("clearFiltersCta")}
+    </Button>
+  ) : (
+    <Button size="sm" onClick={handleCreateClick}>
+      {t("createNew")}
+    </Button>
+  );
 
   return (
     <div className={styles.page}>
@@ -271,6 +293,8 @@ export default function ExplorePage() {
         hasMore={nextCursor !== null}
         onLoadMore={loadMore}
         emptyMessage={emptyMessage}
+        emptyDescription={emptyDescription}
+        emptyAction={emptyAction}
         zapGoalDataMap={zapGoalDataMap}
       />
     </div>

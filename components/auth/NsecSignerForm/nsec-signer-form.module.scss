@@ -1,6 +1,7 @@
 @use "@/styles/colors" as *;
 @use "@/styles/spacing" as *;
 @use "@/styles/typography" as *;
+@use "@/styles/media-mixins" as *;
 
 .warning {
   font-size: $font-size-xs;
@@ -44,6 +45,13 @@
 
   &:focus {
     border-color: $color-primary;
+  }
+
+  // Long nsec strings (63 chars + bech32 prefix) overflow on iPhone-SE
+  // class widths even at the smallest font size. Drop one notch on
+  // mobile so the full key fits without horizontal scroll.
+  @include mobile {
+    font-size: $font-size-xs;
   }
 }
 

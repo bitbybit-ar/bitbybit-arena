@@ -25,6 +25,8 @@ const ImageUpload = dynamic(
   { ssr: false }
 );
 import { Avatar, type AvatarStatus } from "@/components/common/Avatar";
+import { EmptyState } from "@/components/common/EmptyState";
+import { PixelIcon } from "@/components/common/PixelIcon";
 import { Section, SectionTitle } from "@/components/common/Section";
 import {
   CheckpointCompletionSection,
@@ -1779,9 +1781,16 @@ export default function ChallengeClient() {
                           </p>
                         )}
                         {myProgressInfo.myCompletions.length === 0 ? (
-                          <p className={styles.emptyText}>
-                            {t("noMySubmissions")}
-                          </p>
+                          // Migrated from the ad-hoc <p className=
+                          // {styles.emptyText}> to the shared
+                          // EmptyState primitive so this surface
+                          // matches the rest of the audit pass and
+                          // can carry a description line.
+                          <EmptyState
+                            title={t("noMySubmissions")}
+                            description={t("noMySubmissionsBody")}
+                            className={styles.inlineEmpty}
+                          />
                         ) : (
                           <div className={styles.mySubmissionsBlock}>
                             <h3 className={styles.mySubmissionsTitle}>
@@ -2015,7 +2024,23 @@ export default function ChallengeClient() {
                   {t("participants")} ({participants.length})
                 </SectionTitle>
                 {participants.length === 0 ? (
-                  <p className={styles.emptyText}>{t("noParticipants")}</p>
+                  <EmptyState
+                    icon={<PixelIcon shape="flag" blockSize={6} />}
+                    title={t("noParticipants")}
+                    description={
+                      isCreator
+                        ? t("noParticipantsCreatorBody")
+                        : t("noParticipantsBody")
+                    }
+                    action={
+                      !isCreator && !isParticipant ? (
+                        <Button size="sm" onClick={handleJoinClick}>
+                          {t("joinChallenge")}
+                        </Button>
+                      ) : undefined
+                    }
+                    className={styles.inlineEmpty}
+                  />
                 ) : (
                   <AvatarStack
                     items={participants.map((p) => ({
@@ -2322,9 +2347,11 @@ export default function ChallengeClient() {
             }
           >
             {entries.length === 0 ? (
-              <p className={styles.submissionModalEmpty}>
-                {t("noCompletions")}
-              </p>
+              <EmptyState
+                title={t("noCompletions")}
+                description={t("noCompletionsBody")}
+                className={styles.submissionModalEmpty}
+              />
             ) : (
               <div className={styles.submissionModalList}>
                 {entries.map((entry) => (

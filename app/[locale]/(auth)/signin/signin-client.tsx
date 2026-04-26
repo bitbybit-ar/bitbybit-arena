@@ -97,6 +97,13 @@ export function SignInClient() {
   const [createdNsec, setCreatedNsec] = useState<string | null>(null);
   const [copiedNsec, setCopiedNsec] = useState(false);
   const [savedAcknowledged, setSavedAcknowledged] = useState(false);
+  // The signer we just generated, retained so we can retry the login
+  // without burning a fresh key when the network call fails. Cleared
+  // once auth succeeds (we no longer need it locally — the cookie is
+  // set and the signer-context owns the live handle).
+  const [pendingCreateSigner, setPendingCreateSigner] =
+    useState<SignerHandle | null>(null);
+  const [createAuthError, setCreateAuthError] = useState<string | null>(null);
 
   const handleSignerFromChild = async (signer: SignerHandle) => {
     setError(null);
@@ -115,6 +122,7 @@ export function SignInClient() {
 
   const handleCreateAccount = async () => {
     setError(null);
+    setCreateAuthError(null);
     setCreating(true);
     try {
       const { secretKey, pubkey, nsec } = createNewIdentity();
@@ -123,15 +131,50 @@ export function SignInClient() {
       // cookie AND the client session context end up in sync. Doing a
       // bare fetch + setSigner leaves useSession() stale until the next
       // refetch, which made `/explore` render as logged-out.
+      //
+      // IMPORTANT: surface the nsec to the user BEFORE awaiting the
+      // login round-trip. If the network drops mid-call, the user
+      // already saw their freshly-generated key (and a Retry button
+      // appears once the await resolves with a failure). The previous
+      // version silently lost the key on any failure, leaving the
+      // user with a Nostr identity they could never sign with again.
+      setCreatedNsec(nsec);
+      setPendingCreateSigner(signer);
       const result = await completeLoginWithSigner(signer);
       if (!result.ok) {
         const msg = messageFor(result);
-        if (msg) setError(msg);
+        if (msg) setCreateAuthError(msg);
         return;
       }
-      setCreatedNsec(nsec);
+      // Auth succeeded — drop the retained signer; the modal stays
+      // open so the user still copies the nsec, but Continue is the
+      // primary action now.
+      setPendingCreateSigner(null);
     } catch {
-      setError(t("error"));
+      setCreateAuthError(t("error"));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // Retry the auth round-trip with the SAME signer we generated on
+  // the first attempt. Critical: do not call createNewIdentity()
+  // again — that would burn the user's first nsec and replace it
+  // with a fresh one they haven't memorized.
+  const retryCreateAccountAuth = async () => {
+    if (!pendingCreateSigner) return;
+    setCreateAuthError(null);
+    setCreating(true);
+    try {
+      const result = await completeLoginWithSigner(pendingCreateSigner);
+      if (!result.ok) {
+        const msg = messageFor(result);
+        if (msg) setCreateAuthError(msg);
+        return;
+      }
+      setPendingCreateSigner(null);
+    } catch {
+      setCreateAuthError(t("error"));
     } finally {
       setCreating(false);
     }
@@ -300,6 +343,30 @@ export function SignInClient() {
 
           <ExtensionUpsell variant="created" />
 
+          {/*
+            Auth-failed state: the nsec is already on screen so the
+            user can save it, but we couldn't create a session. Show
+            the localized failure + a Retry button that re-uses the
+            already-generated signer (NEVER spawns a new identity —
+            that would orphan the key the user is reading right now).
+          */}
+          {pendingCreateSigner && (
+            <div className={styles.createdAuthError}>
+              {createAuthError && (
+                <p className={styles.error}>{createAuthError}</p>
+              )}
+              <Button
+                type="button"
+                variant="primary"
+                fullWidth
+                onClick={retryCreateAccountAuth}
+                disabled={creating}
+              >
+                {creating ? t("creatingIdentity") : t("createdRetryAuth")}
+              </Button>
+            </div>
+          )}
+
           <label className={styles.createdAck}>
             <input
               type="checkbox"
@@ -314,7 +381,10 @@ export function SignInClient() {
             variant="primary"
             fullWidth
             onClick={handleContinueAfterCreate}
-            disabled={!savedAcknowledged}
+            // Disable Continue when auth hasn't succeeded — clicking
+            // it before pendingCreateSigner is null would push the
+            // user into the app with an unauthenticated session.
+            disabled={!savedAcknowledged || !!pendingCreateSigner}
           >
             {t("createdContinue")}
           </Button>
