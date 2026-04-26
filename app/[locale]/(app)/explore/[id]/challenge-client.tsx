@@ -189,6 +189,12 @@ export default function ChallengeClient() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [zapLoadingId, setZapLoadingId] = useState<string | null>(null);
   const [zapInvoice, setZapInvoice] = useState<{ pr: string; sats: number } | null>(null);
+  // Per-submitter lud16 lookup state. "loading" hides the zap CTA until
+  // the kind:0 fetch resolves; "missing" disables it with a tooltip.
+  // Keyed by Nostr pubkey so the same submitter is reused across entries.
+  const [submitterLudStatus, setSubmitterLudStatus] = useState<
+    Record<string, "loading" | "ok" | "missing">
+  >({});
   // Reward-payout QR fallback. When the creator has no WebLN we render a
   // modal per-winner with the BOLT11 invoice and poll /api/zap/status until
   // it settles; on success we advance to the next winner, on user cancel we
@@ -230,11 +236,15 @@ export default function ChallengeClient() {
         !!sessionUser && cJson.success && cJson.data.creator_id === sessionUser.user_id;
       if (sessionUser && cJson.success) {
         setIsCreator(viewerIsCreator);
+        // "Joined" means anything other than withdrawn — completed
+        // participants of once-only / streak challenges keep their slot
+        // in the roster and shouldn't see the join CTA again.
         setIsParticipant(
           partJson.success &&
             partJson.data.some(
               (p: ParticipantItem) =>
-                p.user_id === sessionUser.user_id && p.status === "active"
+                p.user_id === sessionUser.user_id &&
+                p.status !== "withdrawn"
             )
         );
       } else {
@@ -427,6 +437,52 @@ export default function ChallengeClient() {
     submitterLnCache.current.set(pubkey, address);
     return address;
   };
+
+  // Prefetch lud16 for the submitter whose submissions are open in the
+  // modal so the per-entry Zap button can render disabled with a tooltip
+  // when they have no Lightning address — instead of letting the user
+  // click and be told no via toast.
+  useEffect(() => {
+    if (!rosterUserId) return;
+    const pubkeys = Array.from(
+      new Set(
+        completions
+          .filter(
+            (c) =>
+              c.user.id === rosterUserId &&
+              c.user.nostr_pubkey &&
+              c.user.nostr_pubkey !== sessionUser?.nostr_pubkey
+          )
+          .map((c) => c.user.nostr_pubkey as string)
+      )
+    );
+    if (pubkeys.length === 0) return;
+
+    let cancelled = false;
+    pubkeys.forEach(async (pk) => {
+      const cached = submitterLnCache.current.get(pk);
+      if (cached !== undefined) {
+        const next = cached ? "ok" : "missing";
+        setSubmitterLudStatus((s) => (s[pk] === next ? s : { ...s, [pk]: next }));
+        return;
+      }
+      setSubmitterLudStatus((s) => (s[pk] ? s : { ...s, [pk]: "loading" }));
+      // Treat any relay/network error as "missing" so the button shows
+      // the no-Lightning-address tooltip instead of staying stuck in
+      // the loading state forever.
+      let address: string | null = null;
+      try {
+        address = await resolveSubmitterLightningAddress(pk);
+      } catch {
+        address = null;
+      }
+      if (cancelled) return;
+      setSubmitterLudStatus((s) => ({ ...s, [pk]: address ? "ok" : "missing" }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [rosterUserId, completions, sessionUser?.nostr_pubkey]);
 
   const handleZapCompletion = async (comp: CompletionItem) => {
     const submitterPubkey = comp.user.nostr_pubkey;
@@ -1286,20 +1342,23 @@ export default function ChallengeClient() {
 
                 <SignerRequiredNotice />
 
-                {(challenge.status === "open" || challenge.status === "in_progress") &&
-                  (isParticipant ? (
+                {/* Card-body action: only the "leave" affordance for
+                    already-joined participants. The join CTA lives in
+                    the right column ("¿Querés sumarte?") so we don't
+                    render it twice on the same screen. */}
+                {(challenge.status === "open" ||
+                  challenge.status === "in_progress") &&
+                  isParticipant && (
                     <Button
                       variant="outline"
                       onClick={handleWithdrawClick}
                       disabled={actionLoading === "withdraw"}
                     >
-                      {actionLoading === "withdraw" ? t("leaving") : t("joinedToggle")}
+                      {actionLoading === "withdraw"
+                        ? t("leaving")
+                        : t("joinedToggle")}
                     </Button>
-                  ) : (
-                    <Button onClick={handleJoinClick} disabled={actionLoading === "join"}>
-                      {actionLoading === "join" ? t("joining") : t("joinChallenge")}
-                    </Button>
-                  ))}
+                  )}
                 {isCreator && (
                   <p className={styles.creatorBadge}>{t("yourChallenge")}</p>
                 )}
@@ -1983,23 +2042,40 @@ export default function ChallengeClient() {
                           {tCommon("reject")}
                         </Button>
                       )}
-                      {entry.zapTarget &&
+                    </div>
+                    {entry.zapTarget &&
+                      entry.zapTarget.user.nostr_pubkey &&
+                      sessionUser?.nostr_pubkey !==
                         entry.zapTarget.user.nostr_pubkey &&
-                        sessionUser?.nostr_pubkey !==
-                          entry.zapTarget.user.nostr_pubkey && (
+                      (() => {
+                        const pk = entry.zapTarget.user.nostr_pubkey;
+                        const ludStatus = submitterLudStatus[pk] ?? "loading";
+                        const noLud16 = ludStatus === "missing";
+                        const isLoading = zapLoadingId === entry.zapTarget.id;
+                        return (
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => handleZapCompletion(entry.zapTarget!)}
-                            disabled={zapLoadingId === entry.zapTarget.id}
+                            variant="secondary"
+                            className={styles.submissionZapButton}
+                            onClick={() =>
+                              handleZapCompletion(entry.zapTarget!)
+                            }
+                            disabled={
+                              isLoading || noLud16 || ludStatus === "loading"
+                            }
+                            title={noLud16 ? t("zapNoAddress") : undefined}
+                            aria-label={
+                              noLud16
+                                ? t("zapNoAddress")
+                                : isLoading
+                                  ? t("zapSending")
+                                  : "Zap"
+                            }
                           >
-                            <BoltIcon size={14} />{" "}
-                            {zapLoadingId === entry.zapTarget.id
-                              ? t("zapSending")
-                              : "Zap"}
+                            <BoltIcon size={16} color="white" />
                           </Button>
-                        )}
-                    </div>
+                        );
+                      })()}
                   </div>
                 ))}
               </div>

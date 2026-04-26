@@ -313,6 +313,14 @@
   align-items: center;
   gap: $spacing-8;
   flex-shrink: 0;
+
+  // The Tag atom ships with a default `margin-bottom` for header/title
+  // contexts; in inline flex rows that bottom margin offsets vertical
+  // centering. Zero it here so APROBADO / ACTIVO sit on the row's
+  // cross-axis centerline next to the avatar + name.
+  > * {
+    margin-bottom: 0;
+  }
 }
 
 // Submission detail modal — compact stack of submissions for the
@@ -330,6 +338,25 @@
   gap: $spacing-8;
   padding: $spacing-12;
   border-radius: $border-radius-md;
+  // Anchor for the absolutely-positioned per-entry Zap button so it
+  // sits in the bottom-right corner of each section.
+  position: relative;
+}
+
+// Square gold-ceramic icon button anchored to the bottom-right corner
+// of each submission entry. Icon-only — uses `title` + `aria-label` to
+// expose intent. Disabled when the submitter has no lud16 in their
+// kind:0 metadata.
+.submissionZapButton {
+  position: absolute;
+  bottom: $spacing-12;
+  right: $spacing-12;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .submissionModalEntryHead {
@@ -337,6 +364,12 @@
   align-items: center;
   justify-content: space-between;
   gap: $spacing-8;
+
+  // Same Tag-margin override as `.rosterTags` — keeps the status
+  // pill centered next to the "Envío N" label.
+  > * {
+    margin-bottom: 0;
+  }
 }
 
 .submissionModalEntryLabel {
