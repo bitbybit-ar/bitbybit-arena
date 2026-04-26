@@ -60,6 +60,8 @@ export function ImageUpload({
     if (inputRef.current) inputRef.current.value = "";
   };
 
+  const tErrors = useTranslations("imageUpload.errors");
+
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
     setError(null);
@@ -79,8 +81,16 @@ export function ImageUpload({
       const descriptor = await uploadToBlossom(file, signWithPrompt);
       onChange(descriptor);
     } catch (err) {
+      // Translate by stable code rather than surfacing the English
+      // `err.message` directly. The Spanish UI used to render
+      // "Network error uploading to Blossom" verbatim — now it gets
+      // "No pudimos conectar con el servidor de imágenes…".
       if (err instanceof BlossomUploadError) {
-        setError(err.message);
+        try {
+          setError(tErrors(err.code));
+        } catch {
+          setError(t("uploadFailed"));
+        }
       } else {
         setError(t("uploadFailed"));
       }
@@ -139,6 +149,7 @@ export function ImageUpload({
           className={styles.dropzone}
           onClick={handlePick}
           disabled={uploading}
+          aria-busy={uploading}
         >
           <span className={styles.dropzoneTitle}>
             {uploading ? t("uploading") : t("chooseFile")}
@@ -147,6 +158,25 @@ export function ImageUpload({
             {t("hint", { max: maxSizeMB })}
           </span>
         </button>
+      )}
+
+      {/*
+        Indeterminate progress bar while the Blossom upload runs.
+        Blossom's HTTP API doesn't stream progress events back so a
+        true percentage isn't available — the indeterminate stripe is
+        an honest signal that something is happening without lying
+        about how far along it is. role="progressbar" announces the
+        busy state to screen readers.
+      */}
+      {uploading && (
+        <div
+          className={styles.progress}
+          role="progressbar"
+          aria-busy="true"
+          aria-label={t("uploading")}
+        >
+          <div className={styles.progressBar} />
+        </div>
       )}
 
       {error && <p className={styles.error}>{error}</p>}

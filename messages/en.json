@@ -158,7 +158,15 @@
     "invalidType": "Unsupported image type. Use PNG, JPG, WEBP or GIF.",
     "tooLarge": "That image is too large (max {max}MB).",
     "uploadFailed": "Could not upload the image. Try again.",
-    "previewAlt": "Uploaded image preview"
+    "previewAlt": "Uploaded image preview",
+    "errors": {
+      "empty_file": "That file is empty.",
+      "network": "Couldn't reach the image server. Check your connection and try again.",
+      "server_rejected": "The image server rejected the upload. Try a different image.",
+      "invalid_response": "The image server returned an unexpected response. Try again.",
+      "missing_url": "The image server didn't return a URL. Try again.",
+      "auth_failed": "Couldn't sign the upload — reconnect your Nostr signer."
+    }
   },
   "landing": {
     "hero": {
@@ -602,6 +610,33 @@
     "verifyError": "Could not record the review. Try again.",
     "badgeAwardSent": "Badge sent on Nostr ✨",
     "badgeAwardFailed": "Badge recorded but couldn't be published to Nostr. Try again from the participant list.",
+    "badgeAwardMissingPubkey": "Couldn't publish the badge — the winner has no Nostr public key on file.",
+    "joinFailed": "Couldn't join the challenge. Try again.",
+    "withdrawFailed": "Couldn't leave the challenge. Try again.",
+    "submitProofSuccess": "Proof submitted!",
+    "submitProofFailed": "Couldn't submit your proof. Try again.",
+    "verifyLikeRetry": "Try verifying again",
+    "leaveDestructive": "Leave",
+    "rejectReasonRequired": "Add a short reason so the participant knows what to fix.",
+    "rejectConfirmTitle": "Reject this proof?",
+    "rejectConfirmDescription": "The participant will see your reason and can submit again. This can't be undone.",
+    "rejectConfirmCta": "Reject proof",
+    "multiSignNotice": "We'll ask you to sign {total} events ({step}/{total}).",
+    "multiSignStep1": "Step {step}/{total}: signing the challenge",
+    "multiSignStep2": "Step {step}/{total}: signing the badge",
+    "multiSignStep3": "Step {step}/{total}: signing the funding goal",
+    "badgePublishFailed": "Couldn't publish the badge definition to Nostr. Awards will retry on first claim.",
+    "endsBeforeStart": "End date can't be before the start date.",
+    "youEarnedBadge": "You earned a badge!",
+    "youEarnedBadgeBody": "Accept it on Nostr to display it on your profile.",
+    "youEarnedBadgeCta": "Open Achievements",
+    "rewardConfirmTitle": "Pay {count, plural, one {# winner} other {# winners}}?",
+    "rewardConfirmDescription": "This sends real Lightning payments totalling {amount} sats and can't be undone.",
+    "rewardConfirmCta": "Pay winners",
+    "rewardProgress": "{paid} of {total} paid",
+    "rewardCancelledSummary": "Payout cancelled — {paid} of {total} winners were already paid. Click Pay winners again to resume; we won't double-pay.",
+    "rewardStampWarning": "Couldn't record one or more payments server-side. Retry is safe — paid winners are skipped automatically.",
+    "invoiceExpired": "This invoice expired. Generate a new one to keep funding the pot.",
     "proofTooShort": "Proof must be at least 5 characters.",
     "rewardDisplayTitle": "Reward",
     "badgeAwarded": "Badge you earn",
@@ -691,7 +726,9 @@
     "copiedInvoice": "Copied!",
     "success": "Pot funded!",
     "errorInvoice": "Could not fetch a Lightning invoice. Try again.",
-    "errorNoCreatorLud16": "The creator has no Lightning address on their Nostr profile yet."
+    "errorNoCreatorLud16": "The creator has no Lightning address on their Nostr profile yet.",
+    "invoiceExpired": "This invoice expired. Generate a new one to keep funding the pot.",
+    "regenerateInvoice": "Generate a new invoice"
   },
   "myChallenges": {
     "title": "My challenges",

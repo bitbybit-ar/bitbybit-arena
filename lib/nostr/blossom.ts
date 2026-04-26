@@ -32,11 +32,25 @@ export interface BlossomDescriptor {
   uploaded?: number;
 }
 
+export type BlossomUploadErrorCode =
+  | "empty_file"
+  | "network"
+  | "server_rejected"
+  | "invalid_response"
+  | "missing_url"
+  | "auth_failed";
+
 export class BlossomUploadError extends Error {
   constructor(
     message: string,
     public readonly status?: number,
-    public readonly cause?: unknown
+    public readonly cause?: unknown,
+    /**
+     * Stable code for the client to translate via the locale bundle.
+     * Defaults to "server_rejected" so legacy throw-sites stay roughly
+     * accurate when the server returned a 4xx / 5xx.
+     */
+    public readonly code: BlossomUploadErrorCode = "server_rejected"
   ) {
     super(message);
     this.name = "BlossomUploadError";
@@ -128,7 +142,7 @@ export async function uploadToBlossom(
   sign: BlossomSignFn,
   serverUrl: string = getDefaultBlossomServer()
 ): Promise<BlossomDescriptor> {
-  if (!file.size) throw new BlossomUploadError("File is empty");
+  if (!file.size) throw new BlossomUploadError("File is empty", undefined, undefined, "empty_file");
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const sha256 = await sha256Hex(bytes);
@@ -152,7 +166,12 @@ export async function uploadToBlossom(
       body: bytes,
     });
   } catch (err) {
-    throw new BlossomUploadError("Network error uploading to Blossom", undefined, err);
+    throw new BlossomUploadError(
+      "Network error uploading to Blossom",
+      undefined,
+      err,
+      "network"
+    );
   }
 
   if (!res.ok) {
@@ -163,18 +182,28 @@ export async function uploadToBlossom(
     } catch {
       /* ignore */
     }
-    throw new BlossomUploadError(detail, res.status);
+    throw new BlossomUploadError(detail, res.status, undefined, "server_rejected");
   }
 
   let descriptor: BlossomDescriptor;
   try {
     descriptor = (await res.json()) as BlossomDescriptor;
   } catch (err) {
-    throw new BlossomUploadError("Blossom server returned invalid JSON", res.status, err);
+    throw new BlossomUploadError(
+      "Blossom server returned invalid JSON",
+      res.status,
+      err,
+      "invalid_response"
+    );
   }
 
   if (!descriptor.url || typeof descriptor.url !== "string") {
-    throw new BlossomUploadError("Blossom response is missing 'url'");
+    throw new BlossomUploadError(
+      "Blossom response is missing 'url'",
+      undefined,
+      undefined,
+      "missing_url"
+    );
   }
   return descriptor;
 }

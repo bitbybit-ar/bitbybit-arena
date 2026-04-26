@@ -181,8 +181,30 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
       return;
     }
 
+    // Client-side date sanity check. The schema accepts both fields
+    // independently — there's no cross-field rule on the server because
+    // the server can't know what UX the form intended. Catching this
+    // here saves a round-trip and gives a clearer message than the
+    // generic schema error would.
+    if (startsAt && endsAt && new Date(endsAt) < new Date(startsAt)) {
+      setError(t("endsBeforeStart"));
+      return;
+    }
+
+    // Pre-compute how many signer prompts the user is going to see so
+    // we can announce them up front. Always 1 for the challenge event,
+    // +1 if a badge name is set (kind:30009 definition), +1 if a prize
+    // pot is set with an active signer (kind:9041 zap goal).
+    const willSignBadge = !!badgeName;
+    const willSignZapGoal =
+      !!prizeAmountSats && Number(prizeAmountSats) > 0 && !!signer?.pubkey;
+    const totalSigns = 1 + (willSignBadge ? 1 : 0) + (willSignZapGoal ? 1 : 0);
+
     setLoading(true);
     try {
+      if (totalSigns > 1) {
+        setWarning(t("multiSignNotice", { step: 1, total: totalSigns }));
+      }
       // Sign the kind:30100 challenge event BEFORE touching the database.
       // If the user cancels the extension prompt we must not leave an
       // orphan row behind. The slug is generated client-side so the
@@ -243,6 +265,9 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
       // side). Non-blocking — if this fails the challenge itself still
       // exists and we'll lazy-publish on first award.
       if (badgeName) {
+        if (totalSigns > 1) {
+          setWarning(t("multiSignNotice", { step: 2, total: totalSigns }));
+        }
         try {
           const badgeDefinition = buildBadgeDefinitionEvent({
             slug: json.data.slug,
@@ -261,8 +286,15 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ badge_nostr_event_id: signedDef.id }),
           });
-        } catch {
-          /* non-blocking — lazy-publish on first award */
+        } catch (err) {
+          // Cancelling the second prompt used to be a silent no-op,
+          // which left the creator wondering why the "1 of N" notice
+          // never advanced. We swallow signer cancellations cleanly
+          // (the lazy-publish on first award still works) but surface
+          // anything else so a real publish failure isn't invisible.
+          if (!isSignerCancellation(err)) {
+            setWarning(t("badgePublishFailed"));
+          }
         }
       }
 
@@ -275,6 +307,11 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
         if (!signer?.pubkey) {
           setWarning(t("zapGoalSkippedNoSigner"));
         } else {
+          if (totalSigns > 1) {
+            setWarning(
+              t("multiSignNotice", { step: totalSigns, total: totalSigns })
+            );
+          }
           try {
             const goalEvent = buildZapGoalEvent({
               challengeSlug: json.data.slug,
@@ -291,8 +328,15 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ zap_goal_event_id: signedGoal.id }),
             });
-          } catch {
-            setWarning(t("zapGoalPublishFailed"));
+          } catch (err) {
+            // Same rationale as the badge branch above — let the
+            // explicit "publish failed" warning supersede the
+            // mid-flight "step N/N" notice on cancel or relay error,
+            // and treat signer cancellations as quiet so the create
+            // flow can still complete with the challenge in place.
+            if (!isSignerCancellation(err)) {
+              setWarning(t("zapGoalPublishFailed"));
+            }
           }
         }
       }
