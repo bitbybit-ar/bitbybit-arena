@@ -44,12 +44,14 @@ export function ZapGoalBar({
         className={`${styles.wrapper} ${compact ? styles.compact : ""} ${styles.loading}`}
         aria-busy="true"
       >
-        <div className={styles.track}>
-          <div className={styles.skeleton} />
-        </div>
-        <div className={styles.label}>
-          <span className={styles.skeletonText} aria-hidden="true" />
-        </div>
+        <span className={styles.loadingText}>
+          {t("loadingPot")}
+          <span className={styles.loadingDots} aria-hidden="true">
+            <span className={styles.loadingDot} />
+            <span className={styles.loadingDot} />
+            <span className={styles.loadingDot} />
+          </span>
+        </span>
       </div>
     );
   }

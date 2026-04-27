@@ -3,12 +3,10 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/modal";
-import { Button } from "@/components/ui/button";
 import { SignerMethodButtons } from "@/components/auth/SignerMethodButtons";
 import { ExtensionUpsell } from "@/components/auth/ExtensionUpsell";
 import { NsecSignerForm } from "@/components/auth/NsecSignerForm";
 import { NostrConnectPanel } from "@/components/auth/NostrConnectPanel";
-import { ArrowLeftIcon } from "@/components/icons";
 import { useSignerContext } from "@/lib/signer-context";
 import type { SignerHandle, SignerType } from "@/lib/nostr/signers";
 import { type AuthError, loginError, reSignInError } from "@/lib/nostr/auth-errors";
@@ -131,19 +129,6 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
     setMethod("pick");
   };
 
-  const backButton = (
-    <Button
-      type="button"
-      variant="link"
-      size="sm"
-      className={styles.backBtn}
-      onClick={goBack}
-    >
-      <ArrowLeftIcon size={14} />
-      {t("back")}
-    </Button>
-  );
-
   const title = isLoginMode
     ? tLogin("title")
     : method === "pick"
@@ -153,7 +138,12 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
     : tLogin("connectTitle");
 
   return (
-    <Modal onClose={onCancel} title={title} size="sm">
+    <Modal
+      onClose={onCancel}
+      title={title}
+      size="sm"
+      onBack={method === "pick" ? undefined : goBack}
+    >
       {method === "pick" && (
         <>
           <p className={styles.intro}>
@@ -176,7 +166,6 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
 
       {method === "nsec" && (
         <>
-          {backButton}
           <NsecSignerForm
             onSigner={handleSignerFromChild}
             onError={handleError}
@@ -193,7 +182,6 @@ export function ReSignInModal({ open, onSigner, onCancel }: ReSignInModalProps) 
 
       {method === "nip46" && (
         <>
-          {backButton}
           <NostrConnectPanel
             onSigner={handleSignerFromChild}
             onError={handleError}

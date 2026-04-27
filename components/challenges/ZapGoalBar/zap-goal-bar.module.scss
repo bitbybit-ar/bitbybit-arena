@@ -65,56 +65,55 @@
   font-weight: $font-weight-medium;
 }
 
-// Skeleton state — rendered by the Explore card while the progress
-// endpoint is still loading. A subtle shimmer on the empty track +
-// a dim label placeholder keeps the card layout fixed so the real
-// bar doesn't pop into existence later.
+// Loading state — rendered by the Explore card while the progress
+// endpoint is still loading. A small muted label with bouncing dots
+// matches the BlockLoader's idle animation; calmer than the previous
+// shimmering skeleton bar at card scale.
 .loading {
-  opacity: 0.7;
+  min-height: $font-size-xs;
 }
 
-.skeleton {
-  width: 30%;
-  height: 100%;
-  border-radius: $border-radius-full;
-  background: linear-gradient(
-    90deg,
-    alpha($color-text-secondary, 15%) 0%,
-    alpha($color-text-secondary, 30%) 50%,
-    alpha($color-text-secondary, 15%) 100%
-  );
-  background-size: 200% 100%;
-  animation: zap-bar-shimmer 1.2s ease-in-out infinite;
+.loadingText {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  font-style: italic;
+  opacity: 0.85;
 }
 
-.skeletonText {
-  display: inline-block;
-  width: 80px;
-  height: $font-size-xs;
-  border-radius: $border-radius-sm;
-  background: alpha($color-text-secondary, 15%);
-  animation: zap-bar-shimmer 1.2s ease-in-out infinite;
-  background-size: 200% 100%;
-  background-image: linear-gradient(
-    90deg,
-    alpha($color-text-secondary, 15%) 0%,
-    alpha($color-text-secondary, 30%) 50%,
-    alpha($color-text-secondary, 15%) 100%
-  );
+.loadingDots {
+  display: inline-flex;
+  gap: $spacing-3;
+  margin-left: $spacing-2;
 }
 
-@keyframes zap-bar-shimmer {
-  0% {
-    background-position: 200% 0;
+.loadingDot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: $color-text-secondary;
+  animation: zap-bar-dot-bounce 1.4s ease-in-out infinite;
+
+  &:nth-child(2) {
+    animation-delay: 0.16s;
   }
-  100% {
-    background-position: -200% 0;
+  &:nth-child(3) {
+    animation-delay: 0.32s;
+  }
+}
+
+@keyframes zap-bar-dot-bounce {
+  0%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-3px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .skeleton,
-  .skeletonText {
+  .loadingDot {
     animation: none;
   }
 }

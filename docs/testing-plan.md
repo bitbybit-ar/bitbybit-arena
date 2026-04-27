@@ -2,17 +2,7 @@
 
 This is the hands-on guide for evaluating BitByBit Arena. Eleven numbered steps, in order; each one is self-contained, names a visible button label, and — where relevant — tells you which Nostr event kind the app emits, so you can cross-check it on a relay explorer.
 
-## Before you start
-
-You need a Nostr identity. Any of the following works on `/signin`:
-
-- **Browser extension** — Alby, nos2x, Nostr Connect. Fastest if you already have one.
-- **Paste nsec** — a pasted `nsec1...` or hex private key. The key stays in the browser tab and is never sent to the server or stored in any cookie / localStorage.
-- **NIP-46 bunker** — scan the QR from Amber / nsec.app / Damus, or paste a `bunker://...` URL. The key stays on your mobile device.
-
-**WebLN is optional.** The landing "Zap the devs" flow and the challenge reward payout both accept a QR + invoice fallback (with NWC invoice polling) if `window.webln` isn't present. A judge without an extension can still complete the Lightning steps.
-
-**Locale.** The landing page is Spanish by default. To test in English, use the locale toggle in the navbar or visit `/en/...` directly. All screens are translated.
+> **Setup is in [`SUBMISSION.md`](../SUBMISSION.md).** Install, env vars, the optional seeder, and the project's evaluation framing live there. This document picks up after the app is running and you're signed in. Locale, signer, and Lightning fallback notes are duplicated only when a specific step depends on them.
 
 ---
 
@@ -134,29 +124,9 @@ As a recipient:
 
 ## Step 9 — Lightning: funding and rewards
 
-This step has two parts — a supporter funding the pot (any logged-in user) and the creator paying out winners.
+This step has two parts — a supporter funding the pot (any logged-in user) and the creator paying out winners. Either build a prized challenge yourself in Step 3, or — if you ran the optional seeder from `SUBMISSION.md` — open the pre-seeded **Demo: Tiered Prize Payout** challenge, which already has three pre-completed participants so you can jump straight to **Distribute rewards**.
 
-### Before you start — customize the seed, then run it
-
-`scripts/seed.ts` is a **template** you should adapt before running. It ships with 11 example challenges (a mix of fitness, learning, creative, and Bitcoin/Nostr themes — Spanish + English) and 8 mock users. Edit the `MOCK_CHALLENGES` array to suit your test plan: change titles / descriptions / tags / verification methods / prize amounts / participant counts. Useful patterns already in the file you can copy:
-
-- **`nostr_action`** — pin a target kind:1 event you control, participants like it from any client, server auto-verifies (e.g. "Boost La Crypta on Nostr").
-- **`nostr_hashtag`** — pick a `#t` hashtag, participants post a kind:1 note carrying it, server auto-verifies (e.g. "Hackathon #2 de La Crypta — Nostr" with `arenahackathon`).
-- **`creator_approval`** — text + optional image proof, you review (e.g. "Ship an open source project" with a tiered prize for the top 3).
-- **Demo: Tiered Prize Payout** — `automatic` verification with three pre-completed mock participants and staggered `completed_at` timestamps so the tiered 50/30/20 split is deterministic. Open it as its creator and jump straight to **Distribute rewards** without walking through join + proof + approve first.
-
-**Keep prize amounts tiny — 21 sats (`first_to_complete`) or 100 sats (`tiered`, splits cleanly to 50/30/20).** They need to be payable from any wallet you have around during testing. The seeded examples already follow this pattern. If you scale them up, you'll be the one paying the invoices — the app doesn't custody anything.
-
-Two env vars control who owns the demo challenge and where winner payouts route — both live in `.env.local` (see `.env.example`):
-
-- **`SEED_OWNER_PUBKEY`** — required. Set it to your own Nostr pubkey before seeding (bech32 `npub1…` or raw 64-character hex both work). The demo challenges land under this pubkey, so when you log in with the same identity you see the creator view and the "Distribute rewards" button appears. The seeder refuses to run when this is unset so nobody ends up owning a demo challenge by accident.
-- **`NEXT_PUBLIC_ZAP_LIGHTNING_ADDRESS`** — required for the payout loop. Every mock's `lightning_address` is set to this value, so LNURL-pay resolves end to end and sats the judge actually sends route to whatever wallet the address points at. The landing "Zap the devs" flow also reads this env var, so there is a single place to configure a project receive address. If unset, the seeder logs a warning and the payout step 400s with "Winner X has no lightning address on their Nostr profile".
-
-### QR fallback requires NWC
-
-The QR-fallback modal polls `POST /api/zap/status`, which uses Nostr Wallet Connect via the `@getalby/sdk` client. If `NWC_CONNECTION_URL` isn't set in `.env.local`, the endpoint returns `{paid: false}` forever and the modal never advances — you'd need to pay the invoice in any wallet and refresh the page manually.
-
-`.env.example` documents the env var. For the QR path to auto-advance during testing, point `NWC_CONNECTION_URL` at any NWC-capable wallet (Alby, Primal, Mutiny). When running with a WebLN-capable browser extension, NWC isn't needed and the modal never renders in the first place.
+> Heads-up: the QR-fallback modal polls `/api/zap/status` via Nostr Wallet Connect. If you don't have a WebLN extension and want the modal to auto-advance after payment, set `NWC_CONNECTION_URL` in `.env.local`. Otherwise pay the invoice in any wallet and refresh.
 
 ### Fund the pot (any logged-in user)
 

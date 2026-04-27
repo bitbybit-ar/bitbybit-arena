@@ -88,12 +88,44 @@
   }
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  margin-bottom: $spacing-24;
+  padding-right: $spacing-32;
+  min-width: 0;
+}
+
 .title {
   font-size: $font-size-lg;
   font-weight: $font-weight-bold;
   color: $color-text-primary;
-  margin: 0 0 $spacing-24;
-  padding-right: $spacing-32;
+  margin: 0;
+  min-width: 0;
+  word-break: break-word;
+}
+
+// Same look-and-feel as the challenge detail page back button — a
+// muted icon-only button that picks up the brand purple on hover.
+// Lives left of the title inside `.titleRow`.
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: $spacing-4;
+  background: none;
+  border: none;
+  color: $color-text-secondary;
+  cursor: pointer;
+  border-radius: $border-radius-sm;
+  @include transition;
+
+  &:hover {
+    color: $color-primary;
+    background: alpha($color-text-primary, 6%);
+  }
 }
 
 .closeButton {

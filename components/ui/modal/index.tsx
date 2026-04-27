@@ -3,7 +3,7 @@
 import { useEffect, useCallback, useRef, useId } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { CloseIcon } from "@/components/icons";
+import { CloseIcon, ArrowLeftIcon } from "@/components/icons";
 import { useClickOutside } from "@/lib/hooks/useClickOutside";
 import styles from "./modal.module.scss";
 
@@ -18,6 +18,12 @@ interface ModalProps {
    * If neither is provided the modal is announced without a name.
    */
   ariaLabel?: string;
+  /**
+   * When provided, renders a back arrow to the left of the title that
+   * matches the back-button style used elsewhere (e.g. the challenge
+   * detail page top bar). Use this for multi-step modals like sign-in.
+   */
+  onBack?: () => void;
   size?: ModalSize;
   className?: string;
 }
@@ -38,6 +44,7 @@ export function Modal({
   onClose,
   title,
   ariaLabel,
+  onBack,
   size = "md",
   className,
 }: ModalProps) {
@@ -119,9 +126,21 @@ export function Modal({
         className={cn(styles.modal, styles[size], className)}
       >
         {title && (
-          <h3 id={titleId} className={styles.title}>
-            {title}
-          </h3>
+          <div className={styles.titleRow}>
+            {onBack && (
+              <button
+                type="button"
+                className={styles.backButton}
+                onClick={onBack}
+                aria-label={t("back")}
+              >
+                <ArrowLeftIcon size={18} />
+              </button>
+            )}
+            <h3 id={titleId} className={styles.title}>
+              {title}
+            </h3>
+          </div>
         )}
         <button
           className={styles.closeButton}

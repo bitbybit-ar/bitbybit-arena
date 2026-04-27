@@ -28,9 +28,18 @@
   top: 0;
   z-index: 5;
   background: $color-bg;
-  padding: $spacing-12 0;
   margin-bottom: $spacing-16;
   border-bottom: 1px solid $color-border;
+  // Break out of the page container's max-width + inline padding so
+  // the sticky bg/border bleed across the gutters to the viewport
+  // edges. Without this, scrolling on mobile exposes the page bg —
+  // and animated bubbles/blocks decor — through the sides of the
+  // pinned header. The 50%/50vw math holds at any breakpoint without
+  // extra media queries because percentages resolve to the parent's
+  // content width.
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding: $spacing-12 calc(50vw - 50%);
 }
 
 .left {
