@@ -174,11 +174,6 @@ Quick final check: switch between Spanish and English and glance at:
 - Landing (`/`), Sign-in, Explore (with a filter active), Create, one Challenge detail page, My Challenges, Settings.
 - Number / date formatting on challenge cards — Spanish uses comma for decimals and dot for thousands, English the opposite.
 
-## Known deferrals
-
-- **Community voting** — the original concept included participant-voted approvals. We shipped creator_approval + automatic + nostr_action + nostr_hashtag for MVP and deferred community voting. The API explicitly rejects a `community_vote` value if any client tries to set one.
-- **Real-time push** — the bell polls every 30s rather than streaming. SSE or a relay-native subscription are candidates if that interval ever bites.
-
 ## What you've covered
 
 By the end of the eleven steps you'll have exercised: all three sign-in methods, profile sync + publish, per-type notification preferences, all five challenge types, all four verification methods, sequential and parallel checkpoints, text and image proofs, Blossom uploads, creator approval, NIP-58 badge award + accept, NIP-57 Lightning payout (with QR fallback), NIP-75 zap goal publishing, NIP-02 follow-boosted discovery, `/api/zap/status` NWC polling, and the in-app notifications bell with mark-read / mark-all-read / click-through.
