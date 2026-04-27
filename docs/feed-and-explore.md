@@ -14,6 +14,7 @@ Explore is a **public page**. Anyone can browse without logging in. Logged-in us
 ### Logged in
 - Same browsing + ability to join challenges and create new ones
 - "Create a Challenge" button visible
+- Personalised by your **NIP-02 follow list** (kind 3): challenges from creators you follow get a soft boost so they float to the top of the default feed. Use the **Only following** toggle to scope the list strictly to those creators (see [Filters](#filters) below).
 
 ---
 
@@ -41,7 +42,14 @@ Search should be fast — indexed server-side on the database.
 
 Filters should be combinable (AND logic). URL query params for shareability (e.g., `/explore?status=open&type=streak`).
 
-There is also an **Only following** toggle. When the signed-in user has a NIP-02 follow list (kind 3), enabling it scopes the result set to challenges whose creator is in that list. When the toggle is off, follow signal is still used as a soft *boost* (followed creators float to the top), but non-followed challenges still appear. Driven by `lib/hooks/useFollowList.ts`.
+### Follow-aware filtering (logged-in users)
+
+When the signed-in user has a NIP-02 follow list (kind 3), Explore exposes two follow-driven behaviours, both driven by `lib/hooks/useFollowList.ts`:
+
+- **Soft boost (always on):** challenges whose creator is in your follow list float to the top of the result set, but unfollowed creators still appear below them. Lets you discover new challenges without losing the ones from people you already trust.
+- **Only following (toggle):** scopes the result set strictly to challenges whose creator is in your follow list. Useful when you want a "people I follow" feed without any discovery noise.
+
+Both are pure client-side toggles on top of the same `GET /api/challenges` query — no separate "for-you" endpoint, no server-side personalisation state.
 
 ---
 
