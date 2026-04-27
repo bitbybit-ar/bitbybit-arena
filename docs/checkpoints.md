@@ -86,11 +86,6 @@ Emitted via `createNotification`; per-type opt-out is on `users.notification_pre
 
 Both types have settings-page toggles and live fallback strings in `messages/es.json` + `messages/en.json`.
 
-## Known limitations
-
-- **No checkpoint reordering after create.** The `(challenge_id, order)` unique index makes a reorder UI painful; once participants have submitted, we'd also need to renumber their checkpoint_completions.
-- **No per-checkpoint badges by design.** NIP-58 kind:8 badges award on full-challenge completion, not per step. The badge is the end-state reward for finishing every checkpoint.
-
 ## Files
 
 | Concern                     | Location                                                                 |
