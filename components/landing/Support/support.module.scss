@@ -51,17 +51,17 @@
 // locale routing), but picks up the shared ceramic finish via the
 // mixin so it matches the rest of the landing visually.
 .githubButton {
-  @include ceramic-surface($color-text-primary, 20%);
+  // The ceramic base must stay dark in both themes so the white text
+  // reads — using $color-text-primary made the surface flip to white
+  // in dark mode and the label disappeared. $static-navy is a
+  // theme-invariant near-black that matches the brand.
+  @include ceramic-surface($static-navy, 25%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: $spacing-8;
   padding: $spacing-12 $spacing-32;
   min-width: 220px;
-  // Use the static-white token (theme-agnostic) instead of $color-bg
-  // (which becomes navy in dark mode and produces low-contrast
-  // navy-on-navy text). The ceramic surface itself is dark in both
-  // themes, so static white is the right foreground.
   color: $static-white;
   border-radius: $border-radius-md;
   font-family: $font-body;

@@ -232,6 +232,13 @@ export default function ChallengeClient() {
   const [rejectReasonDraft, setRejectReasonDraft] = useState("");
   const [zapLoadingId, setZapLoadingId] = useState<string | null>(null);
   const [zapInvoice, setZapInvoice] = useState<{ pr: string; sats: number } | null>(null);
+  // Amount-picker modal state. Opens when the user taps the zap icon on
+  // a submission card so they can choose how many sats to send before
+  // we build the LNURL invoice — previously we silently used a 100-sat
+  // default and jumped straight to the QR fallback.
+  const [zapAmountTarget, setZapAmountTarget] = useState<CompletionItem | null>(null);
+  const [zapAmountPreset, setZapAmountPreset] = useState<number>(100);
+  const [zapAmountCustom, setZapAmountCustom] = useState<string>("");
   // Per-submitter lud16 lookup state. "loading" hides the zap CTA until
   // the kind:0 fetch resolves; "missing" disables it with a tooltip.
   // Keyed by Nostr pubkey so the same submitter is reused across entries.
@@ -612,7 +619,20 @@ export default function ChallengeClient() {
     };
   }, [rosterUserId, completions, sessionUser?.nostr_pubkey]);
 
-  const handleZapCompletion = async (comp: CompletionItem) => {
+  const openZapAmountPicker = (comp: CompletionItem) => {
+    if (!comp.user.nostr_pubkey) return;
+    if (sessionUser?.nostr_pubkey === comp.user.nostr_pubkey) return;
+    setZapAmountTarget(comp);
+    setZapAmountPreset(100);
+    setZapAmountCustom("");
+  };
+
+  const closeZapAmountPicker = () => {
+    setZapAmountTarget(null);
+    setZapAmountCustom("");
+  };
+
+  const handleZapCompletion = async (comp: CompletionItem, requestedSats: number) => {
     const submitterPubkey = comp.user.nostr_pubkey;
     if (!submitterPubkey) return;
     // Guard: never zap yourself. The button is hidden in this case but
@@ -635,7 +655,7 @@ export default function ChallengeClient() {
         return;
       }
       const minSats = Math.max(1, Math.ceil(endpoint.minSendable / 1000));
-      const amountSats = Math.max(minSats, 100);
+      const amountSats = Math.max(minSats, requestedSats);
 
       let invoice: string;
       try {
@@ -664,6 +684,18 @@ export default function ChallengeClient() {
     } finally {
       setZapLoadingId(null);
     }
+  };
+
+  const handleConfirmZapAmount = async () => {
+    if (!zapAmountTarget) return;
+    const parsedCustom = Number(zapAmountCustom);
+    const chosenSats = zapAmountCustom && !isNaN(parsedCustom) && parsedCustom > 0
+      ? Math.floor(parsedCustom)
+      : zapAmountPreset;
+    if (!chosenSats || chosenSats <= 0) return;
+    const target = zapAmountTarget;
+    closeZapAmountPicker();
+    await handleZapCompletion(target, chosenSats);
   };
 
   const handleCopyZapInvoice = async () => {
@@ -2455,7 +2487,7 @@ export default function ChallengeClient() {
                             variant="secondary"
                             className={styles.submissionZapButton}
                             onClick={() =>
-                              handleZapCompletion(entry.zapTarget!)
+                              openZapAmountPicker(entry.zapTarget!)
                             }
                             disabled={
                               isLoading || noLud16 || ludStatus === "loading"
@@ -2623,6 +2655,67 @@ export default function ChallengeClient() {
         </Modal>
         );
       })()}
+
+      {zapAmountTarget && (
+        <Modal
+          onClose={closeZapAmountPicker}
+          title={t("zapAmountTitle")}
+          size="sm"
+        >
+          <p className={styles.zapInvoiceHint}>{t("zapAmountDescription")}</p>
+          <label className={styles.zapAmountLabel} htmlFor="zap-amount-input">
+            {t("zapAmountLabel")}
+          </label>
+          <div className={styles.zapAmountPresets}>
+            {[21, 100, 500, 1000, 5000].map((preset) => {
+              const isActive = !zapAmountCustom && zapAmountPreset === preset;
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  className={`${styles.zapAmountPreset} ${isActive ? styles.zapAmountPresetActive : ""}`}
+                  onClick={() => {
+                    setZapAmountPreset(preset);
+                    setZapAmountCustom("");
+                  }}
+                  aria-pressed={isActive}
+                >
+                  <BoltIcon size={12} />
+                  {preset.toLocaleString()}
+                </button>
+              );
+            })}
+          </div>
+          <input
+            id="zap-amount-input"
+            type="number"
+            className={styles.zapAmountInput}
+            placeholder={t("zapAmountCustomPlaceholder")}
+            value={zapAmountCustom}
+            min={1}
+            onChange={(e) => setZapAmountCustom(e.target.value)}
+          />
+          <Button
+            type="button"
+            variant="primary"
+            fullWidth
+            onClick={handleConfirmZapAmount}
+            disabled={
+              !zapAmountTarget ||
+              (!zapAmountPreset && !zapAmountCustom) ||
+              (!!zapAmountCustom && (isNaN(Number(zapAmountCustom)) || Number(zapAmountCustom) <= 0))
+            }
+          >
+            <BoltIcon size={16} color="white" />
+            {t("zapAmountSend", {
+              amount: (zapAmountCustom && !isNaN(Number(zapAmountCustom))
+                ? Math.floor(Number(zapAmountCustom))
+                : zapAmountPreset
+              ).toLocaleString(),
+            })}
+          </Button>
+        </Modal>
+      )}
 
       {zapInvoice && (
         <Modal

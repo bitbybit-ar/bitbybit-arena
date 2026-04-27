@@ -655,20 +655,90 @@
   font-size: $font-size-sm;
   color: $color-text-secondary;
   margin-bottom: $spacing-12;
+  line-height: $line-height-base;
+}
+
+.zapAmountLabel {
+  display: block;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-8;
+}
+
+.zapAmountPresets {
+  display: flex;
+  gap: $spacing-8;
+  flex-wrap: wrap;
+  margin-bottom: $spacing-12;
+}
+
+.zapAmountPreset {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-4;
+  padding: $spacing-8 $spacing-12;
+  background: alpha($color-text-primary, 12%);
+  border: 1px solid alpha($color-text-primary, 20%);
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  cursor: pointer;
+  @include transition;
+
+  &:hover {
+    border-color: $color-primary;
+    color: $color-primary;
+  }
+}
+
+.zapAmountPresetActive {
+  background: $color-primary;
+  border-color: $color-primary;
+  color: $static-white;
+
+  &:hover {
+    color: $static-white;
+  }
+}
+
+.zapAmountInput {
+  width: 100%;
+  padding: $spacing-8 $spacing-12;
+  background: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  font-family: $font-body;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  outline: none;
+  margin-bottom: $spacing-16;
+  transition: border-color 0.15s ease;
+
+  &::placeholder {
+    color: $color-text-secondary;
+  }
+
+  &:focus {
+    border-color: $color-primary;
+  }
 }
 
 .zapInvoiceQr {
   display: flex;
   justify-content: center;
   padding: $spacing-16;
-  background: alpha($color-text-primary, 3%);
+  background: $color-surface;
   border: 1px solid $color-border;
   border-radius: $border-radius-md;
   margin-bottom: $spacing-12;
+  color: $color-text-primary;
 }
 
 .zapInvoiceBox {
-  background: alpha($color-text-primary, 3%);
+  background: $color-surface;
   border: 1px solid $color-border;
   border-radius: $border-radius-md;
   padding: $spacing-12;
@@ -682,16 +752,17 @@
   color: $color-text-secondary;
   word-break: break-all;
   line-height: 1.4;
+  font-family: monospace;
 }
 
 .zapInvoiceCopyBtn {
+  @include ceramic-surface($color-primary, 30%);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: $spacing-8;
   width: 100%;
-  padding: $spacing-8;
-  background: $color-primary;
+  padding: $spacing-12;
   color: $static-white;
   border: none;
   border-radius: $border-radius-md;
@@ -699,10 +770,11 @@
   font-size: $font-size-sm;
   font-weight: $font-weight-semibold;
   cursor: pointer;
-  transition: filter 0.15s ease;
+  @include transition;
 
   &:hover {
     filter: brightness(1.1);
+    transform: translateY(-1px);
   }
 }
 

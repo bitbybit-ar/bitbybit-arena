@@ -30,29 +30,37 @@
   display: inline-flex;
   align-items: center;
   gap: $spacing-4;
-  padding: $spacing-8 $spacing-12;
-  // Tinted overlay rather than $color-bg so the chip reads on the
-  // modal card in both themes (the card is already $color-surface;
-  // bg vs surface in dark mode are both navy, near-invisible). 12%
-  // tint + 20% border keeps the chip silhouette sharp next to the
-  // active state's solid purple — 6% was too subtle.
-  background: alpha($color-text-primary, 12%);
-  border: 1px solid alpha($color-text-primary, 20%);
+  padding: $spacing-8 $spacing-16;
+  // Ceramic neutral chip — picks up the platform's tile finish so the
+  // amount selector reads as part of the same surface family as cards
+  // and method buttons. The active state swaps to a ceramic purple.
+  background-color: $color-surface;
+  background-image: linear-gradient(
+    180deg,
+    $ceramic-highlight-soft 0%,
+    transparent 60%
+  );
+  border: 1px solid $color-border;
   border-radius: $border-radius-md;
+  box-shadow:
+    0 2px 6px $card-shadow,
+    inset 0 1px 0 $ceramic-highlight,
+    inset 0 -2px 4px $ceramic-inner-shadow;
   font-family: $font-body;
   font-size: $font-size-sm;
-  font-weight: $font-weight-medium;
+  font-weight: $font-weight-semibold;
   color: $color-text-primary;
   cursor: pointer;
   @include transition;
 
   &:hover:not(:disabled) {
+    transform: translateY(-1px);
     border-color: $color-primary;
     color: $color-primary;
   }
 
   &.active {
-    background: $color-primary;
+    @include ceramic-surface($color-primary, 30%);
     border-color: $color-primary;
     color: $static-white;
   }
@@ -60,6 +68,8 @@
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
   }
 }
 
@@ -67,9 +77,20 @@
 .messageInput {
   width: 100%;
   padding: $spacing-8 $spacing-12;
-  background: $color-bg;
+  // Match the ceramic-card sheen used on the modal itself so inputs
+  // sit visually inside the same surface family. The inner shadow
+  // gives the field a subtle pressed-tile feel that matches cards.
+  background-color: $color-surface;
+  background-image: linear-gradient(
+    180deg,
+    $ceramic-highlight-soft 0%,
+    transparent 70%
+  );
   border: 1px solid $color-border;
   border-radius: $border-radius-md;
+  box-shadow:
+    inset 0 2px 4px $ceramic-inner-shadow,
+    inset 0 1px 0 $ceramic-highlight-soft;
   font-family: $font-body;
   font-size: $font-size-sm;
   color: $color-text-primary;
@@ -82,6 +103,10 @@
 
   &:focus {
     border-color: $color-primary;
+    box-shadow:
+      inset 0 2px 4px $ceramic-inner-shadow,
+      inset 0 1px 0 $ceramic-highlight-soft,
+      0 0 0 3px alpha($color-primary, 18%);
   }
 
   &:disabled {

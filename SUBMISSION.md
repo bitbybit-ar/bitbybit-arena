@@ -2,6 +2,12 @@
 
 Five minutes from cloning to exercising the end-to-end Nostr + Lightning prize flow. If you want depth, jump to [`docs/testing-plan.md`](./docs/testing-plan.md) once the basics work.
 
+## TL;DR for judges and testers
+
+**The platform is fully working end-to-end from the UI.** You can sign in, create a challenge from `/create`, fund prize pots, complete challenges, distribute rewards, and award badges — all without ever touching a script. Every flow described below is reachable from the UI. The deployed site is `arena.bitbybit.com.ar`; you can also run it locally with the steps in §2–§4.
+
+**The seeder is optional, not required.** It exists purely as a time-saver: judges who'd rather skip the 2–3 minutes of clicking through the create form can run `npm run db:seed` to drop in a curated set of challenges that cover every verification method, prize-distribution mode, and edge case the project supports. If you'd rather create challenges yourself from the UI to evaluate that surface directly, skip §3 entirely — the app works fine against an empty database.
+
 ## What you're evaluating
 
 A Nostr-native client (`arena.bitbybit.com.ar`) where anyone can create timed challenges, compete, and win sats + NIP-58 badges. The interesting Nostr surface:
@@ -44,7 +50,7 @@ SEED_OWNER_PUBKEY=npub1…                     # your own npub (or 64-char hex)
 Optional:
 - `NWC_CONNECTION_URL=nostr+walletconnect://…` — needed only if you want the QR + NWC fallback to auto-advance. Grab it from Alby/Primal. If you have a WebLN browser extension, skip it.
 
-## 3. Migrate and seed
+## 3. Migrate (and optionally seed)
 
 If you skipped `npm install` above (or want a clean lockfile-pinned install for repro), run it now:
 
@@ -53,7 +59,13 @@ npm ci
 npm run db:migrate
 ```
 
-**Customize the seed before running it.** `scripts/seed.ts` is an **example** — it ships with 11 challenges (a mix of fitness, learning, creative, and Bitcoin/Nostr-themed), 8 mock users, and a ready-to-payout demo challenge for the NIP-57 flow. You should edit the `MOCK_CHALLENGES` array to suit how you want to evaluate the project: change titles, descriptions, tags, verification methods, prize amounts, participant counts. Mix Spanish and English copy if you want to exercise the i18n surface.
+After migration the app is fully functional. **You can stop here, run `npm run dev` (§4), and create challenges from the UI** — that's the primary path and exercises the same code judges are evaluating. The rest of this section is only relevant if you'd prefer to start with pre-seeded data.
+
+### Optional: seed pre-built challenges
+
+`scripts/seed.ts` is a **template** that drops in 11 challenges (a mix of fitness, learning, creative, and Bitcoin/Nostr-themed), 8 mock users, and a ready-to-payout demo challenge for the NIP-57 flow — useful if you want to skip the manual create-form clicks and jump straight into testing the funding / payout / badge flows against challenges that already cover every verification method and prize-distribution mode.
+
+You can edit the `MOCK_CHALLENGES` array to suit how you want to evaluate the project: change titles, descriptions, tags, verification methods, prize amounts, participant counts. Mix Spanish and English copy if you want to exercise the i18n surface.
 
 A couple of useful patterns to copy:
 - **Boost La Crypta on Nostr** — verification method `nostr_action`, points at a real La Crypta note id you pin via `nostr_action_target_event_id` (kind:7 reaction auto-verifies).
@@ -83,7 +95,7 @@ The seeder logs the owner pubkey at startup:
 npm run dev
 ```
 
-Visit `http://localhost:3000`, click **Sign in**, use whichever method matches the pubkey you put in `SEED_OWNER_PUBKEY`.
+Visit `http://localhost:3000`, click **Sign in**, and use whichever method matches the identity you want to test with. If you ran the seeder, sign in with the pubkey you put in `SEED_OWNER_PUBKEY` so the demo challenges show up as yours. If you didn't seed, click **Create** and build a challenge from the UI — that's the primary path the project is built around.
 
 ## 5. Exercise the three core flows
 
