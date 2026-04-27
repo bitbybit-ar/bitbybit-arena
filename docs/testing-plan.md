@@ -155,8 +155,6 @@ Verify the kind:30101 event on a relay explorer (e.g. `https://njump.me/<event-i
 2. Create a second account (another browser, a different nsec), join the same challenge, confirm rows land in that account's **Joined** tab and not the first account's.
 3. Accept a badge from the **Achievements** tab — verify the kind:30008 event merges cleanly.
 
----
-
 ## Step 11 — Notification bell
 
 1. From any page, watch the **bell** icon in the navbar. The client polls `GET /api/notifications` every 30s and shows an unread count badge (caps at `9+`).
