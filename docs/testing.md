@@ -1,5 +1,83 @@
 # Testing Guide — BitByBit Arena
 
+## What's already covered
+
+The repo ships with **517 tests across 51 files** — 369 unit tests in 33 files and 148 integration tests in 18 files. Every API route, every Zod schema, every Nostr event builder, and every Lightning helper has at least one direct test.
+
+### Unit tests (`tests/unit/` — 33 files, 369 tests)
+
+Fast, mocked-DB tests for handler logic, schema validation, and pure helpers. All pass with no external services configured (`npm run test:unit`).
+
+**API routes (mocked DB):**
+
+| Test file | What it covers |
+|---|---|
+| `auth.test.ts` | Session helpers, JWT issue/verify, cookie name selection |
+| `auth-routes.test.ts` | `POST /api/auth/nostr` (NIP-98), `GET /api/auth/session`, `POST /api/auth/signout` |
+| `challenges.test.ts` | `POST /api/challenges` validation, list filters, sort, cursor pagination |
+| `challenge-detail.test.ts` | `GET/PATCH/DELETE /api/challenges/[id]` auth + ownership |
+| `completions.test.ts` | Proof submission validation, verification-method routing |
+| `join.test.ts` | `POST /api/challenges/[id]/join` — duplicate, expired, creator-self gate |
+| `award.test.ts` | `POST /api/challenges/[id]/award` — winner list shape, kind:8 ids |
+| `verify.test.ts` | Creator approve/reject endpoints — status transitions, progress bumps |
+| `zap-status.test.ts` | `POST /api/zap/status` — NWC `lookupInvoice` mapped to `{paid}` |
+
+**Schemas (`tests/unit/schemas/`):**
+
+`profile`, `nostr`, `pagination`, `challenges-schema`, `primitives`, `completions` — every Zod schema's accept / reject paths.
+
+**API wrapper layer (`tests/unit/api/`):**
+
+`errors`, `translate-error`, `parse`, `rate-limit`, `verification-methods`, `handler` — the `apiHandler` wrapper, structured `apiError` codes, locale-aware error translation, JSON parsing helpers, in-memory rate limiter, and the verification-method helper.
+
+**Nostr layer (`tests/unit/nostr/`):**
+
+| Test file | What it covers |
+|---|---|
+| `validate-auth-event.test.ts` | NIP-98 kind:27235 binding (`u`, `method`, replay window, signer-type tag) |
+| `events.test.ts` | Event builders for kinds 30100, 7100, 7101, 30101, 9041, 9734 |
+| `lnurl.test.ts` | LNURL-pay endpoint resolution + invoice fetch shape |
+| `fetch-zap-receipts.test.ts` | NIP-75 aggregation: dedupe, exclude creator, validate signatures |
+| `zap-goal-progress.test.ts` | Pure progress calc from receipts |
+| `auth-errors.test.ts` | Structured `AuthError` → user-facing message map |
+| `blossom.test.ts` | BUD-01/02 kind:24242 upload-auth event shape |
+| `fetch-events.test.ts` | Relay subscription helper: timeout, abort, dedupe |
+
+**Other:**
+
+`lightning.test.ts` (BOLT11 payment-hash extraction), `utils.test.ts` (cn / clamp / etc.), `validate-form.test.ts`, `http-url-schema.test.ts`.
+
+### Integration tests (`tests/integration/` — 18 files, 148 tests)
+
+Run against a real Neon Postgres test branch and exercise the full request → Drizzle → DB path. Require `.env.test` (see [§ Environment Setup](#environment-setup)).
+
+| Test file | What it covers |
+|---|---|
+| `profile.test.ts` | `GET/PUT/DELETE /api/profile` + relay sync (`/sync`) |
+| `challenges.test.ts` | List + create — real cursor pagination, real tag joins |
+| `challenges-follow.test.ts` | NIP-02 follow-pubkeys boost in the Explore query |
+| `join.test.ts` | Join row insert, unique constraint, leave + re-join |
+| `completions-verify.test.ts` | Creator approve/reject with progress + status updates |
+| `checkpoint-verify.test.ts` | Per-checkpoint approve, sequential lock unlock |
+| `checkpoints.test.ts` | Progression: parallel vs. sequential, completion side-effects |
+| `pending-checkpoint-submissions.test.ts` | Creator's pending review list |
+| `nostr-action-verify.test.ts` | NIP-25 (kind:7 reaction) auto-verification end to end |
+| `nostr-hashtag-verify.test.ts` | kind:1 hashtag-note auto-verification end to end |
+| `award.test.ts` | kind:30009 lazy publish + kind:8 award persisting `event_id` |
+| `my-badges.test.ts` | Recipient's badge list with creator + challenge join |
+| `badges-accept.test.ts` | kind:30008 profile-badges merge (preserve other apps' tags) |
+| `zap-goal-progress.test.ts` | NIP-75 aggregation against the live progress endpoint |
+| `reward.test.ts` | `POST /api/challenges/[id]/reward` — distribution math, retained-creator, idempotency, `all_winners_paid` flag gates `rewards_paid_at` |
+| `notifications.test.ts` | List, mark-one-read, mark-all-read, ownership enforcement |
+| `notifications-emission.test.ts` | Per-type emission paths + self-trigger skip rules |
+| `popular-tags.test.ts` | Tag aggregation query |
+
+### What's deliberately **not** automated-tested
+
+- **UI components** — there's no React Testing Library suite. Visual changes are validated manually in the browser. The few interactive components with non-trivial logic (`ZapGoalProgress`, `FundPotModal`, `CardZapGoalBar`) get their data layer covered indirectly through the integration tests behind their fetch endpoints.
+- **End-to-end browser tests** — no Playwright / Cypress. The judge walkthrough in [`testing-plan.md`](testing-plan.md) is the manual E2E.
+- **Real Lightning payments** — `lnurl.test.ts` mocks the LNURL response; `zap-status.test.ts` mocks the NWC client. The actual settlement loop is exercised manually via the walkthrough.
+
 ## Test Structure
 
 ```
@@ -7,6 +85,9 @@ tests/
   setup.ts              ← Shared setup (jest-dom matchers)
   helpers.ts            ← Unit test helpers (mock factories, request builders)
   unit/                 ← Fast tests with mocked DB
+    schemas/            ← Zod schema accept/reject coverage
+    api/                ← apiHandler wrapper + helpers
+    nostr/              ← Event builders, NIP validators, relay helpers
   integration/          ← Full-stack tests against real Neon test DB
     setup.ts            ← Loads .env.test, creates DB connection, cleanup
     helpers.ts          ← Seed functions, session mock, request builders
@@ -39,11 +120,13 @@ These tests:
 
 ```bash
 npm test                 # Run all tests (unit + integration)
-npm run test:unit        # Unit tests only (~2s)
+npm run test:unit        # Unit tests only (~2s, no .env.test needed)
 npm run test:integration # Integration tests only (~2min, needs .env.test)
 npm run test:watch       # Watch mode
 npm run test:coverage    # With coverage report
 ```
+
+A clean checkout without `.env.test` will see `npm run test:unit` pass cleanly (369/369). The integration suite errors out at setup until the test branch is configured — that's expected.
 
 ## Environment Setup
 
