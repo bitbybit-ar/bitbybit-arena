@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Dispatch, SetStateAction } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useParams, useSearchParams, notFound } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -30,7 +29,6 @@ import { PixelIcon } from "@/components/common/PixelIcon";
 import { Section, SectionTitle } from "@/components/common/Section";
 import {
   CheckpointCompletionSection,
-  defaultDraft,
   type CheckpointDraft,
 } from "@/components/challenges/CheckpointCompletionSection";
 import { CheckpointSubmissionCard } from "@/components/challenges/CheckpointSubmissionCard";
@@ -65,14 +63,29 @@ import type {
   AchievementItem,
   ChallengeCheckpointCompletion,
   Checkpoint,
-  CheckpointCompletion,
   ParticipantItem,
   PendingCheckpointSubmission,
-  PrizeDistribution,
 } from "@/lib/types";
 import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
 import { type ShareContext } from "@/components/share/ShareOnNostrModal";
 import styles from "./challenge-detail.module.scss";
+import type {
+  ChallengeDetail,
+  CompletionItem,
+  PayableWinner,
+  RewardWinner,
+} from "./types";
+import {
+  REWARD_POLL_INTERVAL_MS,
+  deriveManageRoster,
+  deriveMyProgress,
+  rollUpStatus,
+  statusKey,
+  typeVariant,
+  updateCheckpointDraft,
+} from "./helpers";
+import { AvatarStack } from "./AvatarStack";
+import { NostrVerifySection } from "./NostrVerifySection";
 
 // Share modal is mounted only after the user submits/joins/etc., so
 // we lazy-load it to keep the click-to-render bundle off the page-load
@@ -85,72 +98,6 @@ const ShareOnNostrModal = dynamic(
     ),
   { ssr: false }
 );
-
-// Same cadence as the landing ZapModal's NWC polling. 4 s keeps latency
-// tolerable without hammering the wallet endpoint.
-const REWARD_POLL_INTERVAL_MS = 4000;
-
-interface ChallengeDetail {
-  id: string;
-  title: string;
-  description: string;
-  type: string;
-  status: string;
-  verification_methods: string[];
-  nostr_action_target_event_id: string | null;
-  nostr_hashtag: string | null;
-  checkpoint_mode: "none" | "sequential" | "parallel";
-  goal: number | null;
-  unit: string | null;
-  tags: string[];
-  badge_name: string | null;
-  badge_image_url: string | null;
-  badge_nostr_event_id: string | null;
-  starts_at: string | null;
-  ends_at: string | null;
-  participant_count: number;
-  completion_count: number;
-  creator_id: string;
-  slug: string;
-  prize_amount_sats: number;
-  prize_distribution: PrizeDistribution | null;
-  zap_goal_event_id: string | null;
-  rewards_paid_at: string | null;
-  result_nostr_event_id: string | null;
-  creator: { id: string; display_name: string; username: string; nostr_pubkey: string; lightning_address?: string };
-  checkpoints: Checkpoint[];
-  my_checkpoint_completions: CheckpointCompletion[];
-}
-
-interface RewardWinner {
-  user_id: string;
-  nostr_pubkey: string;
-  display_name: string;
-  // null when retained=true — no payout is owed to the winner.
-  lightning_address: string | null;
-  amount_sats: number;
-  retained: boolean;
-}
-
-// A winner we're actually going to pay. Narrowed inside handleClaimReward
-// so the zap loop doesn't have to re-check `lightning_address` for null.
-type PayableWinner = RewardWinner & { lightning_address: string; retained: false };
-
-interface CompletionItem {
-  id: string;
-  content: string | null;
-  image_url: string | null;
-  proof_event_id: string | null;
-  status: string;
-  submitted_at: string;
-  user: {
-    id: string;
-    display_name: string;
-    username: string;
-    nostr_pubkey?: string;
-    avatar_url?: string | null;
-  };
-}
 
 export default function ChallengeClient() {
   const t = useTranslations("challenge");
@@ -1311,13 +1258,23 @@ export default function ChallengeClient() {
         showToast(translateApiError(json, tErr, t("verifyError")), "error");
         return;
       }
+      // Prize-less challenges (no badge name and no badge image) have
+      // nothing to publish on Nostr after approval — the "enviando
+      // badge…" toast and the awardBadgeToUser() call both lied about
+      // what was happening. Use the badge-aware toast and skip the
+      // award path when the challenge has no badge to send.
+      const challengeHasBadge = !!(
+        challenge?.badge_name || challenge?.badge_image_url
+      );
       showToast(
         status === "approved"
-          ? t("verifyApprovedToast")
+          ? challengeHasBadge
+            ? t("verifyApprovedToast")
+            : t("verifyApprovedNoBadgeToast")
           : t("verifyRejectedToast"),
         status === "approved" ? "success" : "info"
       );
-      if (status === "approved") {
+      if (status === "approved" && challengeHasBadge) {
         // Approving the proof IS the badge-award gesture — there's no
         // separate creator action anymore. Look up the completion's user
         // from the in-memory list and run the same award + publish path
@@ -1600,10 +1557,11 @@ export default function ChallengeClient() {
                   {/* Nostr-targeted challenges expose the link in the
                       info block so non-participants can also see what
                       the challenge is about. nostr_action points at a
-                      specific event (njump.me/<id>); nostr_hashtag has
-                      no single target, so we link to njump's tag feed
-                      (njump.me/t/<tag>) — both render via the same
-                      njump bridge so any Nostr client can pick it up. */}
+                      specific event and goes through njump (njump.me
+                      only routes NIP-19 entities). nostr_hashtag has
+                      no single target — we send those to nostr.band's
+                      hashtag search instead, since njump has no
+                      `/t/<tag>` route. */}
                   {challenge.nostr_action_target_event_id && (
                     <div className={styles.detailRow}>
                       <span className={styles.detailLabel}>
@@ -1624,7 +1582,7 @@ export default function ChallengeClient() {
                         {t("nostrHashtagLabel")}
                       </span>
                       <a
-                        href={`https://njump.me/t/${encodeURIComponent(challenge.nostr_hashtag)}`}
+                        href={`https://nostr.band/?q=${encodeURIComponent(`#${challenge.nostr_hashtag}`)}`}
                         target="_blank"
                         rel="noreferrer noopener"
                       >
@@ -1882,58 +1840,13 @@ export default function ChallengeClient() {
                     </Section>
                   )}
 
-                  {challenge.checkpoint_mode === "none" &&
-                    (challenge.verification_methods ?? []).includes("nostr_action") && (
-                      <Section>
-                        <SectionTitle>{t("verifyLikeTitle")}</SectionTitle>
-                        <p className={styles.emptyText}>
-                          {t("verifyLikeInstructions")}
-                        </p>
-                        {challenge.nostr_action_target_event_id && (
-                          <p className={styles.targetEventId}>
-                            <a
-                              href={`https://njump.me/${challenge.nostr_action_target_event_id}`}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                            >
-                              {challenge.nostr_action_target_event_id.slice(0, 16)}…
-                            </a>
-                          </p>
-                        )}
-                        <Button
-                          size="sm"
-                          onClick={handleVerifyLike}
-                          disabled={actionLoading === "verifyLike"}
-                        >
-                          {actionLoading === "verifyLike"
-                            ? t("verifying")
-                            : t("verifyLikeButton")}
-                        </Button>
-                        {verifyError && (
-                          // Pair the error message with an inline retry
-                          // button so a transient relay miss doesn't
-                          // require scrolling back up to find the
-                          // primary CTA again. The button reuses the
-                          // same handler — the user just clicks once
-                          // more after they've made sure the like is
-                          // actually published from their Nostr client.
-                          <div className={styles.verifyErrorBlock}>
-                            <p className={styles.error}>{verifyError}</p>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setVerifyError(null);
-                                void handleVerifyLike();
-                              }}
-                              disabled={actionLoading === "verifyLike"}
-                            >
-                              {t("verifyLikeRetry")}
-                            </Button>
-                          </div>
-                        )}
-                      </Section>
-                    )}
+                  <NostrVerifySection
+                    challenge={challenge}
+                    actionLoading={actionLoading}
+                    verifyError={verifyError}
+                    onVerify={handleVerifyLike}
+                    onClearError={() => setVerifyError(null)}
+                  />
 
                   {/* Hide the next-proof input once the participant has
                       hit the goal — they're done. Without this gate the
@@ -2784,176 +2697,3 @@ export default function ChallengeClient() {
   );
 }
 
-// Merge a partial patch into the per-checkpoint draft at `id`, seeding
-// a default draft when the slot is empty. Declared at module scope so
-// every call site shares one reference — that keeps the inline arrow
-// bindings for React's setState calls short and grep-friendly.
-function updateCheckpointDraft(
-  setDrafts: Dispatch<SetStateAction<Record<string, CheckpointDraft>>>,
-  id: string,
-  patch: Partial<CheckpointDraft>
-) {
-  setDrafts((prev) => ({
-    ...prev,
-    [id]: { ...(prev[id] ?? defaultDraft()), ...patch },
-  }));
-}
-
-// Per-viewer derivations for the General tab's "Your progress"
-// section. Pulled out of the JSX so the render reads straight from
-// the destructured values instead of re-running these filters inside
-// an inline IIFE every render.
-function deriveMyProgress(
-  challenge: ChallengeDetail,
-  participants: ParticipantItem[],
-  completions: CompletionItem[],
-  sessionUserId: string | null
-) {
-  const myParticipation = sessionUserId
-    ? participants.find((p) => p.user_id === sessionUserId)
-    : undefined;
-  const myProgress = myParticipation?.progress ?? 0;
-  const completed = myParticipation?.status === "completed";
-  const myCompletions = sessionUserId
-    ? completions.filter((c) => c.user.id === sessionUserId)
-    : [];
-  const goal = challenge.goal;
-  const pct = goal
-    ? Math.min(100, Math.round((myProgress / goal) * 100))
-    : null;
-  return { myParticipation, myProgress, completed, myCompletions, goal, pct };
-}
-
-// Per-user roll-ups for the Manage tab. Builds the submissions map
-// once and partitions participants into "has at least one submission"
-// (rendered in the Completaciones section) vs "no submissions yet"
-// (rendered in Más participantes). For checkpoint-mode challenges,
-// "submissions" includes per-checkpoint completions too so a user
-// who has only worked on checkpoints (and never sent a challenge-
-// level proof) still appears in the actionable roster.
-function deriveManageRoster(
-  participants: ParticipantItem[],
-  completions: CompletionItem[],
-  checkpointCompletions: ChallengeCheckpointCompletion[],
-  challenge: ChallengeDetail
-) {
-  const submissionsByUser = new Map<string, CompletionItem[]>();
-  for (const c of completions) {
-    const list = submissionsByUser.get(c.user.id) ?? [];
-    list.push(c);
-    submissionsByUser.set(c.user.id, list);
-  }
-  // Set of user_ids with any kind of submission — challenge-level OR
-  // checkpoint-level. Drives the completed-vs-pending split below.
-  const userIdsWithSubmissions = new Set(submissionsByUser.keys());
-  for (const cc of checkpointCompletions) {
-    userIdsWithSubmissions.add(cc.user.id);
-  }
-  const completedParticipants = participants.filter((p) =>
-    userIdsWithSubmissions.has(p.user_id)
-  );
-  const pendingParticipants = participants.filter(
-    (p) => !userIdsWithSubmissions.has(p.user_id)
-  );
-  const hasBadge = !!(challenge.badge_name || challenge.badge_image_url);
-  return {
-    submissionsByUser,
-    completedParticipants,
-    pendingParticipants,
-    hasBadge,
-  };
-}
-
-// Pick the most-actionable status across a user's submissions: pending
-// wins (creator still has work to do), then rejected (creator already
-// passed but submitter could resubmit), then approved.
-function rollUpStatus(
-  comps: CompletionItem[]
-): "approved" | "pending" | "rejected" {
-  if (comps.some((c) => c.status === "pending")) return "pending";
-  if (
-    comps.some((c) => c.status === "rejected") &&
-    !comps.some((c) => c.status === "approved")
-  ) {
-    return "rejected";
-  }
-  return "approved";
-}
-
-// Cap rendered avatars so a 200-participant challenge doesn't paint a
-// 200-circle wall in the General tab. Anything beyond gets rolled up
-// into a "+N" pill — the detailed list lives in Manage anyway.
-const AVATAR_STACK_LIMIT = 12;
-
-function AvatarStack({
-  items,
-  moreLabel,
-  onItemClick,
-}: {
-  items: {
-    id: string;
-    name: string;
-    avatarUrl: string | null;
-    status?: AvatarStatus;
-  }[];
-  moreLabel: (extra: number) => string;
-  /** When set, each avatar renders inside a button that fires this
-   *  callback with the item id. Used by the General-tab Completaciones
-   *  stack to surface the same submission-details modal the Manage
-   *  tab uses, so non-creators can also peek at any submission. */
-  onItemClick?: (id: string) => void;
-}) {
-  const visible = items.slice(0, AVATAR_STACK_LIMIT);
-  const extra = Math.max(0, items.length - visible.length);
-  return (
-    <div className={styles.avatarStack}>
-      {visible.map((item) =>
-        onItemClick ? (
-          <button
-            key={item.id}
-            type="button"
-            className={styles.avatarStackButton}
-            onClick={() => onItemClick(item.id)}
-            aria-label={item.name}
-          >
-            <Avatar
-              src={item.avatarUrl}
-              name={item.name}
-              alt={item.name}
-              size="sm"
-              status={item.status}
-            />
-          </button>
-        ) : (
-          <Avatar
-            key={item.id}
-            src={item.avatarUrl}
-            name={item.name}
-            alt={item.name}
-            size="sm"
-            status={item.status}
-          />
-        )
-      )}
-      {extra > 0 && (
-        <span className={styles.avatarStackMore}>{moreLabel(extra)}</span>
-      )}
-    </div>
-  );
-}
-
-function typeVariant(type: string): "purple" | "gold" | "green" | "red" {
-  switch (type) {
-    case "streak": return "gold";
-    case "competition": return "red";
-    case "creative": return "green";
-    default: return "purple";
-  }
-}
-
-function statusKey(status: string): string {
-  switch (status) {
-    case "in_progress": return "inProgress";
-    default: return status;
-  }
-}

@@ -140,6 +140,7 @@ export function CheckpointEditor({ checkpoints, onChange }: CheckpointEditorProp
                   )
                 )
               }
+              required
             />
           )}
         </div>

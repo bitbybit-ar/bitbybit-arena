@@ -2,6 +2,24 @@
 
 All notable changes to BitByBit Arena are documented in this file. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] — Unreleased
+
+Patch release. Fixes post-launch UX bugs around challenge completion and reward handling, plus a focused refactor of the explore-detail page.
+
+### Fixed
+
+- **Approval flow no longer shows "enviando badge…" toast for challenges without a badge.** Creators approving completions on prize-less challenges saw a misleading "sending badge on Nostr" message even though there was nothing to send. The award call is now gated on the challenge actually having a badge defined.
+- **`nostr_hashtag` challenges have a participant verify button.** The page only rendered a verify affordance for `nostr_action`; hashtag-verified challenges had no UI to trigger the relay check, so participants could publish the required note from any Nostr client and have nothing happen on Arena. The `/completions` API already auto-picks the hashtag method when the body is empty — the missing piece was the button.
+- **Hashtag link now opens a working hashtag feed.** The challenge info block linked to `njump.me/t/<tag>`, which 404s — njump only routes NIP-19 entities, not hashtags. Replaced with `nostr.band/?q=%23<tag>`.
+
+### Changed
+
+- **Refactor: `app/[locale]/(app)/explore/[id]/challenge-client.tsx` split into siblings.** The page component had grown past 3,000 lines. Types, pure helpers, the `AvatarStack` subcomponent and the new `NostrVerifySection` moved to dedicated files (`types.ts`, `helpers.ts`, `AvatarStack.tsx`, `NostrVerifySection.tsx`). Pure code-move, no behavior change. Main file now ~2,700 lines.
+
+### Under consideration (not yet decided)
+
+- Whether to require at least one badge field at challenge creation, or keep prize-less challenges as a first-class option with distinct UI throughout the approval/completion flow.
+
 ## [1.0.0] — 2026-04-26
 
 Initial public release. Submitted to **Hackathon #2 "IDENTITY"** at La Crypta. Production at https://arena.bitbybit.com.ar.

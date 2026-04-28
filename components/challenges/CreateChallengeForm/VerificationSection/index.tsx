@@ -95,12 +95,15 @@ export function VerificationSection({
 
       {verification.includes("nostr_hashtag") && (
         <div className={styles.fieldGroup}>
-          <FieldLabel htmlFor="cc-hashtag">{t("nostrHashtagLabel")}</FieldLabel>
+          <FieldLabel htmlFor="cc-hashtag" required>
+            {t("nostrHashtagLabel")}
+          </FieldLabel>
           <FormInput
             id="cc-hashtag"
             placeholder={t("nostrHashtagPlaceholder")}
             value={nostrHashtag}
             onChange={onNostrHashtagChange}
+            required
           />
         </div>
       )}
