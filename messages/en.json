@@ -602,7 +602,7 @@
     "verifyHashtagRetry": "Try verifying again",
     "verifying": "Verifying...",
     "proofFound": "Proof found",
-    "proofNotFound": "We couldn't find your like on the relays yet. Try again in a few seconds.",
+    "proofNotFound": "We couldn't find your proof on the relays yet. Try again in a few seconds.",
     "checkpointsTitle": "Checkpoints",
     "checkpointModeSequential": "Complete checkpoints in order. Each one unlocks the next.",
     "checkpointModeParallel": "Complete checkpoints in any order.",

@@ -34,6 +34,15 @@ function VariantBlock({
   const t = useTranslations("challenge");
   const loading = actionLoading === "verifyLike";
 
+  // Defensive guard: if a challenge somehow has the verification
+  // method enabled but the matching target value is missing
+  // (historical row, manual DB edit), don't render a block whose
+  // copy and deep-link would be malformed. The create-flow Zod
+  // schema enforces these as required, so this only catches drift.
+  if (variant === "hashtag" && !challenge.nostr_hashtag) return null;
+  if (variant === "action" && !challenge.nostr_action_target_event_id)
+    return null;
+
   const title =
     variant === "action" ? t("verifyLikeTitle") : t("verifyHashtagTitle");
   const instructions =

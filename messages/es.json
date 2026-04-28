@@ -602,7 +602,7 @@
     "verifyHashtagRetry": "Reintentar verificación",
     "verifying": "Verificando...",
     "proofFound": "Prueba encontrada",
-    "proofNotFound": "No encontramos tu like en los relays. Intentá de nuevo en unos segundos.",
+    "proofNotFound": "No encontramos tu prueba en los relays todavía. Intentá de nuevo en unos segundos.",
     "checkpointsTitle": "Checkpoints",
     "checkpointModeSequential": "Completá los checkpoints en orden. Cada uno desbloquea el siguiente.",
     "checkpointModeParallel": "Completá los checkpoints en cualquier orden.",
