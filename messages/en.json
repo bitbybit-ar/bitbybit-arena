@@ -626,6 +626,7 @@
     "reviewCheckpointsTitle": "Checkpoint proofs to review",
     "checkpointReviewError": "Could not record the review. Try again.",
     "verifyApprovedToast": "Proof approved — sending badge on Nostr…",
+    "verifyApprovedNoBadgeToast": "Proof approved.",
     "verifyRejectedToast": "Proof rejected.",
     "verifyError": "Could not record the review. Try again.",
     "badgeAwardSent": "Badge sent on Nostr ✨",

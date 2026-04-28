@@ -1311,13 +1311,23 @@ export default function ChallengeClient() {
         showToast(translateApiError(json, tErr, t("verifyError")), "error");
         return;
       }
+      // Prize-less challenges (no badge name and no badge image) have
+      // nothing to publish on Nostr after approval — the "enviando
+      // badge…" toast and the awardBadgeToUser() call both lied about
+      // what was happening. Use the badge-aware toast and skip the
+      // award path when the challenge has no badge to send.
+      const challengeHasBadge = !!(
+        challenge?.badge_name || challenge?.badge_image_url
+      );
       showToast(
         status === "approved"
-          ? t("verifyApprovedToast")
+          ? challengeHasBadge
+            ? t("verifyApprovedToast")
+            : t("verifyApprovedNoBadgeToast")
           : t("verifyRejectedToast"),
         status === "approved" ? "success" : "info"
       );
-      if (status === "approved") {
+      if (status === "approved" && challengeHasBadge) {
         // Approving the proof IS the badge-award gesture — there's no
         // separate creator action anymore. Look up the completion's user
         // from the in-memory list and run the same award + publish path

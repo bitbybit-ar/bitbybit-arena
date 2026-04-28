@@ -626,6 +626,7 @@
     "reviewCheckpointsTitle": "Pruebas de checkpoint para revisar",
     "checkpointReviewError": "No se pudo registrar la revisión. Intentá de nuevo.",
     "verifyApprovedToast": "Prueba aprobada — enviando badge por Nostr…",
+    "verifyApprovedNoBadgeToast": "Prueba aprobada.",
     "verifyRejectedToast": "Prueba rechazada.",
     "verifyError": "No se pudo registrar la revisión. Intentá de nuevo.",
     "badgeAwardSent": "Badge enviado por Nostr ✨",
