@@ -2,7 +2,7 @@
 
 All notable changes to BitByBit Arena are documented in this file. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] — Unreleased
+## [1.0.1] — 2026-04-28
 
 Patch release. Fixes post-launch UX bugs around challenge completion and reward handling, plus a focused refactor of the explore-detail page.
 
