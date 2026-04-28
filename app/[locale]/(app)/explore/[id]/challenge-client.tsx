@@ -85,6 +85,7 @@ import {
   updateCheckpointDraft,
 } from "./helpers";
 import { AvatarStack } from "./AvatarStack";
+import { NostrVerifySection } from "./NostrVerifySection";
 
 // Share modal is mounted only after the user submits/joins/etc., so
 // we lazy-load it to keep the click-to-render bundle off the page-load
@@ -1839,114 +1840,13 @@ export default function ChallengeClient() {
                     </Section>
                   )}
 
-                  {challenge.checkpoint_mode === "none" &&
-                    (challenge.verification_methods ?? []).includes("nostr_action") && (
-                      <Section>
-                        <SectionTitle>{t("verifyLikeTitle")}</SectionTitle>
-                        <p className={styles.emptyText}>
-                          {t("verifyLikeInstructions")}
-                        </p>
-                        {challenge.nostr_action_target_event_id && (
-                          <p className={styles.targetEventId}>
-                            <a
-                              href={`https://njump.me/${challenge.nostr_action_target_event_id}`}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                            >
-                              {challenge.nostr_action_target_event_id.slice(0, 16)}…
-                            </a>
-                          </p>
-                        )}
-                        <Button
-                          size="sm"
-                          onClick={handleVerifyLike}
-                          disabled={actionLoading === "verifyLike"}
-                        >
-                          {actionLoading === "verifyLike"
-                            ? t("verifying")
-                            : t("verifyLikeButton")}
-                        </Button>
-                        {verifyError && (
-                          // Pair the error message with an inline retry
-                          // button so a transient relay miss doesn't
-                          // require scrolling back up to find the
-                          // primary CTA again. The button reuses the
-                          // same handler — the user just clicks once
-                          // more after they've made sure the like is
-                          // actually published from their Nostr client.
-                          <div className={styles.verifyErrorBlock}>
-                            <p className={styles.error}>{verifyError}</p>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setVerifyError(null);
-                                void handleVerifyLike();
-                              }}
-                              disabled={actionLoading === "verifyLike"}
-                            >
-                              {t("verifyLikeRetry")}
-                            </Button>
-                          </div>
-                        )}
-                      </Section>
-                    )}
-
-                  {/* nostr_hashtag participants need their own verify
-                      affordance — the API at /completions auto-picks
-                      the hashtag method when the body is empty, but
-                      without a button there's nothing to trigger it.
-                      Mirrors the nostr_action block above; reuses the
-                      same handleVerifyLike handler and actionLoading
-                      key (the two sections never both render for the
-                      same challenge in practice). */}
-                  {challenge.checkpoint_mode === "none" &&
-                    (challenge.verification_methods ?? []).includes("nostr_hashtag") && (
-                      <Section>
-                        <SectionTitle>{t("verifyHashtagTitle")}</SectionTitle>
-                        <p className={styles.emptyText}>
-                          {t("verifyHashtagInstructions", {
-                            hashtag: challenge.nostr_hashtag ?? "",
-                          })}
-                        </p>
-                        {challenge.nostr_hashtag && (
-                          <p className={styles.targetEventId}>
-                            <a
-                              href={`https://nostr.band/?q=${encodeURIComponent(`#${challenge.nostr_hashtag}`)}`}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                            >
-                              #{challenge.nostr_hashtag}
-                            </a>
-                          </p>
-                        )}
-                        <Button
-                          size="sm"
-                          onClick={handleVerifyLike}
-                          disabled={actionLoading === "verifyLike"}
-                        >
-                          {actionLoading === "verifyLike"
-                            ? t("verifying")
-                            : t("verifyHashtagButton")}
-                        </Button>
-                        {verifyError && (
-                          <div className={styles.verifyErrorBlock}>
-                            <p className={styles.error}>{verifyError}</p>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setVerifyError(null);
-                                void handleVerifyLike();
-                              }}
-                              disabled={actionLoading === "verifyLike"}
-                            >
-                              {t("verifyHashtagRetry")}
-                            </Button>
-                          </div>
-                        )}
-                      </Section>
-                    )}
+                  <NostrVerifySection
+                    challenge={challenge}
+                    actionLoading={actionLoading}
+                    verifyError={verifyError}
+                    onVerify={handleVerifyLike}
+                    onClearError={() => setVerifyError(null)}
+                  />
 
                   {/* Hide the next-proof input once the participant has
                       hit the goal — they're done. Without this gate the
