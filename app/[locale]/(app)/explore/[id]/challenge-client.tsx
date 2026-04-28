@@ -1600,10 +1600,11 @@ export default function ChallengeClient() {
                   {/* Nostr-targeted challenges expose the link in the
                       info block so non-participants can also see what
                       the challenge is about. nostr_action points at a
-                      specific event (njump.me/<id>); nostr_hashtag has
-                      no single target, so we link to njump's tag feed
-                      (njump.me/t/<tag>) — both render via the same
-                      njump bridge so any Nostr client can pick it up. */}
+                      specific event and goes through njump (njump.me
+                      only routes NIP-19 entities). nostr_hashtag has
+                      no single target — we send those to nostr.band's
+                      hashtag search instead, since njump has no
+                      `/t/<tag>` route. */}
                   {challenge.nostr_action_target_event_id && (
                     <div className={styles.detailRow}>
                       <span className={styles.detailLabel}>
@@ -1624,7 +1625,7 @@ export default function ChallengeClient() {
                         {t("nostrHashtagLabel")}
                       </span>
                       <a
-                        href={`https://njump.me/t/${encodeURIComponent(challenge.nostr_hashtag)}`}
+                        href={`https://nostr.band/?q=${encodeURIComponent(`#${challenge.nostr_hashtag}`)}`}
                         target="_blank"
                         rel="noreferrer noopener"
                       >
@@ -1929,6 +1930,62 @@ export default function ChallengeClient() {
                               disabled={actionLoading === "verifyLike"}
                             >
                               {t("verifyLikeRetry")}
+                            </Button>
+                          </div>
+                        )}
+                      </Section>
+                    )}
+
+                  {/* nostr_hashtag participants need their own verify
+                      affordance — the API at /completions auto-picks
+                      the hashtag method when the body is empty, but
+                      without a button there's nothing to trigger it.
+                      Mirrors the nostr_action block above; reuses the
+                      same handleVerifyLike handler and actionLoading
+                      key (the two sections never both render for the
+                      same challenge in practice). */}
+                  {challenge.checkpoint_mode === "none" &&
+                    (challenge.verification_methods ?? []).includes("nostr_hashtag") && (
+                      <Section>
+                        <SectionTitle>{t("verifyHashtagTitle")}</SectionTitle>
+                        <p className={styles.emptyText}>
+                          {t("verifyHashtagInstructions", {
+                            hashtag: challenge.nostr_hashtag ?? "",
+                          })}
+                        </p>
+                        {challenge.nostr_hashtag && (
+                          <p className={styles.targetEventId}>
+                            <a
+                              href={`https://nostr.band/?q=${encodeURIComponent(`#${challenge.nostr_hashtag}`)}`}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                            >
+                              #{challenge.nostr_hashtag}
+                            </a>
+                          </p>
+                        )}
+                        <Button
+                          size="sm"
+                          onClick={handleVerifyLike}
+                          disabled={actionLoading === "verifyLike"}
+                        >
+                          {actionLoading === "verifyLike"
+                            ? t("verifying")
+                            : t("verifyHashtagButton")}
+                        </Button>
+                        {verifyError && (
+                          <div className={styles.verifyErrorBlock}>
+                            <p className={styles.error}>{verifyError}</p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setVerifyError(null);
+                                void handleVerifyLike();
+                              }}
+                              disabled={actionLoading === "verifyLike"}
+                            >
+                              {t("verifyHashtagRetry")}
                             </Button>
                           </div>
                         )}
