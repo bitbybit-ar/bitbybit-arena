@@ -2,6 +2,19 @@
 
 All notable changes to BitByBit Arena are documented in this file. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] — Unreleased
+
+Patch release. Fixes post-launch UX bugs around challenge completion and reward handling.
+
+### Fixed
+
+- **Approval flow no longer shows "enviando badge…" toast for challenges without a badge.** Creators approving completions on prize-less challenges saw a misleading "sending badge on Nostr" message even though there was nothing to send. The award call is now gated on the challenge actually having a badge defined. (`app/[locale]/(app)/explore/[id]/challenge-client.tsx`)
+- **"Tu progreso" empty state for `nostr_action` / `nostr_hashtag` challenges no longer prompts users to submit proof "below".** For challenges whose only verification path is a Nostr interaction there is no upload form — the empty state copy is now scoped to challenges that actually have a submission form, and Nostr-action challenges get guidance pointing at the relay-verified flow. (`app/[locale]/(app)/explore/[id]/challenge-client.tsx`, `messages/es.json`, `messages/en.json`)
+
+### Under consideration (not yet decided)
+
+- Whether to require at least one badge field at challenge creation, or keep prize-less challenges as a first-class option with distinct UI throughout the approval/completion flow.
+
 ## [1.0.0] — 2026-04-26
 
 Initial public release. Submitted to **Hackathon #2 "IDENTITY"** at La Crypta. Production at https://arena.bitbybit.com.ar.
