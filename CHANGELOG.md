@@ -209,4 +209,5 @@ Built at La Crypta, the Bitcoin community in Argentina that hosted both hackatho
 
 Sibling project: [bitbybit-habits](https://github.com/bitbybit-ar/bitbybit-habits) (Hackathon 1 FOUNDATIONS — Lightning).
 
+[1.0.1]: https://github.com/bitbybit-ar/bitbybit-arena/releases/tag/v1.0.1 
 [1.0.0]: https://github.com/bitbybit-ar/bitbybit-arena/releases/tag/v1.0.0
