@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { BoltIcon, CopyIcon, QrIcon } from "@/components/icons";
+import { BoltIcon, CheckIcon, CopyIcon, QrIcon } from "@/components/icons";
 import { fetchNostrMetadata } from "@/lib/nostr/metadata";
+import { verifyNip05 } from "@/lib/nostr/nip05";
 import { useClipboard } from "@/lib/hooks/useClipboard";
 import { ProfileQrModal } from "./ProfileQrModal";
 import styles from "./profile.module.scss";
@@ -32,10 +33,19 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const t = useTranslations("profile");
   const [nip05, setNip05] = useState<string | null>(null);
+  // Tri-state: null while we haven't decided yet (no NIP-05 to check
+  // OR verification still in flight), true when the well-known
+  // endpoint confirmed the pubkey, false when the round-trip resolved
+  // negatively (mismatch, network failure, malformed JSON, etc.). We
+  // surface the verified mark only on `true` — `false` and `null`
+  // both render as plain text, which mirrors what Damus / Snort do
+  // when the host can't be reached.
+  const [nip05Verified, setNip05Verified] = useState<boolean | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
   const { copied, copy } = useClipboard();
 
   useEffect(() => {
+    const controller = new AbortController();
     let cancelled = false;
     (async () => {
       const metadata = await fetchNostrMetadata(pubkey);
@@ -46,17 +56,23 @@ export function ProfileHeader({
       // already rides through the DB row from the Arena sync. We
       // skip empty strings so the on-hover copy affordance only
       // appears when there's something to copy.
-      //
-      // Note: this is the *claimed* NIP-05 from the user's own kind:0,
-      // not a verified one. Per NIP-05 spec, clients should resolve
-      // `https://<domain>/.well-known/nostr.json?name=<localpart>`
-      // and confirm the returned pubkey matches before showing a
-      // verified mark. We display the claimed value as-is for now;
-      // a verification round-trip is a follow-up.
-      if (value) setNip05(value);
+      if (!value) return;
+      setNip05(value);
+      // Verification round-trip per NIP-05 spec — a kind:0 `nip05`
+      // is a *claim* anyone can write. Only show the checkmark when
+      // the domain's `.well-known/nostr.json` returns the same
+      // pubkey. Failure paths (network error, mismatch, malformed
+      // JSON) all render as unverified — see `verifyNip05` for the
+      // full list of `false` reasons.
+      const verified = await verifyNip05(value, pubkey, {
+        signal: controller.signal,
+      });
+      if (cancelled) return;
+      setNip05Verified(verified);
     })();
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [pubkey]);
 
@@ -117,6 +133,15 @@ export function ProfileHeader({
           {nip05 && (
             <div className={styles.nip05Wrapper}>
               <span className={styles.nip05}>{nip05}</span>
+              {nip05Verified === true && (
+                <span
+                  className={styles.nip05Verified}
+                  title={t("nip05VerifiedTooltip")}
+                  aria-label={t("nip05VerifiedTooltip")}
+                >
+                  <CheckIcon size={12} />
+                </span>
+              )}
               <button
                 type="button"
                 className={styles.nip05CopyButton}

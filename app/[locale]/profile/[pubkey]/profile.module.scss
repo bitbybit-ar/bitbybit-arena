@@ -132,6 +132,23 @@
   word-break: break-all;
 }
 
+// Small verified mark next to the NIP-05 string. Surfaces only when
+// the `.well-known/nostr.json` round-trip matches — same convention
+// other clients (Damus, Snort) follow. Color matches the platform's
+// approved/success accent so it reads as a positive confirmation
+// without screaming about it.
+.nip05Verified {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: $border-radius-full;
+  background: $color-accent-alt;
+  color: #fff;
+  flex-shrink: 0;
+}
+
 .nip05CopyButton {
   background: transparent;
   border: none;

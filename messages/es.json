@@ -92,6 +92,7 @@
     "zapButton": "Enviar un zap",
     "zapAriaLabel": "Enviar un zap a {address}",
     "copyNip05": "Copiar {value}",
+    "nip05VerifiedTooltip": "NIP-05 verificado — el dominio confirma esta pubkey",
     "copied": "Copiado",
     "viewOnNjump": "Ver en njump.me",
     "openQrModal": "Mostrar códigos QR",
