@@ -41,6 +41,21 @@
   border-color: $color-accent;
 }
 
+// Applied when the avatar is rendered as a Link to /profile/<pubkey>.
+// Inline anchors default to `display: inline` which cancels the disc
+// shape inherited from `.avatar`; restoring inline-flex keeps the
+// hit area square and aligned with sibling text. `cursor: pointer`
+// is the affordance that the avatar is now interactive.
+.linked {
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    filter: brightness(1.05);
+  }
+}
+
 .image {
   width: 100%;
   height: 100%;

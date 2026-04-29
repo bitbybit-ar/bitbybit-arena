@@ -92,25 +92,28 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
       ),
   ]);
 
-  // One notification per newly awarded recipient. Skip the creator to
-  // avoid self-ping when they award themselves in a challenge they also
-  // participated in.
+  // One notification per newly awarded recipient. We DO notify the
+  // creator when they're a recipient — the creator-as-participant
+  // path auto-completes their own row via `decideAutoApprove` and
+  // self-awards the badge from the client, so without the bell
+  // entry there's no in-app trail of "you earned the badge for the
+  // challenge you also created" beyond the transient toast.
+  // Participants who don't want self-pings can opt out via the
+  // per-type `notification_prefs` toggles in Settings.
   await Promise.all(
-    newUserIds
-      .filter((uid: string) => uid !== challenge.creator_id)
-      .map((uid: string) =>
-        notifyUser(
-          uid,
-          "badge_earned",
-          "New badge!",
-          `You earned the "${badgeName}" badge for "${challenge.title}".`,
-          {
-            badge: badgeName,
-            challenge: challenge.title,
-            challenge_id: challenge.id,
-          }
-        )
+    newUserIds.map((uid: string) =>
+      notifyUser(
+        uid,
+        "badge_earned",
+        "New badge!",
+        `You earned the "${badgeName}" badge for "${challenge.title}".`,
+        {
+          badge: badgeName,
+          challenge: challenge.title,
+          challenge_id: challenge.id,
+        }
       )
+    )
   );
 
   return new CreatedResponse(awarded);
