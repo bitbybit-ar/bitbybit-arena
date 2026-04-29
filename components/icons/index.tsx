@@ -19,6 +19,7 @@ export { KeyIcon } from "./KeyIcon";
 export { LinkIcon } from "./LinkIcon";
 export { LogoutIcon } from "./LogoutIcon";
 export { MoonIcon } from "./MoonIcon";
+export { QrIcon } from "./QrIcon";
 export { SettingsIcon } from "./SettingsIcon";
 export { SunIcon } from "./SunIcon";
 export { TrophyIcon } from "./TrophyIcon";
