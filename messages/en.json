@@ -600,6 +600,7 @@
     "verifyHashtagInstructions": "Post a note from your Nostr client using #{hashtag}, then press verify. We'll look for your post on the relays.",
     "verifyHashtagButton": "Verify my post on Nostr",
     "verifyHashtagRetry": "Try verifying again",
+    "submitYourProof": "Submit your proof",
     "verifying": "Verifying...",
     "proofFound": "Proof found",
     "proofNotFound": "We couldn't find your proof on the relays yet. Try again in a few seconds.",
