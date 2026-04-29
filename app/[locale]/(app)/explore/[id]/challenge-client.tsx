@@ -2057,6 +2057,7 @@ export default function ChallengeClient() {
                       id: p.id,
                       name: p.user.display_name,
                       avatarUrl: p.user.avatar_url ?? null,
+                      pubkey: p.user.nostr_pubkey ?? null,
                     }))}
                     moreLabel={(extra) =>
                       t("andMoreCount", { count: extra })
@@ -2205,6 +2206,7 @@ export default function ChallengeClient() {
                         name={p.user.display_name}
                         alt={p.user.display_name}
                         size="md"
+                        pubkey={p.user.nostr_pubkey ?? null}
                       />
                       <span className={styles.rosterName}>
                         {p.user.display_name}
