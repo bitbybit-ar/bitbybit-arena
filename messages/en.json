@@ -780,6 +780,7 @@
     "acceptBadge": "Accept on Nostr",
     "accepting": "Accepting...",
     "acceptedOnNostr": "On your Nostr profile",
+    "viewOnNostrAria": "View {name} on your Nostr profile",
     "acceptSuccess": "Badge added to your Nostr profile",
     "acceptFailed": "Could not publish your profile badges. Try again.",
     "acceptMissingIds": "This badge is missing its Nostr event ids and can't be added to a profile yet.",
