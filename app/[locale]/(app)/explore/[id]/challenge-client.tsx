@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useParams, useSearchParams, notFound } from "next/navigation";
 import dynamic from "next/dynamic";
-import { useRouter } from "@/i18n/routing";
+import { Link, useRouter } from "@/i18n/routing";
 import { ArrowRightIcon, BoltIcon, CopyIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Tag } from "@/components/ui/tag";
@@ -503,6 +503,12 @@ export default function ChallengeClient() {
           /* non-blocking — DB row is already in place */
         }
       }
+      // Creator participating in their own challenge: `decideAutoApprove`
+      // lets them auto-complete (no one else can judge them), but the
+      // badge-award flow is normally triggered from the manual approve
+      // path — which never runs here. Self-issue the badge so the
+      // creator gets the same NIP-58 award path as every other completer.
+      await maybeSelfAwardBadge(json.data?.status);
       await fetchAll();
       showToast(t("submitProofSuccess"), "success");
       if (challenge) {
@@ -686,6 +692,10 @@ export default function ChallengeClient() {
         if (json.data?.status === "pending") {
           showToast(t("proofPendingReview"), "info");
         }
+        // Creator participating in their own challenge: same self-
+        // award path as the manual textarea flow. See
+        // maybeSelfAwardBadge for the decision criteria.
+        await maybeSelfAwardBadge(json.data?.status);
         await fetchAll();
       }
     } catch {
@@ -1319,6 +1329,27 @@ export default function ChallengeClient() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  // Self-award path for the creator-as-participant scenario. When the
+  // creator submits their own proof, `decideAutoApprove` lets the row
+  // land `approved` directly (no manual review) — but the badge-award
+  // flow is normally triggered from the creator's "Approve" click on
+  // someone else's pending row, which never runs here. The result was
+  // a creator who completed their own challenge but never showed up
+  // in `/api/my-badges` and never received the kind:8. We catch that
+  // gap by re-using `awardBadgeToUser` against the creator's own
+  // user_id whenever the response status is `approved` and the
+  // challenge has a badge to send. The award API is idempotent (409
+  // on duplicate) so this stays safe across retries.
+  const maybeSelfAwardBadge = async (
+    completionStatus: string | undefined
+  ) => {
+    if (completionStatus !== "approved") return;
+    if (!sessionUser || !challenge) return;
+    if (challenge.creator_id !== sessionUser.user_id) return;
+    if (!challenge.badge_name && !challenge.badge_image_url) return;
+    await awardBadgeToUser(sessionUser.user_id);
   };
 
   // Award + publish the NIP-58 badge for a single recipient. Idempotent
@@ -2224,12 +2255,14 @@ export default function ChallengeClient() {
         const rosterUser =
           participants.find((p) => p.user_id === rosterUserId)?.user;
         const userName = rosterUser?.display_name ?? "";
-        // njump.me accepts the raw hex pubkey, so we can skip npub
-        // encoding entirely. Falls back to no link when the user has
-        // no pubkey on record (shouldn't happen for Nostr-auth users
-        // but guards the URL from a literal "undefined").
+        // Local profile page is the canonical destination for a
+        // pubkey now — same content as the user's Nostr identity but
+        // also surfaces Arena-specific context (their challenges +
+        // badges) without leaving the app. Guards against a literal
+        // "undefined" URL when the user has no pubkey on record
+        // (shouldn't happen for Nostr-auth users).
         const userProfileUrl = rosterUser?.nostr_pubkey
-          ? `https://njump.me/${rosterUser.nostr_pubkey}`
+          ? `/profile/${rosterUser.nostr_pubkey}`
           : null;
         const entries = isCheckpointMode
           ? allCheckpointCompletions
@@ -2302,10 +2335,8 @@ export default function ChallengeClient() {
                     name: userName,
                     link: (chunks) =>
                       userProfileUrl ? (
-                        <a
+                        <Link
                           href={userProfileUrl}
-                          target="_blank"
-                          rel="noreferrer noopener"
                           className={styles.submissionModalHeaderLink}
                           aria-label={t(
                             "submissionDetailsProfileLinkLabel",
@@ -2313,7 +2344,7 @@ export default function ChallengeClient() {
                           )}
                         >
                           {chunks}
-                        </a>
+                        </Link>
                       ) : (
                         <>{chunks}</>
                       ),

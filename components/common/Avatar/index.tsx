@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Link } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
 import styles from "./avatar.module.scss";
 
@@ -23,6 +24,13 @@ interface AvatarProps {
   size?: AvatarSize;
   status?: AvatarStatus;
   className?: string;
+  /** Hex Nostr pubkey of the user the avatar represents. When set the
+   *  whole avatar wraps in a `<Link>` to `/profile/<pubkey>` so any
+   *  surface that already shows an avatar (rosters, completion cards,
+   *  participant popups) becomes a navigable entry into the public
+   *  profile page. Decorative callers (`alt=""`) ignore this — the
+   *  wrapper stays mute. */
+  pubkey?: string | null;
 }
 
 const sizeClass: Record<AvatarSize, string> = {
@@ -51,6 +59,7 @@ export function Avatar({
   size = "md",
   status = "nostr",
   className,
+  pubkey,
 }: AvatarProps) {
   const [failed, setFailed] = useState(false);
   // Reset the failed flag whenever the caller swaps in a new `src` —
@@ -74,35 +83,56 @@ export function Avatar({
   // This avoids the role="img" nesting (wrapper + inner img both
   // labeled) that confuses some screen readers.
   const decorative = alt === "";
+
+  const visual = showImage ? (
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img
+      src={src ?? undefined}
+      alt={alt}
+      className={styles.image}
+      onError={() => setFailed(true)}
+    />
+  ) : decorative ? (
+    // Decorative fallback: keep the initial visually but stay silent.
+    // The outer wrapper is already aria-hidden, so this span needs
+    // no further muting — left as plain text.
+    initialFor(name)
+  ) : (
+    // Labeled fallback: the initial alone reads as a stray letter,
+    // so we wrap it as a single role="img" region with the caller's
+    // name as its accessible name.
+    <span role="img" aria-label={alt}>
+      <span aria-hidden="true">{initialFor(name)}</span>
+    </span>
+  );
+
+  // Render as a navigable link only when caller opts in via `pubkey`.
+  // Decorative avatars (alt="") and avatars without a pubkey stay as
+  // plain spans — that preserves existing roster/manage-popup callers
+  // that wrap the avatar in their own onClick to open a details modal.
+  if (pubkey && !decorative) {
+    return (
+      <Link
+        href={`/profile/${pubkey}`}
+        className={cn(
+          styles.avatar,
+          styles.linked,
+          sizeClass[size],
+          statusClass[status],
+          className
+        )}
+      >
+        {visual}
+      </Link>
+    );
+  }
+
   return (
     <span
       className={cn(styles.avatar, sizeClass[size], statusClass[status], className)}
       aria-hidden={decorative ? true : undefined}
     >
-      {showImage ? (
-        // Existing call sites render user avatars with plain <img> (behind
-        // an eslint-disable for next/image), so this primitive mirrors
-        // that choice to avoid triggering the image-domains config.
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={src ?? undefined}
-          alt={alt}
-          className={styles.image}
-          onError={() => setFailed(true)}
-        />
-      ) : decorative ? (
-        // Decorative fallback: keep the initial visually but stay silent.
-        // The outer wrapper is already aria-hidden, so this span needs
-        // no further muting — left as plain text.
-        initialFor(name)
-      ) : (
-        // Labeled fallback: the initial alone reads as a stray letter,
-        // so we wrap it as a single role="img" region with the caller's
-        // name as its accessible name.
-        <span role="img" aria-label={alt}>
-          <span aria-hidden="true">{initialFor(name)}</span>
-        </span>
-      )}
+      {visual}
     </span>
   );
 }

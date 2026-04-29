@@ -1,0 +1,238 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/typography" as *;
+@use "@/styles/common-mixins" as *;
+@use "@/styles/media-mixins" as *;
+
+.page {
+  @include container;
+  padding-top: $spacing-32;
+  padding-bottom: $spacing-64;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-40;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-20;
+  align-items: center;
+  text-align: center;
+
+  @include tablet {
+    flex-direction: row;
+    align-items: flex-start;
+    text-align: left;
+    gap: $spacing-32;
+  }
+}
+
+.avatarWrapper {
+  flex-shrink: 0;
+}
+
+.avatar,
+.avatarPlaceholder {
+  width: 128px;
+  height: 128px;
+  border-radius: $border-radius-full;
+  object-fit: cover;
+  display: block;
+}
+
+.avatarPlaceholder {
+  background: $color-surface;
+  border: 1px solid $color-border;
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+  min-width: 0;
+}
+
+.displayName {
+  font-size: $font-size-display;
+  font-weight: $font-weight-extrabold;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.username {
+  color: $color-text-secondary;
+  margin: 0;
+  font-size: $font-size-md;
+}
+
+.pubkey {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  font-family: monospace;
+  margin: 0;
+  word-break: break-all;
+}
+
+.about {
+  font-size: $font-size-md;
+  margin: $spacing-8 0 0 0;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-12;
+  align-items: center;
+  margin-top: $spacing-12;
+}
+
+.zapButton {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-8;
+  padding: $spacing-8 $spacing-16;
+  background: $color-secondary;
+  color: #fff;
+  border-radius: $border-radius-md;
+  font-weight: $font-weight-semibold;
+  font-size: $font-size-sm;
+  text-decoration: none;
+  transition: filter 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    filter: brightness(0.92);
+  }
+}
+
+.njumpLink {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-8;
+  padding: $spacing-8 $spacing-16;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  font-weight: $font-weight-semibold;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  text-decoration: none;
+  transition: background 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    background: $color-surface;
+  }
+}
+
+.lightningChip {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-8;
+  padding: $spacing-4 $spacing-12;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-full;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  cursor: pointer;
+  position: relative;
+
+  &:hover,
+  &:focus-visible {
+    background: alpha($color-secondary, 12%);
+  }
+}
+
+.lightningChipAddress {
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.lightningChipFeedback {
+  position: absolute;
+  bottom: calc(100% + #{$spacing-4});
+  left: 50%;
+  transform: translateX(-50%);
+  background: $color-text-primary;
+  color: $color-surface;
+  font-size: $font-size-xs;
+  padding: 2px $spacing-8;
+  border-radius: $border-radius-sm;
+  white-space: nowrap;
+}
+
+.badgesSection {
+  @include ceramic-card;
+  padding: $spacing-24;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-16;
+}
+
+.sectionTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  margin: 0;
+}
+
+.sectionHint {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  margin: 0;
+}
+
+.loading,
+.empty {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  text-align: center;
+  margin: $spacing-16 0;
+}
+
+.badgesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: $spacing-16;
+}
+
+.badgeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: $spacing-8;
+  padding: $spacing-12;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+}
+
+.badgeImage,
+.badgeImagePlaceholder {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: $border-radius-md;
+  display: block;
+}
+
+.badgeImagePlaceholder {
+  background: $color-surface;
+}
+
+.badgeName {
+  font-weight: $font-weight-semibold;
+  margin: 0;
+  font-size: $font-size-sm;
+  word-break: break-word;
+}
+
+.badgeDescription {
+  color: $color-text-secondary;
+  font-size: $font-size-xs;
+  margin: 0;
+  line-height: 1.4;
+  word-break: break-word;
+}

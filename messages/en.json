@@ -56,6 +56,7 @@
     "viewAll": "View all",
     "explore": "Explore",
     "myChallenges": "My challenges",
+    "profile": "Profile",
     "settings": "Settings",
     "back": "Back",
     "delete": "Delete",
@@ -83,6 +84,20 @@
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "closeDialog": "Close"
+  },
+  "profile": {
+    "title": "Profile",
+    "titleWithName": "{name} on Arena",
+    "unknownUser": "Unknown user",
+    "zapButton": "Send a zap",
+    "zapAriaLabel": "Send a zap to {address}",
+    "copyLightning": "Copy {address}",
+    "copied": "Copied",
+    "viewOnNjump": "View on njump.me",
+    "badgesTitle": "Badges",
+    "badgesHint": "Every NIP-58 badge currently on this Nostr identity, including badges earned outside Arena.",
+    "badgesLoading": "Looking up badges on the relays…",
+    "badgesEmpty": "No badges found on the relays yet."
   },
   "navbar": {
     "switchToLightMode": "Switch to light mode",
