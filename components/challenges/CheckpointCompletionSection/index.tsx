@@ -10,7 +10,11 @@ import {
 import { CheckpointProgress } from "@/components/challenges/CheckpointProgress";
 import { CheckpointSubmitForm } from "@/components/challenges/CheckpointSubmitForm";
 import type { BlossomDescriptor } from "@/lib/nostr/blossom";
-import type { Checkpoint, CheckpointCompletion } from "@/lib/types";
+import type {
+  Checkpoint,
+  CheckpointCompletion,
+  VerificationMethod,
+} from "@/lib/types";
 import styles from "./checkpoint-completion-section.module.scss";
 
 /**
@@ -40,9 +44,12 @@ interface CheckpointCompletionSectionProps {
   /** Collapsed per-checkpoint draft state keyed by checkpoint id. */
   drafts: Record<string, CheckpointDraft>;
   onDraftChange: (checkpointId: string, patch: Partial<CheckpointDraft>) => void;
-  /** Called when the user hits submit on a given checkpoint. Parent
-   *  handles signing + Blossom upload + POST. */
-  onSubmitCheckpoint: (checkpoint: Checkpoint) => void;
+  /** Called when the user hits submit on a given checkpoint with the
+   *  method they actioned. Multi-method checkpoints render one form
+   *  per method and pass the right value here so the parent doesn't
+   *  have to guess (the API rejects ambiguous bodies on multi-method
+   *  rows). Parent handles signing + Blossom upload + POST. */
+  onSubmitCheckpoint: (checkpoint: Checkpoint, method: VerificationMethod) => void;
   /** Parent's in-flight sentinel; drives each row's disabled state. */
   submittingCheckpointId: string | null;
 }
@@ -180,34 +187,15 @@ export function CheckpointCompletionSection({
               onSelect={canSubmit ? () => setSelectedCheckpointId(cp.id) : undefined}
               formSlot={
                 canSubmit ? (
-                  cp.verification_methods[0] === "nostr_action" ? (
-                    <CheckpointSubmitForm
-                      mode="nostr-action"
-                      checkpointIndex={idx + 1}
-                      nostrActionTargetEventId={
-                        cp.nostr_action_target_event_id
-                      }
-                      error={draft?.error ?? null}
-                      loading={submittingCheckpointId === cp.id}
-                      onSubmit={() => onSubmitCheckpoint(cp)}
-                    />
-                  ) : (
-                    <CheckpointSubmitForm
-                      mode="manual"
-                      checkpointIndex={idx + 1}
-                      content={draft?.proof ?? ""}
-                      image={draft?.image ?? null}
-                      error={draft?.error ?? null}
-                      loading={submittingCheckpointId === cp.id}
-                      onContentChange={(next) =>
-                        onDraftChange(cp.id, { proof: next })
-                      }
-                      onImageChange={(next) =>
-                        onDraftChange(cp.id, { image: next })
-                      }
-                      onSubmit={() => onSubmitCheckpoint(cp)}
-                    />
-                  )
+                  <CheckpointFormStack
+                    checkpoint={cp}
+                    index={idx + 1}
+                    draft={draft}
+                    error={draft?.error ?? null}
+                    loading={submittingCheckpointId === cp.id}
+                    onDraftChange={onDraftChange}
+                    onSubmit={(method) => onSubmitCheckpoint(cp, method)}
+                  />
                 ) : null
               }
             />
@@ -215,5 +203,118 @@ export function CheckpointCompletionSection({
         })}
       </div>
     </Section>
+  );
+}
+
+interface CheckpointFormStackProps {
+  checkpoint: Checkpoint;
+  index: number;
+  draft: CheckpointDraft | undefined;
+  error: string | null;
+  loading: boolean;
+  onDraftChange: (checkpointId: string, patch: Partial<CheckpointDraft>) => void;
+  onSubmit: (method: VerificationMethod) => void;
+}
+
+// Renders one CheckpointSubmitForm per applicable method on the
+// checkpoint. Multi-method checkpoints (e.g. `[creator_approval,
+// nostr_hashtag]`) used to fall through to the manual form regardless
+// of which extra Nostr path was configured — the old code consulted
+// only `verification_methods[0]`. The server already accepts every
+// combination via `decideAutoApprove`; this component completes the
+// loop on the participant side so both surfaces are reachable.
+//
+// Order is fixed (manual first, then nostr-action, then nostr-hashtag)
+// for visual consistency across checkpoints regardless of how the
+// creator ordered their `verification_methods` array.
+function CheckpointFormStack({
+  checkpoint,
+  index,
+  draft,
+  error,
+  loading,
+  onDraftChange,
+  onSubmit,
+}: CheckpointFormStackProps) {
+  const t = useTranslations("challenge");
+
+  const methods = checkpoint.verification_methods ?? [];
+  // `automatic` and `creator_approval` share the same manual surface —
+  // the difference is server-side (auto-approve vs. queue), not in the
+  // form fields the participant fills in.
+  const manualMethod: VerificationMethod | null = methods.includes("automatic")
+    ? "automatic"
+    : methods.includes("creator_approval")
+      ? "creator_approval"
+      : null;
+  const hasNostrAction = methods.includes("nostr_action");
+  const hasNostrHashtag = methods.includes("nostr_hashtag");
+  const showLabels =
+    [manualMethod, hasNostrAction, hasNostrHashtag].filter(Boolean).length > 1;
+
+  // For single-method checkpoints we surface the error inline in the
+  // form's own slot (existing behavior). For multi-method we render
+  // the error once below the stack — anchoring it to a specific form
+  // would require tracking which method the user just clicked, and
+  // duplicating it under every form would be noisy. Single error,
+  // shared scope.
+  const inlineError = showLabels ? null : error;
+
+  return (
+    <>
+      {manualMethod && (
+        <div>
+          {showLabels && (
+            <p className={styles.emptyText}>{t("submitYourProof")}</p>
+          )}
+          <CheckpointSubmitForm
+            mode="manual"
+            checkpointIndex={index}
+            content={draft?.proof ?? ""}
+            image={draft?.image ?? null}
+            error={inlineError}
+            loading={loading}
+            onContentChange={(next) =>
+              onDraftChange(checkpoint.id, { proof: next })
+            }
+            onImageChange={(next) =>
+              onDraftChange(checkpoint.id, { image: next })
+            }
+            onSubmit={() => onSubmit(manualMethod)}
+          />
+        </div>
+      )}
+      {hasNostrAction && (
+        <div>
+          {showLabels && (
+            <p className={styles.emptyText}>{t("verifyLikeTitle")}</p>
+          )}
+          <CheckpointSubmitForm
+            mode="nostr-action"
+            checkpointIndex={index}
+            nostrActionTargetEventId={checkpoint.nostr_action_target_event_id}
+            error={!manualMethod ? inlineError : null}
+            loading={loading}
+            onSubmit={() => onSubmit("nostr_action")}
+          />
+        </div>
+      )}
+      {hasNostrHashtag && (
+        <div>
+          {showLabels && (
+            <p className={styles.emptyText}>{t("verifyHashtagTitle")}</p>
+          )}
+          <CheckpointSubmitForm
+            mode="nostr-hashtag"
+            checkpointIndex={index}
+            nostrHashtag={checkpoint.nostr_hashtag}
+            error={!manualMethod && !hasNostrAction ? inlineError : null}
+            loading={loading}
+            onSubmit={() => onSubmit("nostr_hashtag")}
+          />
+        </div>
+      )}
+      {showLabels && error && <p className={styles.error}>{error}</p>}
+    </>
   );
 }

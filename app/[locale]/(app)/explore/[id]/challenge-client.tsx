@@ -65,6 +65,7 @@ import type {
   Checkpoint,
   ParticipantItem,
   PendingCheckpointSubmission,
+  VerificationMethod,
 } from "@/lib/types";
 import { SignerRequiredNotice } from "@/components/layout/SignerRequiredNotice";
 import { type ShareContext } from "@/components/share/ShareOnNostrModal";
@@ -1140,16 +1141,16 @@ export default function ChallengeClient() {
     }
   };
 
-  const handleCompleteCheckpoint = async (checkpoint: Checkpoint) => {
+  const handleCompleteCheckpoint = async (
+    checkpoint: Checkpoint,
+    method: VerificationMethod
+  ) => {
     // Clear any previous error on this checkpoint draft before retrying.
     updateCheckpointDraft(setCheckpointDrafts, checkpoint.id, { error: null });
     setActionLoading(`cp_${checkpoint.id}`);
     try {
-      const body: Record<string, unknown> = {};
-      const cpMethods = checkpoint.verification_methods ?? [];
-      const cpPrimary = cpMethods[0];
-      body.method = cpPrimary;
-      const needsContent = cpPrimary !== "nostr_action" && cpPrimary !== "nostr_hashtag";
+      const body: Record<string, unknown> = { method };
+      const needsContent = method !== "nostr_action" && method !== "nostr_hashtag";
       if (needsContent) {
         const content = (checkpointDrafts[checkpoint.id]?.proof ?? "").trim();
         const image = checkpointDrafts[checkpoint.id]?.image ?? null;
@@ -1182,6 +1183,14 @@ export default function ChallengeClient() {
           error: translateApiError(json, tErr, t("checkpointError")),
         });
         return;
+      }
+      // Mirror the challenge-level toast: when `creator_approval` is
+      // also configured on the checkpoint, the Nostr proof verifies but
+      // the row lands `pending` for the creator to review. Surface that
+      // explicitly so the participant knows their progress hasn't ticked
+      // up yet.
+      if (json.data?.status === "pending") {
+        showToast(t("proofPendingReview"), "info");
       }
       // Snapshot the submitted content + image before the clears below
       // so the Nostr publish below has the real proof to sign.

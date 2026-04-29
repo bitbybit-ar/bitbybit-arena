@@ -250,7 +250,12 @@ describe("Integration: Nostr hashtag verification", () => {
       expect(verifyHashtagMock).not.toHaveBeenCalled();
     });
 
-    it("runs the hashtag verifier when method=nostr_hashtag is specified", async () => {
+    it("runs the hashtag verifier when method=nostr_hashtag is specified, but lands pending for creator review", async () => {
+      // The challenge advertises `creator_approval` alongside the
+      // hashtag verifier, so `decideAutoApprove` defers the final
+      // approval to the creator even though the relay query passed.
+      // The verifier still runs (and the proof_event_id is recorded);
+      // the row just doesn't auto-flip to `approved`.
       verifyHashtagMock.mockResolvedValueOnce({
         valid: true,
         proofEventId: PROOF_EVENT_ID,
@@ -267,7 +272,8 @@ describe("Integration: Nostr hashtag verification", () => {
       );
       const { status, body } = await parseResponse(res);
       expect(status).toBe(201);
-      expect(body.data.status).toBe("approved");
+      expect(body.data.status).toBe("pending");
+      expect(body.data.proof_event_id).toBe(PROOF_EVENT_ID);
       expect(verifyHashtagMock).toHaveBeenCalled();
     });
   });

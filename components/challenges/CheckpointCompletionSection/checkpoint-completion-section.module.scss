@@ -25,3 +25,12 @@
   gap: $spacing-12;
   margin-top: $spacing-16;
 }
+
+// Single anchor for the multi-method checkpoint stack's error message.
+// Per-form errors echoing the same message under each block read as
+// noise; the stack-level slot keeps it visible without the duplication.
+.error {
+  color: $color-error;
+  font-size: $font-size-sm;
+  margin-top: $spacing-8;
+}

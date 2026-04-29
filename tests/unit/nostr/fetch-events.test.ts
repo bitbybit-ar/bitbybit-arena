@@ -135,4 +135,37 @@ describe("fetchFirstMatchingEvent", () => {
     const result = await promise;
     expect(result).toEqual(sampleEvent);
   });
+
+  it("skips events that fail the optional predicate and waits for a matching one", async () => {
+    const wrongTag: NostrEvent = {
+      ...sampleEvent,
+      id: "no-match",
+      tags: [["t", "other"]],
+    };
+    const rightTag: NostrEvent = {
+      ...sampleEvent,
+      id: "match",
+      tags: [["t", "PizzaDay"]],
+    };
+
+    const promise = fetchFirstMatchingEvent(
+      { kinds: [1] },
+      {
+        timeoutMs: 5000,
+        predicate: (event) =>
+          event.tags.some(
+            (t) => t[0] === "t" && t[1]?.toLowerCase() === "pizzaday"
+          ),
+      }
+    );
+    sockets.forEach((s) => s._emit("open"));
+
+    // First relay sends an event that fails the predicate (different tag)
+    sockets[0]._emit("message", JSON.stringify(["EVENT", "sub", wrongTag]));
+    // Second relay sends an event that matches case-insensitively
+    sockets[1]._emit("message", JSON.stringify(["EVENT", "sub", rightTag]));
+
+    const result = await promise;
+    expect(result).toEqual(rightTag);
+  });
 });
