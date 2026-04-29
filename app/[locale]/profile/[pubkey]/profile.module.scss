@@ -23,9 +23,12 @@
 }
 
 .headerTopBar {
+  // Anchored against the same padding as the card content so the
+  // icon visually aligns with the right edge of the inner column,
+  // not floats half-overlapping the card's outer padding.
   position: absolute;
-  top: $spacing-12;
-  right: $spacing-12;
+  top: $spacing-24;
+  right: $spacing-24;
 }
 
 .qrButton {
@@ -79,8 +82,16 @@
 }
 
 .avatarPlaceholder {
-  background: $color-surface;
+  background: alpha($color-primary, 15%);
+  color: $color-primary;
   border: 1px solid $color-border;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: $font-family-display;
+  font-weight: $font-weight-bold;
+  font-size: $font-size-display;
+  user-select: none;
 }
 
 .identity {

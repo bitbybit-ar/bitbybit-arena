@@ -46,12 +46,26 @@ export function ProfileHeader({
       // already rides through the DB row from the Arena sync. We
       // skip empty strings so the on-hover copy affordance only
       // appears when there's something to copy.
+      //
+      // Note: this is the *claimed* NIP-05 from the user's own kind:0,
+      // not a verified one. Per NIP-05 spec, clients should resolve
+      // `https://<domain>/.well-known/nostr.json?name=<localpart>`
+      // and confirm the returned pubkey matches before showing a
+      // verified mark. We display the claimed value as-is for now;
+      // a verification round-trip is a follow-up.
       if (value) setNip05(value);
     })();
     return () => {
       cancelled = true;
     };
   }, [pubkey]);
+
+  // First letter of the display name, capitalized — used as the
+  // fallback content of the avatar disc when the user has no
+  // `avatar_url` on file. Mirrors the platform `Avatar` primitive's
+  // initial fallback so a profile with no picture still reads as a
+  // person, not an empty circle.
+  const fallbackInitial = (displayName ?? "?").trim().charAt(0).toUpperCase();
 
   // `lightning:` URI is the cross-platform handler scheme — a wallet
   // (Alby on desktop, native handler on mobile) intercepts it and
@@ -87,7 +101,13 @@ export function ProfileHeader({
               decoding="async"
             />
           ) : (
-            <div className={styles.avatarPlaceholder} aria-hidden="true" />
+            <div
+              className={styles.avatarPlaceholder}
+              role="img"
+              aria-label={displayName ?? t("unknownUser")}
+            >
+              <span aria-hidden="true">{fallbackInitial}</span>
+            </div>
           )}
         </div>
         <div className={styles.identity}>
