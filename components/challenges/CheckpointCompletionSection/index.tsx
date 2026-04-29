@@ -252,6 +252,14 @@ function CheckpointFormStack({
   const showLabels =
     [manualMethod, hasNostrAction, hasNostrHashtag].filter(Boolean).length > 1;
 
+  // For single-method checkpoints we surface the error inline in the
+  // form's own slot (existing behavior). For multi-method we render
+  // the error once below the stack — anchoring it to a specific form
+  // would require tracking which method the user just clicked, and
+  // duplicating it under every form would be noisy. Single error,
+  // shared scope.
+  const inlineError = showLabels ? null : error;
+
   return (
     <>
       {manualMethod && (
@@ -264,7 +272,7 @@ function CheckpointFormStack({
             checkpointIndex={index}
             content={draft?.proof ?? ""}
             image={draft?.image ?? null}
-            error={!hasNostrAction && !hasNostrHashtag ? error : null}
+            error={inlineError}
             loading={loading}
             onContentChange={(next) =>
               onDraftChange(checkpoint.id, { proof: next })
@@ -285,9 +293,7 @@ function CheckpointFormStack({
             mode="nostr-action"
             checkpointIndex={index}
             nostrActionTargetEventId={checkpoint.nostr_action_target_event_id}
-            // Surface the error on the first form only so multi-method
-            // checkpoints don't echo the same message under each block.
-            error={!manualMethod ? error : null}
+            error={!manualMethod ? inlineError : null}
             loading={loading}
             onSubmit={() => onSubmit("nostr_action")}
           />
@@ -302,12 +308,13 @@ function CheckpointFormStack({
             mode="nostr-hashtag"
             checkpointIndex={index}
             nostrHashtag={checkpoint.nostr_hashtag}
-            error={!manualMethod && !hasNostrAction ? error : null}
+            error={!manualMethod && !hasNostrAction ? inlineError : null}
             loading={loading}
             onSubmit={() => onSubmit("nostr_hashtag")}
           />
         </div>
       )}
+      {showLabels && error && <p className={styles.error}>{error}</p>}
     </>
   );
 }
