@@ -94,6 +94,19 @@ const CheckpointInputSchema = z
         path: ["nostr_hashtag"],
       });
     }
+    // `automatic` (honor system) auto-approves on submit, so combining it
+    // with any other method would silently bypass the review the creator
+    // asked for. Treat it as an exclusive choice.
+    if (
+      cp.verification_methods.includes("automatic") &&
+      cp.verification_methods.length > 1
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "automatic cannot be combined with other verification methods",
+        path: ["verification_methods"],
+      });
+    }
   });
 
 export type CheckpointInput = z.infer<typeof CheckpointInputSchema>;
@@ -190,6 +203,20 @@ export const CreateChallengeBodySchema = z
         code: "custom",
         path: ["nostr_hashtag"],
         message: "nostr_hashtag is required",
+      });
+    }
+
+    // `automatic` (honor system) auto-approves on submit, so combining it
+    // with any other method would silently bypass the review the creator
+    // asked for. Treat it as an exclusive choice.
+    if (
+      body.verification_methods.includes("automatic") &&
+      body.verification_methods.length > 1
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["verification_methods"],
+        message: "automatic cannot be combined with other verification methods",
       });
     }
 
@@ -326,8 +353,26 @@ export const UpdateChallengeBodySchema = z
     ends_at: z.coerce.date().nullish(),
     zap_goal_event_id: Hex64Schema.nullish(),
   })
-  .refine((b) => Object.keys(b).length > 0, {
-    message: "No fields to update",
+  .superRefine((b, ctx) => {
+    if (Object.keys(b).length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: [],
+        message: "No fields to update",
+      });
+    }
+    // Mirror the create-flow rule: `automatic` is exclusive.
+    if (
+      b.verification_methods !== undefined &&
+      b.verification_methods.includes("automatic") &&
+      b.verification_methods.length > 1
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["verification_methods"],
+        message: "automatic cannot be combined with other verification methods",
+      });
+    }
   });
 
 export type UpdateChallengeBody = z.infer<typeof UpdateChallengeBodySchema>;

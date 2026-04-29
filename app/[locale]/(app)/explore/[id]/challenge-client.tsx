@@ -460,11 +460,21 @@ export default function ChallengeClient() {
     // commit the clear once the API path returns ok.
     const submittedContent = proofContent;
     const submittedImage = proofImageDescriptor;
+    // The textarea is the manual-proof surface — pick whichever
+    // non-Nostr method the challenge advertises so the server doesn't
+    // 400 on multi-method challenges (e.g. creator_approval +
+    // nostr_hashtag). Schema enforces `automatic` is exclusive, so
+    // when present it's the only option.
+    const allowed = challenge?.verification_methods ?? [];
+    const manualMethod = allowed.includes("automatic")
+      ? "automatic"
+      : "creator_approval";
     try {
       const res = await fetch(`/api/challenges/${challengeId}/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          method: manualMethod,
           content: submittedContent || null,
           image_url: submittedImage?.url ?? null,
         }),
@@ -650,19 +660,31 @@ export default function ChallengeClient() {
     await copyInvoice(zapInvoice.pr);
   };
 
-  const handleVerifyLike = async () => {
+  const handleVerifyLike = async (
+    method: "nostr_action" | "nostr_hashtag"
+  ) => {
     setVerifyError(null);
-    setActionLoading("verifyLike");
+    // Per-method loading sentinel so a multi-method challenge (which
+    // renders both verify buttons side-by-side) only spins the button
+    // the user actually clicked.
+    setActionLoading(`verify_${method}`);
     try {
       const res = await fetch(`/api/challenges/${challengeId}/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ method }),
       });
       const json = await res.json();
       if (!json.success) {
         setVerifyError(translateApiError(json, tErr, t("proofNotFound")));
       } else {
+        // When `creator_approval` is also configured, the Nostr proof
+        // verifies but the row lands `pending` for the creator to
+        // review — surface that explicitly so the participant knows
+        // why their progress didn't tick up.
+        if (json.data?.status === "pending") {
+          showToast(t("proofPendingReview"), "info");
+        }
         await fetchAll();
       }
     } catch {

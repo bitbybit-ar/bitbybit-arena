@@ -37,11 +37,26 @@ export function CheckpointEditor({ checkpoints, onChange }: CheckpointEditorProp
       checkpoints.map((cp, i) => {
         if (i !== idx) return cp;
         const has = cp.verification_methods.includes(method);
+        if (has) {
+          return {
+            ...cp,
+            verification_methods: cp.verification_methods.filter(
+              (m) => m !== method
+            ),
+          };
+        }
+        // `automatic` is exclusive — adding it clears the others, and
+        // adding any other method clears `automatic`. Same rule the
+        // challenge-level form applies; mirrors the schema constraint.
+        if (method === "automatic") {
+          return { ...cp, verification_methods: ["automatic"] };
+        }
         return {
           ...cp,
-          verification_methods: has
-            ? cp.verification_methods.filter((m) => m !== method)
-            : [...cp.verification_methods, method],
+          verification_methods: [
+            ...cp.verification_methods.filter((m) => m !== "automatic"),
+            method,
+          ],
         };
       })
     );

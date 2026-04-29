@@ -3,31 +3,104 @@
  * completion-submission route. Pure logic — no DB, no relays — so a
  * unit test gives us full coverage for the cross-field rule "if the
  * challenge advertises method X, the submission must claim X (or one
- * if there's only one)".
+ * if there's only one)" plus the auto-approve decision matrix.
  */
 import { describe, it, expect } from "vitest";
 import {
   pickVerificationMethod,
-  shouldAutoApprove,
+  decideAutoApprove,
 } from "@/lib/api/verification-methods";
 import { BadRequestError } from "@/lib/api/errors";
 
-describe("shouldAutoApprove", () => {
+describe("decideAutoApprove", () => {
   it("auto-approves the 'automatic' method regardless of who submitted", () => {
-    expect(shouldAutoApprove("automatic", "creator-id", "anyone")).toBe(true);
+    expect(
+      decideAutoApprove("automatic", ["automatic"], "creator-id", "anyone")
+    ).toBe(true);
   });
 
-  it("auto-approves creator_approval when the submitter IS the creator", () => {
-    expect(shouldAutoApprove("creator_approval", "u1", "u1")).toBe(true);
+  it("auto-approves any submission from the creator when creator_approval is in the mix", () => {
+    expect(
+      decideAutoApprove(
+        "creator_approval",
+        ["creator_approval"],
+        "u1",
+        "u1"
+      )
+    ).toBe(true);
+    expect(
+      decideAutoApprove(
+        "nostr_action",
+        ["creator_approval", "nostr_action"],
+        "u1",
+        "u1"
+      )
+    ).toBe(true);
   });
 
   it("does not auto-approve creator_approval for a regular participant", () => {
-    expect(shouldAutoApprove("creator_approval", "creator", "participant")).toBe(false);
+    expect(
+      decideAutoApprove(
+        "creator_approval",
+        ["creator_approval"],
+        "creator",
+        "participant"
+      )
+    ).toBe(false);
   });
 
-  it("does not auto-approve nostr_action or nostr_hashtag (caller verifies upstream)", () => {
-    expect(shouldAutoApprove("nostr_action", "u1", "u1")).toBe(false);
-    expect(shouldAutoApprove("nostr_hashtag", "u1", "u1")).toBe(false);
+  it("auto-approves a Nostr method when the challenge has no creator_approval", () => {
+    expect(
+      decideAutoApprove(
+        "nostr_action",
+        ["nostr_action"],
+        "creator",
+        "participant"
+      )
+    ).toBe(true);
+    expect(
+      decideAutoApprove(
+        "nostr_hashtag",
+        ["nostr_hashtag"],
+        "creator",
+        "participant"
+      )
+    ).toBe(true);
+    expect(
+      decideAutoApprove(
+        "nostr_action",
+        ["nostr_action", "nostr_hashtag"],
+        "creator",
+        "participant"
+      )
+    ).toBe(true);
+  });
+
+  it("leaves a Nostr-method proof pending when creator_approval is also configured", () => {
+    expect(
+      decideAutoApprove(
+        "nostr_action",
+        ["creator_approval", "nostr_action"],
+        "creator",
+        "participant"
+      )
+    ).toBe(false);
+    expect(
+      decideAutoApprove(
+        "nostr_hashtag",
+        ["creator_approval", "nostr_hashtag"],
+        "creator",
+        "participant"
+      )
+    ).toBe(false);
+    expect(
+      decideAutoApprove(
+        "nostr_action",
+        ["creator_approval", "nostr_action", "nostr_hashtag"],
+        "creator",
+        "participant"
+      )
+    ).toBe(false);
   });
 });
 

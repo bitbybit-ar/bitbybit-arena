@@ -432,8 +432,8 @@
         "example": "Ej: fitness, meditacion, lectura"
       },
       "verification": {
-        "text": "Podés elegir más de un método. El participante tiene que cumplir con todos los seleccionados.",
-        "example": "Ej: Aprobación del creador + hashtag en Nostr"
+        "text": "Podés combinar Aprobación del creador con métodos de Nostr. Si sumás Aprobación del creador, las pruebas Nostr se verifican automáticamente y después quedan en revisión. Automática (sistema de honor) no se puede combinar con otros métodos.",
+        "example": "Ej: Aprobación del creador + post con hashtag en Nostr — el post se valida solo y vos lo aprobás manualmente"
       },
       "checkpoints": {
         "text": "Dividí el desafío en sub-tareas. Secuencial fuerza un orden, paralelo permite cualquier orden.",
@@ -603,6 +603,7 @@
     "verifying": "Verificando...",
     "proofFound": "Prueba encontrada",
     "proofNotFound": "No encontramos tu prueba en los relays todavía. Intentá de nuevo en unos segundos.",
+    "proofPendingReview": "Prueba verificada en Nostr — queda esperando la aprobación del creador.",
     "checkpointsTitle": "Checkpoints",
     "checkpointModeSequential": "Completá los checkpoints en orden. Cada uno desbloquea el siguiente.",
     "checkpointModeParallel": "Completá los checkpoints en cualquier orden.",

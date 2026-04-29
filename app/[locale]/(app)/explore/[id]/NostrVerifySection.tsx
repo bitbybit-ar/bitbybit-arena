@@ -6,11 +6,13 @@ import { Section, SectionTitle } from "@/components/common/Section";
 import type { ChallengeDetail } from "./types";
 import styles from "./challenge-detail.module.scss";
 
+type NostrVerifyMethod = "nostr_action" | "nostr_hashtag";
+
 interface NostrVerifySectionProps {
   challenge: ChallengeDetail;
   actionLoading: string | null;
   verifyError: string | null;
-  onVerify: () => void | Promise<void>;
+  onVerify: (method: NostrVerifyMethod) => void | Promise<void>;
   onClearError: () => void;
 }
 
@@ -20,9 +22,10 @@ interface VariantBlockProps extends NostrVerifySectionProps {
   variant: Variant;
 }
 
-// Single-variant Section. Both variants share the same trigger
-// (`/completions` auto-picks the method when the body is empty), so
-// the only differences are copy and the deep-link target.
+// Single-variant Section. Both variants hit the same `/completions`
+// endpoint; the only differences are copy, the deep-link target, and
+// the `method` we tell the server to run — the server can't infer it
+// when a challenge advertises more than one verification method.
 function VariantBlock({
   challenge,
   actionLoading,
@@ -32,7 +35,9 @@ function VariantBlock({
   variant,
 }: VariantBlockProps) {
   const t = useTranslations("challenge");
-  const loading = actionLoading === "verifyLike";
+  const method: NostrVerifyMethod =
+    variant === "action" ? "nostr_action" : "nostr_hashtag";
+  const loading = actionLoading === `verify_${method}`;
 
   // Defensive guard: if a challenge somehow has the verification
   // method enabled but the matching target value is missing
@@ -82,7 +87,7 @@ function VariantBlock({
           </a>
         </p>
       )}
-      <Button size="sm" onClick={onVerify} disabled={loading}>
+      <Button size="sm" onClick={() => onVerify(method)} disabled={loading}>
         {loading ? t("verifying") : buttonLabel}
       </Button>
       {verifyError && (
@@ -98,7 +103,7 @@ function VariantBlock({
             variant="outline"
             onClick={() => {
               onClearError();
-              void onVerify();
+              void onVerify(method);
             }}
             disabled={loading}
           >

@@ -11,7 +11,7 @@ import {
 import { challenges, participants, completions, users } from "@/lib/db/schema";
 import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
 import { verifyHashtagPost } from "@/lib/nostr/verify-hashtag-post";
-import { pickVerificationMethod, shouldAutoApprove } from "@/lib/api/verification-methods";
+import { pickVerificationMethod, decideAutoApprove } from "@/lib/api/verification-methods";
 import type { VerificationMethod } from "@/lib/types";
 import { notifyUser } from "@/lib/notifications";
 
@@ -118,7 +118,6 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
       );
     }
     proofEventId = result.proofEventId;
-    autoApprove = true;
   } else if (selectedMethod === "nostr_hashtag") {
     if (!challenge.nostr_hashtag) {
       throw new BadRequestError("Challenge is missing a hashtag", "missing_hashtag");
@@ -134,7 +133,6 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
       );
     }
     proofEventId = result.proofEventId;
-    autoApprove = true;
   } else {
     // Manual proofs accept text, an image, or both. When an image is
     // attached we relax the min-length on text since a photo is itself
@@ -147,12 +145,14 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
       );
     }
     resolvedContent = textOk ? content!.trim() : null;
-    autoApprove = shouldAutoApprove(
-      selectedMethod,
-      challenge.creator_id,
-      session!.user_id
-    );
   }
+
+  autoApprove = decideAutoApprove(
+    selectedMethod,
+    allowedMethods,
+    challenge.creator_id,
+    session!.user_id
+  );
 
   let completion;
   try {

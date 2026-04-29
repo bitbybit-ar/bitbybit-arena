@@ -362,6 +362,13 @@ paths:
         If `verification_methods` includes `nostr_action`,
         `nostr_action_target_event_id` is required (64-hex). If it
         includes `nostr_hashtag`, `nostr_hashtag` is required.
+
+        `automatic` is exclusive — it cannot be combined with any other
+        method. Combining `creator_approval` with one or both Nostr
+        methods is allowed; the Nostr proof verifies on relays but the
+        completion lands `pending` for the creator to approve manually
+        (see `POST /api/challenges/{id}/completions` for the run-time
+        decision).
       requestBody:
         required: true
         content:
@@ -645,12 +652,20 @@ paths:
       description: |
         Branches on the checkpoint's `verification_methods`:
           - `nostr_action` — server fetches the kind:7 reaction from
-            relays and auto-approves (`like_not_found` if missing).
+            relays (`like_not_found` if missing).
           - `nostr_hashtag` — server finds the kind:1 with the matching
-            `#t` and auto-approves.
+            `#t` (`hashtag_post_not_found` if missing).
           - `creator_approval` / `automatic` — manual proof: text ≥ 5
-            chars, an image URL, or both. `automatic` skips creator
-            review entirely.
+            chars, an image URL, or both.
+
+        After the per-method branch succeeds, `decideAutoApprove`
+        (`lib/api/verification-methods.ts`) resolves the final status:
+        `automatic` and the creator submitting their own proof always
+        auto-approve; the Nostr methods auto-approve only when
+        `creator_approval` is **not** also in the checkpoint's
+        `verification_methods` (otherwise the row lands `pending` for
+        manual review). `automatic` is exclusive — the schema rejects
+        it combined with anything else.
 
         Sequential mode refuses unless every checkpoint with a lower
         `order` is already approved for this participant
@@ -727,9 +742,20 @@ paths:
         accidental double-clicks on "verify my like" into a single
         row — concurrent dupes return 400 `duplicate_proof`.
 
-        Auto-approved completions (`automatic`, `nostr_action`,
-        `nostr_hashtag`) bump `participant.progress` and may flip
-        the participant to `completed` when the goal is reached.
+        Auto-approved completions (`automatic`; `nostr_action` /
+        `nostr_hashtag` when `creator_approval` is **not** also in the
+        challenge's `verification_methods`; the creator submitting their
+        own proof on a `creator_approval` challenge) bump
+        `participant.progress` and may flip the participant to
+        `completed` when the goal is reached. When `creator_approval` is
+        also configured, a successful Nostr verification still inserts a
+        row but lands `status='pending'` for the creator to approve via
+        `POST /api/completions/{id}/verify`. The auto-approve resolution
+        lives in `decideAutoApprove` (`lib/api/verification-methods.ts`).
+
+        Multi-method challenges require the client to send `method:
+        <value>`; clients that omit the field on a multi-method challenge
+        receive 400 `bad_request`.
       requestBody:
         required: true
         content:
