@@ -4,6 +4,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { PixelIcon } from "@/components/common/PixelIcon";
 import { Button } from "@/components/ui/button";
+import { useSession } from "@/lib/contexts/session-context";
 import type { AchievementItem } from "@/lib/types";
 import styles from "./achievement-card.module.scss";
 
@@ -30,47 +31,71 @@ export function AchievementCard({
 }: AchievementCardProps) {
   const t = useTranslations("myChallenges");
   const locale = useLocale();
+  const { user } = useSession();
+
+  // Once the participant has published the kind:30008 acceptance to
+  // Nostr, the most useful destination is their Nostr profile page —
+  // that's where the badge is visible to the rest of the network. Use
+  // njump.me with the hex pubkey (njump accepts hex or bech32) and
+  // open in a new tab so the participant doesn't lose the
+  // Achievements view. Pre-acceptance the card still routes back to
+  // the challenge detail.
+  const cardLink: { href: string; external: boolean } =
+    achievement.accepted_at && user?.nostr_pubkey
+      ? { href: `https://njump.me/${user.nostr_pubkey}`, external: true }
+      : { href: `/explore/${achievement.challenge.id}`, external: false };
+
+  const cardBody = (
+    <>
+      <div className={styles.achievementImageWrapper}>
+        {achievement.badge_image_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={achievement.badge_image_url}
+            alt={achievement.badge_name}
+            className={styles.achievementImage}
+            width={256}
+            height={256}
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <div className={styles.achievementImagePlaceholder}>
+            <PixelIcon shape="sword" blockSize={8} />
+          </div>
+        )}
+      </div>
+      <div className={styles.achievementBody}>
+        <h3 className={styles.achievementName}>{achievement.badge_name}</h3>
+        <p className={styles.achievementChallenge}>
+          {achievement.challenge.title}
+        </p>
+        <p className={styles.achievementDate}>
+          {new Date(achievement.awarded_at).toLocaleDateString(locale)}
+        </p>
+      </div>
+    </>
+  );
 
   return (
     <div className={styles.achievementCard}>
-      <Link
-        href={`/explore/${achievement.challenge.id}`}
-        className={styles.achievementLink}
-      >
-        <div className={styles.achievementImageWrapper}>
-          {achievement.badge_image_url ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={achievement.badge_image_url}
-              alt={achievement.badge_name}
-              className={styles.achievementImage}
-              width={256}
-              height={256}
-              loading="lazy"
-              decoding="async"
-            />
-          ) : (
-            <div className={styles.achievementImagePlaceholder}>
-              <PixelIcon shape="sword" blockSize={8} />
-            </div>
-          )}
-        </div>
-        <div className={styles.achievementBody}>
-          <h3 className={styles.achievementName}>
-            {achievement.badge_name}
-          </h3>
-          <p className={styles.achievementChallenge}>
-            {achievement.challenge.title}
-          </p>
-          <p className={styles.achievementDate}>
-            {new Date(achievement.awarded_at).toLocaleDateString(locale)}
-          </p>
-        </div>
-      </Link>
+      {cardLink.external ? (
+        <a
+          href={cardLink.href}
+          className={styles.achievementLink}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label={t("viewOnNostrAria", { name: achievement.badge_name })}
+        >
+          {cardBody}
+        </a>
+      ) : (
+        <Link href={cardLink.href} className={styles.achievementLink}>
+          {cardBody}
+        </Link>
+      )}
       {achievement.accepted_at ? (
-        <span className={styles.acceptedPill}>
-          {t("acceptedOnNostr")}
-        </span>
+        <span className={styles.acceptedPill}>{t("acceptedOnNostr")}</span>
       ) : (
         <Button
           size="sm"

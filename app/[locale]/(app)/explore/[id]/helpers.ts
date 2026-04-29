@@ -55,7 +55,33 @@ export function deriveMyProgress(
   const pct = goal
     ? Math.min(100, Math.round((myProgress / goal) * 100))
     : null;
-  return { myParticipation, myProgress, completed, myCompletions, goal, pct };
+  // Whether the participant should still see proof-submission affordances
+  // (Nostr verify buttons + manual textarea). Two reasons to hide them:
+  //
+  //   1. `completed` — server flipped `participants.status` after the
+  //      auto-approve path. Existing behavior.
+  //   2. One-shot challenge (`goal` null or 1) with a non-rejected
+  //      submission already in flight. With the new "Nostr proof +
+  //      creator review" combo (#111), the row lands `pending` and
+  //      `participants.status` stays `active`, so reason (1) doesn't
+  //      cover it. The participant has nothing more to do — the proof
+  //      either gets approved (done) or rejected (UI un-hides on the
+  //      next refresh because `hasInFlight` flips to false).
+  //
+  // Multi-step challenges (`goal > 1`) keep allowing submissions because
+  // each one counts as a separate step toward the goal.
+  const hasInFlight = myCompletions.some((c) => c.status !== "rejected");
+  const isOneShot = !goal || goal === 1;
+  const canSubmitMore = !completed && !(isOneShot && hasInFlight);
+  return {
+    myParticipation,
+    myProgress,
+    completed,
+    myCompletions,
+    goal,
+    pct,
+    canSubmitMore,
+  };
 }
 
 // Per-user roll-ups for the Manage tab. Builds the submissions map

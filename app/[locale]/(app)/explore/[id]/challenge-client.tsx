@@ -1871,23 +1871,26 @@ export default function ChallengeClient() {
                     </Section>
                   )}
 
-                  <NostrVerifySection
-                    challenge={challenge}
-                    actionLoading={actionLoading}
-                    verifyError={verifyError}
-                    onVerify={handleVerifyLike}
-                    onClearError={() => setVerifyError(null)}
-                  />
+                  {myProgressInfo.canSubmitMore && (
+                    <NostrVerifySection
+                      challenge={challenge}
+                      actionLoading={actionLoading}
+                      verifyError={verifyError}
+                      onVerify={handleVerifyLike}
+                      onClearError={() => setVerifyError(null)}
+                    />
+                  )}
 
                   {/* Hide the next-proof input once the participant has
-                      hit the goal — they're done. Without this gate the
-                      form keeps inviting submissions that no longer
-                      matter for progress. */}
+                      hit the goal — they're done. `canSubmitMore` also
+                      covers one-shot challenges with a pending Nostr
+                      proof so the form doesn't keep inviting
+                      submissions that can't move the needle. */}
                   {challenge.checkpoint_mode === "none" &&
                     (challenge.verification_methods ?? []).some(
                       (m) => m !== "nostr_action" && m !== "nostr_hashtag"
                     ) &&
-                    !myProgressInfo.completed && (
+                    myProgressInfo.canSubmitMore && (
                       <Section>
                         <SectionTitle>
                           {myProgressInfo.myCompletions.length === 0
