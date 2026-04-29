@@ -6,14 +6,20 @@
 
 .page {
   @include container;
-  // Push the profile header down off the navbar so the avatar isn't
-  // sitting right under it. Matches the breathing room used at the
-  // top of /my-challenges and /settings.
-  padding-top: $spacing-48;
+  // The navbar is `position: fixed` at `$navbar-height` so the page
+  // body sits behind it without an offset of its own. Match the
+  // recipe `/explore`, `/my-challenges`, and `/settings` use so the
+  // profile header lands the same distance below the bar instead of
+  // overlapping it.
+  padding-top: calc(#{$navbar-height} + #{$spacing-32});
   padding-bottom: $spacing-64;
   display: flex;
   flex-direction: column;
   gap: $spacing-40;
+
+  @include mobile {
+    padding-top: calc(#{$navbar-height} + #{$spacing-16});
+  }
 }
 
 .header {
@@ -56,7 +62,11 @@
   gap: $spacing-20;
   align-items: flex-start;
 
-  @include tablet {
+  // Avatar-on-the-left layout for any non-mobile viewport. The
+  // earlier `@include tablet` only covered the 768-1023 band and
+  // left the desktop case (1024+) stuck on the column-stacked
+  // mobile shape, which is what the screenshot showed.
+  @include tabletAndUp {
     flex-direction: row;
     align-items: flex-start;
     gap: $spacing-24;
@@ -74,8 +84,15 @@
   border-radius: $border-radius-full;
   object-fit: cover;
   display: block;
+  // Brand purple ring so every avatar across the app reads as a
+  // Nostr identity — matches what the platform `Avatar` primitive
+  // applies via its `borderNostr` modifier. `box-sizing: border-box`
+  // keeps the visible disc the size we asked for instead of
+  // inflating it by the ring width.
+  border: 2px solid $color-nostr;
+  box-sizing: border-box;
 
-  @include tablet {
+  @include tabletAndUp {
     width: 128px;
     height: 128px;
   }
@@ -331,20 +348,23 @@
   word-break: break-word;
 }
 
-// QR modal — two stacked sections (pubkey + lightning), each with a
-// scannable code, the value, and a copy button.
+// QR modal — two stacked sections (pubkey + lightning), each its
+// own elevated ceramic surface so the modal reads like the rest of
+// the platform's stacked-card layouts (FundPotModal, ZapModal).
 .qrModalBody {
   display: flex;
   flex-direction: column;
-  gap: $spacing-32;
-  padding: $spacing-8 0;
+  gap: $spacing-20;
+  padding: $spacing-8 0 0 0;
 }
 
 .qrSection {
+  @include ceramic-card;
+  padding: $spacing-20;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: $spacing-12;
+  gap: $spacing-16;
   text-align: center;
 }
 
@@ -352,20 +372,29 @@
   font-size: $font-size-md;
   font-weight: $font-weight-semibold;
   margin: 0;
+  letter-spacing: $letter-spacing-heading;
 }
 
 .qrCodeWrapper {
+  // Always white-on-white so QR scanners get the contrast they need
+  // even when the rest of the page is in dark mode. The thin border
+  // matches the badge-card treatment elsewhere on the page.
   background: #fff;
   padding: $spacing-12;
   border-radius: $border-radius-md;
   display: inline-block;
+  border: 1px solid $color-border;
 }
 
 .qrValue {
   font-family: monospace;
   font-size: $font-size-sm;
-  color: $color-text-secondary;
+  color: $color-text-primary;
   margin: 0;
   word-break: break-all;
   max-width: 100%;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  padding: $spacing-8 $spacing-12;
+  border-radius: $border-radius-sm;
 }
