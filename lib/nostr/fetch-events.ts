@@ -15,13 +15,26 @@ export interface RelayFilter {
 export interface FetchFirstMatchingOptions {
   relays?: string[];
   timeoutMs?: number;
+  /**
+   * Optional client-side filter applied AFTER signature verification
+   * but BEFORE we accept the event as the result. Useful when the
+   * relay's filter semantics don't match what we want — e.g. NIP-01
+   * `#t` filtering is case-sensitive on most relays, but participants
+   * publish hashtag notes from clients that don't always normalize to
+   * lowercase, so a server-side post-filter on the returned event's
+   * `t` tags catches mixed-case casings the relay query missed.
+   *
+   * When set, non-matching EVENTs are silently dropped and the helper
+   * keeps waiting for another candidate (or for EOSE / timeout).
+   */
+  predicate?: (event: NostrEvent) => boolean;
 }
 
 /**
  * Server-side: open a REQ subscription against each relay in parallel,
  * resolve with the first event that matches the filter AND passes
- * signature verification. Resolves null on timeout or when all sockets
- * close without a match.
+ * signature verification (and the optional `predicate`, when set).
+ * Resolves null on timeout or when all sockets close without a match.
  *
  * Mirrors the WebSocket pattern used in `server-metadata.ts`.
  */
@@ -31,6 +44,7 @@ export async function fetchFirstMatchingEvent(
 ): Promise<NostrEvent | null> {
   const urls = options.relays ?? DEFAULT_RELAYS;
   const timeoutMs = options.timeoutMs ?? 8000;
+  const predicate = options.predicate;
 
   if (urls.length === 0) return null;
 
@@ -79,6 +93,12 @@ export async function fetchFirstMatchingEvent(
             if (data[0] === "EVENT" && data[2]) {
               const candidate = data[2] as NostrEvent;
               if (verifyNostrEvent(candidate)) {
+                if (predicate && !predicate(candidate)) {
+                  // Keep listening — this event didn't pass the
+                  // post-filter, but another from the same relay (or
+                  // a sibling relay) might.
+                  return;
+                }
                 clearTimeout(timer);
                 finish(candidate);
                 return;
