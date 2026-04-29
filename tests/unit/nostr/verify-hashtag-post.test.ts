@@ -102,21 +102,48 @@ describe("verifyHashtagPost", () => {
       }
     );
 
+    // Use the realistic challenge hashtag from production. The predicate
+    // must accept any casing of the FULL tag, but reject anything that
+    // isn't the same hashtag — partial matches like "pizzaday" or
+    // "pizzadayxlacryptaplus" must not pass, only the exact word folded.
     await verifyHashtagPost({
       authorPubkey: "pk",
-      hashtag: "PizzaDay",
+      hashtag: "PizzaDayXLaCrypta",
     });
 
     expect(capturedPredicate).toBeDefined();
+    // Equivalent casings of the same hashtag — all valid.
+    expect(
+      capturedPredicate!({
+        ...baseEvent,
+        tags: [["t", "pizzadayxlacrypta"]],
+      })
+    ).toBe(true);
+    expect(
+      capturedPredicate!({
+        ...baseEvent,
+        tags: [["t", "PIZZADAYXLACRYPTA"]],
+      })
+    ).toBe(true);
+    expect(
+      capturedPredicate!({
+        ...baseEvent,
+        tags: [["t", "PizzaDayXLaCrypta"]],
+      })
+    ).toBe(true);
+    // Different word — not a match, even though it's a substring of the
+    // configured hashtag.
     expect(
       capturedPredicate!({ ...baseEvent, tags: [["t", "pizzaday"]] })
-    ).toBe(true);
-    expect(
-      capturedPredicate!({ ...baseEvent, tags: [["t", "PIZZADAY"]] })
-    ).toBe(true);
-    expect(
-      capturedPredicate!({ ...baseEvent, tags: [["t", "PizzaDayX"]] })
     ).toBe(false);
+    // Different word — superset of the hashtag.
+    expect(
+      capturedPredicate!({
+        ...baseEvent,
+        tags: [["t", "pizzadayxlacryptaplus"]],
+      })
+    ).toBe(false);
+    // No `t` tags at all.
     expect(capturedPredicate!({ ...baseEvent, tags: [] })).toBe(false);
   });
 });
