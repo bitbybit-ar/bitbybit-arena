@@ -6,7 +6,10 @@
 
 .page {
   @include container;
-  padding-top: $spacing-32;
+  // Push the profile header down off the navbar so the avatar isn't
+  // sitting right under it. Matches the breathing room used at the
+  // top of /my-challenges and /settings.
+  padding-top: $spacing-48;
   padding-bottom: $spacing-64;
   display: flex;
   flex-direction: column;
@@ -14,17 +17,46 @@
 }
 
 .header {
+  @include ceramic-card;
+  padding: $spacing-24;
+  position: relative;
+}
+
+.headerTopBar {
+  position: absolute;
+  top: $spacing-12;
+  right: $spacing-12;
+}
+
+.qrButton {
+  background: transparent;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-full;
+  padding: $spacing-8;
+  cursor: pointer;
+  color: $color-text-primary;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    background: alpha($color-primary, 8%);
+    border-color: $color-primary;
+  }
+}
+
+.headerRow {
   display: flex;
   flex-direction: column;
   gap: $spacing-20;
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
 
   @include tablet {
     flex-direction: row;
     align-items: flex-start;
-    text-align: left;
-    gap: $spacing-32;
+    gap: $spacing-24;
   }
 }
 
@@ -34,11 +66,16 @@
 
 .avatar,
 .avatarPlaceholder {
-  width: 128px;
-  height: 128px;
+  width: 96px;
+  height: 96px;
   border-radius: $border-radius-full;
   object-fit: cover;
   display: block;
+
+  @include tablet {
+    width: 128px;
+    height: 128px;
+  }
 }
 
 .avatarPlaceholder {
@@ -51,6 +88,7 @@
   flex-direction: column;
   gap: $spacing-8;
   min-width: 0;
+  flex: 1;
 }
 
 .displayName {
@@ -58,99 +96,51 @@
   font-weight: $font-weight-extrabold;
   margin: 0;
   line-height: 1.1;
+  word-break: break-word;
 }
 
-.username {
+.nip05Wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-8;
+  position: relative;
+  // Hover target wraps both the text and the (initially hidden) copy
+  // button — the button only fades in when the wrapper is hovered or
+  // focused-within, so the layout doesn't jiggle and the affordance
+  // surfaces only when the viewer engages with the address.
+  &:hover .nip05CopyButton,
+  &:focus-within .nip05CopyButton {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.nip05 {
   color: $color-text-secondary;
-  margin: 0;
   font-size: $font-size-md;
-}
-
-.pubkey {
-  color: $color-text-secondary;
-  font-size: $font-size-sm;
-  font-family: monospace;
-  margin: 0;
   word-break: break-all;
 }
 
-.about {
-  font-size: $font-size-md;
-  margin: $spacing-8 0 0 0;
-  line-height: 1.5;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $spacing-12;
-  align-items: center;
-  margin-top: $spacing-12;
-}
-
-.zapButton {
-  display: inline-flex;
-  align-items: center;
-  gap: $spacing-8;
-  padding: $spacing-8 $spacing-16;
-  background: $color-secondary;
-  color: #fff;
-  border-radius: $border-radius-md;
-  font-weight: $font-weight-semibold;
-  font-size: $font-size-sm;
-  text-decoration: none;
-  transition: filter 0.15s ease;
-
-  &:hover,
-  &:focus-visible {
-    filter: brightness(0.92);
-  }
-}
-
-.njumpLink {
-  display: inline-flex;
-  align-items: center;
-  gap: $spacing-8;
-  padding: $spacing-8 $spacing-16;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-md;
-  font-weight: $font-weight-semibold;
-  font-size: $font-size-sm;
-  color: $color-text-primary;
-  text-decoration: none;
-  transition: background 0.15s ease;
-
-  &:hover,
-  &:focus-visible {
-    background: $color-surface;
-  }
-}
-
-.lightningChip {
-  display: inline-flex;
-  align-items: center;
-  gap: $spacing-8;
-  padding: $spacing-4 $spacing-12;
-  background: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-full;
-  font-size: $font-size-sm;
-  color: $color-text-primary;
+.nip05CopyButton {
+  background: transparent;
+  border: none;
+  padding: $spacing-4;
+  border-radius: $border-radius-sm;
+  color: $color-text-secondary;
   cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background 0.15s ease;
   position: relative;
 
   &:hover,
   &:focus-visible {
-    background: alpha($color-secondary, 12%);
+    background: alpha($color-primary, 10%);
+    color: $color-text-primary;
   }
 }
 
-.lightningChipAddress {
-  font-family: monospace;
-  word-break: break-all;
-}
-
-.lightningChipFeedback {
+.nip05Feedback {
   position: absolute;
   bottom: calc(100% + #{$spacing-4});
   left: 50%;
@@ -161,6 +151,82 @@
   padding: 2px $spacing-8;
   border-radius: $border-radius-sm;
   white-space: nowrap;
+}
+
+.about {
+  font-size: $font-size-md;
+  margin: $spacing-4 0 0 0;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-12;
+  align-items: center;
+  margin-top: $spacing-12;
+}
+
+// Ceramic-styled link buttons. Built locally because both targets
+// are non-internal (`lightning:` URI + external https), so we can't
+// route them through the next-intl-Link-based `Button` component.
+// Visual rules track the platform's variant-secondary / variant-outline
+// recipes from `components/ui/button/button.module.scss`.
+.ceramicButtonPrimary,
+.ceramicButtonOutline,
+.ceramicButtonOutlineSmall {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-8;
+  font-weight: $font-weight-semibold;
+  text-decoration: none;
+  border-radius: $border-radius-md;
+  cursor: pointer;
+  transition: filter 0.15s ease, background 0.15s ease;
+}
+
+.ceramicButtonPrimary {
+  @include ceramic-surface($color-secondary, 28%);
+  color: #fff;
+  padding: $spacing-8 $spacing-16;
+  font-size: $font-size-sm;
+  box-shadow:
+    0 8px 24px alpha($color-secondary, 35%),
+    inset 0 1px 0 alpha(#fff, 30%);
+
+  &:hover,
+  &:focus-visible {
+    filter: brightness(0.95);
+  }
+}
+
+.ceramicButtonOutline {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  color: $color-text-primary;
+  padding: $spacing-8 $spacing-16;
+  font-size: $font-size-sm;
+
+  &:hover,
+  &:focus-visible {
+    background: alpha($color-primary, 6%);
+    border-color: $color-primary;
+  }
+}
+
+.ceramicButtonOutlineSmall {
+  background: $color-surface;
+  border: 1px solid $color-border;
+  color: $color-text-primary;
+  padding: $spacing-4 $spacing-12;
+  font-size: $font-size-xs;
+
+  &:hover,
+  &:focus-visible {
+    background: alpha($color-primary, 6%);
+    border-color: $color-primary;
+  }
 }
 
 .badgesSection {
@@ -235,4 +301,43 @@
   margin: 0;
   line-height: 1.4;
   word-break: break-word;
+}
+
+// QR modal — two stacked sections (pubkey + lightning), each with a
+// scannable code, the value, and a copy button.
+.qrModalBody {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-32;
+  padding: $spacing-8 0;
+}
+
+.qrSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-12;
+  text-align: center;
+}
+
+.qrSectionTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  margin: 0;
+}
+
+.qrCodeWrapper {
+  background: #fff;
+  padding: $spacing-12;
+  border-radius: $border-radius-md;
+  display: inline-block;
+}
+
+.qrValue {
+  font-family: monospace;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin: 0;
+  word-break: break-all;
+  max-width: 100%;
 }

@@ -5,8 +5,8 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { alternatesFor } from "@/lib/seo";
+import { ProfileHeader } from "./ProfileHeader";
 import { ProfileBadgesGrid } from "./ProfileBadgesGrid";
-import { ProfileActions } from "./ProfileActions";
 import styles from "./profile.module.scss";
 
 const HEX_64_RE = /^[0-9a-f]{64}$/i;
@@ -74,44 +74,16 @@ export default async function ProfilePage({ params }: PageProps) {
   if (user?.deleted_at) notFound();
 
   const t = await getTranslations("profile");
-  const njumpUrl = `https://njump.me/${pubkey}`;
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.avatarWrapper}>
-          {user?.avatar_url ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={user.avatar_url}
-              alt={user.display_name ?? t("unknownUser")}
-              className={styles.avatar}
-              width={128}
-              height={128}
-              loading="lazy"
-              decoding="async"
-            />
-          ) : (
-            <div className={styles.avatarPlaceholder} aria-hidden="true" />
-          )}
-        </div>
-        <div className={styles.identity}>
-          <h1 className={styles.displayName}>
-            {user?.display_name ?? t("unknownUser")}
-          </h1>
-          {user?.username && (
-            <p className={styles.username}>@{user.username}</p>
-          )}
-          <p className={styles.pubkey} title={pubkey}>
-            {pubkey.slice(0, 10)}…{pubkey.slice(-6)}
-          </p>
-          {user?.about && <p className={styles.about}>{user.about}</p>}
-          <ProfileActions
-            lightningAddress={user?.lightning_address ?? null}
-            njumpUrl={njumpUrl}
-          />
-        </div>
-      </header>
+      <ProfileHeader
+        pubkey={pubkey}
+        displayName={user?.display_name ?? null}
+        avatarUrl={user?.avatar_url ?? null}
+        about={user?.about ?? null}
+        lightningAddress={user?.lightning_address ?? null}
+      />
 
       <section className={styles.badgesSection}>
         <h2 className={styles.sectionTitle}>{t("badgesTitle")}</h2>
