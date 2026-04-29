@@ -577,7 +577,7 @@
     "noMySubmissionsBody": "Send your first proof below to start working toward the badge.",
     "submitNextProof": "Submit your next proof",
     "submitFirstProof": "Submit your first proof",
-    "challengeCompleted": "You finished the challenge! Wait for the creator's review or for the next prize zap.",
+    "challengeCompleted": "You finished the challenge!",
     "manageMoreParticipants": "More participants",
     "submissionDetailsTitle": "<link>{name}</link>'s submissions",
     "submissionDetailsProfileLinkLabel": "View {name}'s Nostr profile",
