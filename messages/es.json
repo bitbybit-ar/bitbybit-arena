@@ -102,7 +102,7 @@
     "copyPubkey": "Copiar",
     "copyLightningShort": "Copiar",
     "badgesTitle": "Badges",
-    "badgesHint": "Todos los badges NIP-58 en esta identidad de Nostr, incluyendo los obtenidos fuera de Arena. Cualquiera puede abrir este perfil y verlos.",
+    "badgesHint": "Todos los badges NIP-58 en esta identidad de Nostr, incluyendo los obtenidos fuera de Arena.",
     "badgesLoading": "Buscando badges en los relays…",
     "badgesEmpty": "Todavía no encontramos badges en los relays."
   },

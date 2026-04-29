@@ -9,6 +9,13 @@ interface AvatarStackItem {
   name: string;
   avatarUrl: string | null;
   status?: AvatarStatus;
+  /** Hex Nostr pubkey of the user this avatar represents. Wired to
+   *  the underlying `Avatar` primitive's `pubkey` prop, which makes
+   *  the static-avatar branch render as a `<Link>` to
+   *  `/profile/<pubkey>`. The button branch (driven by `onItemClick`)
+   *  ignores it so click-to-open-modal flows like the General-tab
+   *  Completaciones stack stay non-navigable. */
+  pubkey?: string | null;
 }
 
 interface AvatarStackProps {
@@ -51,6 +58,7 @@ export function AvatarStack({ items, moreLabel, onItemClick }: AvatarStackProps)
             alt={item.name}
             size="sm"
             status={item.status}
+            pubkey={item.pubkey ?? null}
           />
         )
       )}
