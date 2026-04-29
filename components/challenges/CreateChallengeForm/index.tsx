@@ -107,11 +107,16 @@ export function CreateChallengeForm({ renderHeader }: CreateChallengeFormProps) 
   const showGoal = type === "streak" || type === "competition";
 
   const toggleVerification = (method: VerificationMethod) => {
-    setVerification((prev) =>
-      prev.includes(method)
-        ? prev.filter((m) => m !== method)
-        : [...prev, method]
-    );
+    setVerification((prev) => {
+      const has = prev.includes(method);
+      if (has) return prev.filter((m) => m !== method);
+      // `automatic` (honor system) auto-approves on submit, so combining
+      // it with another method would silently bypass review. Picking
+      // either side wipes the other so the selection always lands in a
+      // schema-valid state.
+      if (method === "automatic") return ["automatic"];
+      return [...prev.filter((m) => m !== "automatic"), method];
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

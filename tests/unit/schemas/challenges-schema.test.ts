@@ -92,6 +92,61 @@ describe("CreateChallengeBodySchema (cross-field rules)", () => {
     expect(out.verification_methods).toEqual(["creator_approval"]);
   });
 
+  it("rejects automatic combined with another verification method", () => {
+    const result = CreateChallengeBodySchema.safeParse({
+      ...valid,
+      verification_methods: ["automatic", "creator_approval"],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((i) =>
+          i.path.includes("verification_methods")
+        )
+      ).toBe(true);
+    }
+  });
+
+  it("accepts automatic on its own", () => {
+    const out = CreateChallengeBodySchema.parse({
+      ...valid,
+      verification_methods: ["automatic"],
+    });
+    expect(out.verification_methods).toEqual(["automatic"]);
+  });
+
+  it("accepts creator_approval combined with both Nostr methods", () => {
+    const out = CreateChallengeBodySchema.parse({
+      ...valid,
+      verification_methods: [
+        "creator_approval",
+        "nostr_action",
+        "nostr_hashtag",
+      ],
+      nostr_action_target_event_id: HEX64,
+      nostr_hashtag: "arenahackathon",
+    });
+    expect(out.verification_methods).toEqual([
+      "creator_approval",
+      "nostr_action",
+      "nostr_hashtag",
+    ]);
+  });
+
+  it("rejects a checkpoint that combines automatic with another method", () => {
+    const result = CreateChallengeBodySchema.safeParse({
+      ...valid,
+      checkpoint_mode: "sequential",
+      checkpoints: [
+        {
+          title: "Step one",
+          verification_methods: ["automatic", "creator_approval"],
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("requires a payout distribution when prize_amount_sats > 0", () => {
     const result = CreateChallengeBodySchema.safeParse({
       ...valid,
@@ -149,6 +204,24 @@ describe("UpdateChallengeBodySchema", () => {
     expect(
       UpdateChallengeBodySchema.safeParse({ status: "archived" }).success
     ).toBe(false);
+  });
+
+  it("rejects a verification_methods update that combines automatic with another method", () => {
+    expect(
+      UpdateChallengeBodySchema.safeParse({
+        verification_methods: ["automatic", "nostr_action"],
+      }).success
+    ).toBe(false);
+  });
+
+  it("accepts a verification_methods update with creator_approval + Nostr methods", () => {
+    const out = UpdateChallengeBodySchema.parse({
+      verification_methods: ["creator_approval", "nostr_hashtag"],
+    });
+    expect(out.verification_methods).toEqual([
+      "creator_approval",
+      "nostr_hashtag",
+    ]);
   });
 });
 

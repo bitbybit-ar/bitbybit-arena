@@ -18,7 +18,7 @@ import {
 import { recomputeCheckpointProgress } from "@/lib/db/checkpoints";
 import { verifyLikeForTarget } from "@/lib/nostr/verify-like";
 import { verifyHashtagPost } from "@/lib/nostr/verify-hashtag-post";
-import { pickVerificationMethod, shouldAutoApprove } from "@/lib/api/verification-methods";
+import { pickVerificationMethod, decideAutoApprove } from "@/lib/api/verification-methods";
 import { notifyUser } from "@/lib/notifications";
 import type { VerificationMethod } from "@/lib/types";
 
@@ -142,7 +142,6 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
       );
     }
     proofEventId = result.proofEventId;
-    autoApprove = true;
   } else if (selectedMethod === "nostr_hashtag") {
     if (!checkpoint.nostr_hashtag) {
       throw new BadRequestError("Checkpoint is missing a hashtag", "missing_hashtag");
@@ -158,7 +157,6 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
       );
     }
     proofEventId = result.proofEventId;
-    autoApprove = true;
   } else {
     // Manual proof: either a ≥ 5-char text, an image, or both. Short
     // text alongside an image is silently dropped (the image itself is
@@ -173,12 +171,14 @@ export const POST = apiHandler(async (req: NextRequest, { session, db, params })
     }
     resolvedContent = textOk ? content!.trim() : null;
     resolvedImageUrl = image_url ?? null;
-    autoApprove = shouldAutoApprove(
-      selectedMethod,
-      challenge.creator_id,
-      session!.user_id
-    );
   }
+
+  autoApprove = decideAutoApprove(
+    selectedMethod,
+    allowedMethods,
+    challenge.creator_id,
+    session!.user_id
+  );
 
   // If a previous row exists for this (participant, checkpoint) we
   // branch: approved is final, pending is under review (no double-

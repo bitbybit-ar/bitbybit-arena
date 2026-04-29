@@ -27,36 +27,40 @@ Each challenge (and each checkpoint) carries a `verification_methods: text[]` co
 | `nostr_action` | NIP-25 kind 7 reaction (like) to a target event id the creator pinned | Automatic (queries relays) |
 | `nostr_hashtag` | kind:1 note by the participant carrying a NIP-01 `t` tag matching the hashtag the creator set (the underlying mechanism — NIP-12 was the original spec but was deprecated and merged back into NIP-01) | Automatic (queries relays) |
 
-When the challenge has more than one method, the client must pass `method: <value>` in the completions POST body. Single-method challenges default to their sole method.
+The client always passes `method: <value>` in the completions POST body — every submission surface (Nostr verify buttons, manual textarea, checkpoint forms) names its method explicitly. Single-method challenges still default to their sole method server-side as a backwards-compat fallback, but the participant-side code no longer relies on the default.
+
+`automatic` is treated as **exclusive**: the schema (`CreateChallengeBodySchema`, `CheckpointInputSchema`, `UpdateChallengeBodySchema`) rejects it when paired with anything else, and the create form clears the other selections when `automatic` is chosen (and vice versa). Any other combination is allowed.
 
 ### Example configurations
 
 - **Like-to-enter raffle** → `["nostr_action"]` + `nostr_action_target_event_id`
 - **Hashtag campaign** → `["nostr_hashtag"]` + `nostr_hashtag`
-- **Hackathon (multi-method)** → `["nostr_hashtag", "creator_approval"]` + hashtag set. Participants who post on nostr with the tag get auto-verified; anyone who can't use their nostr client can still submit a link for manual review.
+- **Hackathon (multi-method)** → `["nostr_hashtag", "creator_approval"]` + hashtag set. Participants who post on Nostr with the tag have their post auto-verified by the server, but the row lands `pending` for the creator to approve manually since `creator_approval` is also configured. Participants who can't use a Nostr client submit a manual link for the same review queue.
+- **Belt-and-suspenders Nostr** → `["nostr_action", "nostr_hashtag"]`. Either Nostr proof works and auto-approves immediately (no manual review configured).
+- **Maximum review** → `["creator_approval", "nostr_action", "nostr_hashtag"]`. Any of the three submission paths verifies its precondition (relay query for the Nostr ones, text/image for the manual one) and then waits for the creator's manual approval.
 - **Text-proof only (legacy)** → `["creator_approval"]`
 
 ### Verification path — `nostr_action`
 
-1. Participant clicks "Verify my like on Nostr" on the challenge detail page.
+1. Participant clicks "Verify my like on Nostr" on the challenge detail page. The button posts `{ method: "nostr_action" }` to `/api/challenges/[id]/completions`.
 2. The API queries the configured relays in parallel for:
    ```
    { kinds: [7], authors: [<participant_pubkey>], "#e": [<target_event_id>], limit: 1 }
    ```
 3. The first matching event that passes signature verification is accepted as proof.
-4. The completion is inserted with `status='approved'` and `proof_event_id=<like_event_id>`, and the participant's `progress` is incremented.
+4. The completion row is inserted with `proof_event_id=<like_event_id>`. `decideAutoApprove` then sets `status='approved'` (and bumps `participant.progress`) when no manual review is configured, or `status='pending'` if the challenge also enables `creator_approval`.
 
 ### Verification path — `nostr_hashtag`
 
 1. Participant publishes a kind:1 note from their normal client (Damus, Amethyst, nos2x, etc.) with the `#t` tag the challenge specifies — e.g. `["t", "arenahackathon"]`.
-2. Participant opens the challenge and submits the completion.
+2. Participant clicks "Verify my post on Nostr"; the button posts `{ method: "nostr_hashtag" }`.
 3. The API queries:
    ```
    { kinds: [1], authors: [<participant_pubkey>], "#t": [<hashtag variants>], limit: 1 }
    ```
    Lowercase, uppercase, and capitalized variants are all tried since not every client normalizes tags.
 4. The returned event's `t` tags are re-checked case-insensitively before it's accepted as proof.
-5. The completion is auto-approved with `proof_event_id=<note_event_id>`.
+5. The completion row is inserted with `proof_event_id=<note_event_id>`. Same auto-approve rule as `nostr_action`: lands `approved` when no manual review is configured, `pending` when `creator_approval` is also in `verification_methods`. The client surfaces a "Proof verified on Nostr — waiting for the creator's approval" toast in the latter case.
 
 ### Duplicate protection
 
@@ -67,9 +71,11 @@ A partial unique index on `completions(challenge_id, user_id, proof_event_id) WH
 - `lib/nostr/fetch-events.ts` — generic server-side relay `REQ` helper
 - `lib/nostr/verify-like.ts` — NIP-25 kind 7 wrapper
 - `lib/nostr/verify-hashtag-post.ts` — NIP-12 `#t` wrapper with multi-case fallback
-- `lib/api/verification-methods.ts` — `pickVerificationMethod(input, allowed)` helper shared by both completion routes
-- `app/api/challenges/[id]/completions/route.ts` — branches on the picked method
+- `lib/api/verification-methods.ts` — `pickVerificationMethod(input, allowed)` + `decideAutoApprove(method, allowed, creatorId, submitterId)` helpers shared by both completion routes
+- `app/api/challenges/[id]/completions/route.ts` — branches on the picked method, then runs `decideAutoApprove`
 - `app/api/challenges/[id]/checkpoints/[checkpointId]/complete/route.ts` — same branching per checkpoint
+- `lib/schemas/challenges.ts` — Zod superRefine rules enforce the `automatic`-is-exclusive invariant and the `nostr_*` target requirements
+- `app/[locale]/(app)/explore/[id]/NostrVerifySection.tsx` — renders one Section per Nostr method, each posting an explicit `method` so multi-method challenges resolve unambiguously
 
 ## 2. Checkpoints
 

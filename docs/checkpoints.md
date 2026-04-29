@@ -28,16 +28,16 @@ See `lib/db/schema.ts:166-220` for the full Drizzle definition.
 
 ## Verification method matrix
 
-Each checkpoint picks its own verification method (independent of the parent challenge's methods):
+Each checkpoint carries its own `verification_methods` array (independent of the parent challenge's methods). Multiple methods can coexist, with one exception: `automatic` is **exclusive** — selecting it clears any other selection (and vice versa) at the form level, and `CheckpointInputSchema` rejects the invalid combination at submit time.
 
-| Method            | What the participant does                                           | Who approves      | Auto-approve? |
-| ----------------- | ------------------------------------------------------------------- | ----------------- | ------------- |
-| `creator_approval`| Writes a text description and/or uploads a Blossom photo            | The creator       | No — sits in `pending` until the creator verifies |
-| `automatic`       | Submits anything; the row is marked approved immediately            | Nobody            | Yes           |
-| `nostr_action`    | Likes the target event (kind 7) on Nostr                            | The relays        | Yes — `verifyLikeForTarget` confirms the reaction exists |
-| `nostr_hashtag`   | Publishes any note with the configured hashtag                      | The relays        | Yes — `verifyHashtagPost` confirms a matching event exists |
+| Method            | What the participant does                                           | Verified by  | Auto-approves? |
+| ----------------- | ------------------------------------------------------------------- | ------------ | -------------- |
+| `creator_approval`| Writes a text description and/or uploads a Blossom photo            | The creator  | No — sits in `pending` (the creator submitting their own proof is the one exception) |
+| `automatic`       | Submits anything; the row is marked approved immediately            | Nobody       | Yes — and cannot be combined with another method |
+| `nostr_action`    | Likes the target event (kind 7) on Nostr                            | The relays   | Yes when no manual review is configured; lands `pending` if the checkpoint also includes `creator_approval` |
+| `nostr_hashtag`   | Publishes any note with the configured hashtag                      | The relays   | Yes when no manual review is configured; lands `pending` if the checkpoint also includes `creator_approval` |
 
-Auto-approved methods skip the pending state entirely and bump the participant's progress immediately.
+The auto-approve decision lives in `decideAutoApprove` (`lib/api/verification-methods.ts`); the checkpoint route calls it after running the per-method verification step.
 
 ## State machine
 

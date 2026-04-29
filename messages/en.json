@@ -432,8 +432,8 @@
         "example": "E.g., fitness, meditation, reading"
       },
       "verification": {
-        "text": "You can pick more than one method. Participants must satisfy every method you choose.",
-        "example": "E.g., Creator approval + Nostr hashtag"
+        "text": "You can combine Creator approval with Nostr methods. When Creator approval is part of the mix, Nostr proofs verify automatically and then wait for your review. Automatic (honor system) can't be combined with anything else.",
+        "example": "E.g., Creator approval + Nostr hashtag post — the post auto-verifies, you approve it manually"
       },
       "checkpoints": {
         "text": "Split the challenge into sub-tasks. Sequential forces an order, parallel allows any order.",
@@ -603,6 +603,7 @@
     "verifying": "Verifying...",
     "proofFound": "Proof found",
     "proofNotFound": "We couldn't find your proof on the relays yet. Try again in a few seconds.",
+    "proofPendingReview": "Proof verified on Nostr — waiting for the creator's approval.",
     "checkpointsTitle": "Checkpoints",
     "checkpointModeSequential": "Complete checkpoints in order. Each one unlocks the next.",
     "checkpointModeParallel": "Complete checkpoints in any order.",

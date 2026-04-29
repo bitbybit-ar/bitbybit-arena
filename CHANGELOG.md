@@ -4,17 +4,24 @@ All notable changes to BitByBit Arena are documented in this file. Format follow
 
 ## [1.0.1] — 2026-04-28
 
-Patch release. Fixes post-launch UX bugs around challenge completion and reward handling, plus a focused refactor of the explore-detail page.
+Patch release. Fixes post-launch UX bugs around challenge completion, verification-method handling, and reward flows, plus a focused refactor of the explore-detail page.
 
 ### Fixed
 
 - **Approval flow no longer shows "enviando badge…" toast for challenges without a badge.** Creators approving completions on prize-less challenges saw a misleading "sending badge on Nostr" message even though there was nothing to send. The award call is now gated on the challenge actually having a badge defined.
-- **`nostr_hashtag` challenges have a participant verify button.** The page only rendered a verify affordance for `nostr_action`; hashtag-verified challenges had no UI to trigger the relay check, so participants could publish the required note from any Nostr client and have nothing happen on Arena. The `/completions` API already auto-picks the hashtag method when the body is empty — the missing piece was the button.
+- **`nostr_hashtag` challenges have a participant verify button.** The page only rendered a verify affordance for `nostr_action`; hashtag-verified challenges had no UI to trigger the relay check, so participants could publish the required note from any Nostr client and have nothing happen on Arena.
 - **Hashtag link now opens a working hashtag feed.** The challenge info block linked to `njump.me/t/<tag>`, which 404s — njump only routes NIP-19 entities, not hashtags. Replaced with `nostr.band/?q=%23<tag>`.
+- **Multi-method challenges no longer 400 on Nostr verify.** The verify-button click was sending an empty body and relying on the `/completions` route to auto-pick the method, which only works when the challenge has a single allowed method. With more than one allowed method the route returned the generic `bad_request` ("That request didn't go through. Please check your input."). The Nostr verify section, the manual textarea, and `handleSubmitProof` now pass `method` explicitly per submission surface.
 
 ### Changed
 
+- **Verification-method combination rules tightened.** Creators can now mix `creator_approval` with one or both Nostr methods (`nostr_action`, `nostr_hashtag`); when `creator_approval` is part of the configured set, Nostr proofs verify automatically against the relays but land as `pending` for the creator to approve manually instead of auto-approving. `automatic` (honor system) is now treated as exclusive — selecting it clears any other selection (and vice versa) in both the challenge-level and per-checkpoint editors. Schema validation enforces the rule on create + update for stragglers; the verification tooltip and i18n copy were rewritten to describe the new semantics.
+- **`shouldAutoApprove` replaced by `decideAutoApprove`** in `lib/api/verification-methods.ts`. The new helper takes the full allowed-methods list so the auto-approve decision can account for "Nostr proof + creator review" combos. Both completion routes (`/api/challenges/[id]/completions` and `/api/challenges/[id]/checkpoints/[id]/complete`) call it after the per-method verification step. The unit suite was extended to cover the full decision matrix (single-method, dual-method, creator-as-submitter, all four method combinations).
 - **Refactor: `app/[locale]/(app)/explore/[id]/challenge-client.tsx` split into siblings.** The page component had grown past 3,000 lines. Types, pure helpers, the `AvatarStack` subcomponent and the new `NostrVerifySection` moved to dedicated files (`types.ts`, `helpers.ts`, `AvatarStack.tsx`, `NostrVerifySection.tsx`). Pure code-move, no behavior change. Main file now ~2,700 lines.
+
+### Added
+
+- **`proofPendingReview` toast** surfaces when a Nostr proof verifies but the creator still has to approve it (the new "creator_approval + nostr_*" combo). Translated in `messages/es.json` and `messages/en.json`.
 
 ### Under consideration (not yet decided)
 

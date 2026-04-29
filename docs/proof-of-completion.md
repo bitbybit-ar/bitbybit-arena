@@ -62,7 +62,7 @@ The challenge creator chooses the verification method when creating the challeng
 - Creator adds `"nostr_action"` to `verification_methods` and pins a target event id at challenge creation
 - Participant proves completion by publishing a NIP-25 kind 7 reaction (like) to that event from any Nostr client
 - When they click "Verify my like on Nostr", the server queries `DEFAULT_RELAYS` in parallel for a signed kind 7 event from their pubkey e-tagging the target
-- On match, the completion is inserted as `approved` with `proof_event_id = <like event id>` and the participant's progress bumps
+- On match, the completion is inserted with `proof_event_id = <like event id>` — `approved` if no manual review is configured, `pending` if the challenge also enables `creator_approval` (see [Combining methods](#combining-methods))
 - A partial unique index prevents the same like from being counted twice
 
 ### Nostr Hashtag (auto-verified via post)
@@ -70,12 +70,23 @@ The challenge creator chooses the verification method when creating the challeng
 - Creator adds `"nostr_hashtag"` to `verification_methods` and sets `nostr_hashtag` (lowercase alphanumeric/underscore, 2–50 chars)
 - Participant publishes a kind:1 note tagged with that `#t` hashtag from any Nostr client
 - When they submit the completion, the server queries relays for a signed kind:1 by their pubkey carrying the `t` tag — lowercase, uppercase, and capitalized variants are all queried and matched case-insensitively
-- On match, the completion is inserted as `approved` with `proof_event_id = <note event id>` and the participant's progress bumps
+- On match, the completion is inserted with `proof_event_id = <note event id>` — `approved` if no manual review is configured, `pending` if `creator_approval` is also enabled
 - The same duplicate-proof index applies — reposting the same note twice won't stack progress
 
 ### Combining methods
 
-`verification_methods` is an array. A challenge can enable several paths at once — e.g. a hackathon could accept `["nostr_hashtag", "creator_approval"]` so anyone with a nostr client auto-qualifies by posting with the tag, and anyone who can't still has a manual fallback. When multiple methods are enabled, the client must pass `method: <value>` in the completions POST body so the server knows which path to run.
+`verification_methods` is an array. The four supported combinations are:
+
+| Configured methods | Behavior |
+| --- | --- |
+| `[automatic]` *(exclusive)* | Submission auto-approves on insert. Cannot coexist with any other method. |
+| `[creator_approval]` | Manual queue. Creator submitting their own proof auto-approves (no one else can judge them). |
+| `[nostr_action]`, `[nostr_hashtag]`, or `[nostr_action, nostr_hashtag]` | Server runs the relay verification; on match the row lands `approved` and progress bumps. |
+| `[creator_approval, nostr_action]`, `[creator_approval, nostr_hashtag]`, or `[creator_approval, nostr_action, nostr_hashtag]` | Server runs the relay verification first; on match the row is inserted with `proof_event_id` set but `status = pending` so the creator still approves manually. The participant gets a "Proof verified on Nostr — waiting for the creator's approval" toast. |
+
+Auto-approve resolution lives in `decideAutoApprove()` (`lib/api/verification-methods.ts`); both `/api/challenges/[id]/completions` and `/api/challenges/[id]/checkpoints/[id]/complete` call it after the per-method verification step.
+
+`automatic` is rejected by Zod (`CreateChallengeBodySchema` / `CheckpointInputSchema` / `UpdateChallengeBodySchema`) when combined with anything else; the create form mirrors the rule by clearing the other selections when `automatic` is chosen and clearing `automatic` when any other method is added. The participant-facing client always passes an explicit `method` in the POST body — empty bodies stopped working once challenges could advertise more than one method.
 
 See [docs/nostr-flows.md](./nostr-flows.md) for the full paths.
 
@@ -83,22 +94,27 @@ See [docs/nostr-flows.md](./nostr-flows.md) for the full paths.
 
 ```
 User submits proof
-POST /api/challenges/[id]/completions
+POST /api/challenges/[id]/completions  (body carries `method`)
          |
          v
-  +---------------+
-  | Verification  |
-  |   method?     |
-  +---------------+
-    |    |    |     |
-    v    v    v     v
- Creator  Auto  Nostr  Nostr
- review   (honor) action hashtag
-    |    |    |     |
-    |    |    |     |
-    v    v    v     v
- completions.status = approved | rejected
- completions.reviewed_by / reviewed_at set
+  +-----------------------+
+  | pickVerificationMethod|  (rejects unknown / ambiguous methods)
+  +-----------------------+
+         |
+         v
+  +-----------------+    automatic  -> auto-approve
+  |   per-method    |    creator_approval -> pending (creator submitting self -> approve)
+  |   verification  |    nostr_action / nostr_hashtag -> verify on relays
+  +-----------------+
+         |
+         v
+  +---------------------+
+  |  decideAutoApprove  |  Nostr verified + creator_approval also configured -> pending
+  +---------------------+
+         |
+         v
+ completions.status = approved | pending
+ completions.reviewed_by / reviewed_at set when approved
          |
          v
  If approved: participant.progress++,

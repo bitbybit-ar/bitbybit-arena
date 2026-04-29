@@ -4,23 +4,38 @@ import type { VerificationMethod } from "@/lib/types";
 /**
  * Decide whether a submitted proof should land directly as `approved`.
  *
- * - `automatic` verification trusts the submission on sight.
- * - `creator_approval` proofs from the challenge creator themselves
- *   auto-approve: no one else is empowered to judge them when the
- *   creator competes as a participant in their own challenge.
- * - Everything else waits for manual review (or relay verification
- *   handled upstream of this helper).
+ * Rules, given the four possible methods (`automatic`, `creator_approval`,
+ * `nostr_action`, `nostr_hashtag`) and the schema constraint that
+ * `automatic` is exclusive (can't coexist with anything else):
+ *
+ * - `automatic` → always auto-approve (honor system).
+ * - The creator submitting their own proof on a challenge that lists
+ *   `creator_approval` auto-approves regardless of which method ran —
+ *   no one else is empowered to judge them.
+ * - A pure Nostr method (`nostr_action` / `nostr_hashtag`) auto-approves
+ *   when the configured set has *no* `creator_approval`. When the
+ *   creator wants manual review on top of the Nostr proof, the proof
+ *   verifies but the row lands `pending` for the creator to approve.
+ * - Anything else (manual `creator_approval` proof from a regular
+ *   participant) waits for review.
  */
-export function shouldAutoApprove(
+export function decideAutoApprove(
   selectedMethod: VerificationMethod,
+  allowedMethods: VerificationMethod[],
   creatorId: string,
   submitterId: string
 ): boolean {
   if (selectedMethod === "automatic") return true;
-  if (selectedMethod === "creator_approval" && creatorId === submitterId) {
+  if (
+    creatorId === submitterId &&
+    allowedMethods.includes("creator_approval")
+  ) {
     return true;
   }
-  return false;
+  if (selectedMethod === "creator_approval") return false;
+  // Nostr method: auto-approve unless the creator also asked for manual
+  // review on top.
+  return !allowedMethods.includes("creator_approval");
 }
 
 /**
