@@ -35,7 +35,7 @@ import { CheckpointSubmissionCard } from "@/components/challenges/CheckpointSubm
 import { RewardDistributionPanel } from "@/components/challenges/RewardDistributionPanel";
 import { useClipboard } from "@/lib/hooks/useClipboard";
 import { cn } from "@/lib/utils";
-import { fetchNostrMetadata } from "@/lib/nostr/metadata";
+import { fetchNostrMetadata, fetchLatestEventOfKind } from "@/lib/nostr/metadata";
 import {
   buildJoinEvent,
   buildCheckpointCompletionEvent,
@@ -43,8 +43,10 @@ import {
   buildBadgeAwardEvent,
   buildBadgeDefinitionEvent,
   buildChallengeResultEvent,
+  buildProfileBadgesEvent,
   buildZapGoalEvent,
   buildZapRequestEvent,
+  parseProfileBadgesPairs,
   placeLabel,
   type ChallengeResultWinner,
 } from "@/lib/nostr/events";
@@ -125,11 +127,13 @@ export default function ChallengeClient() {
     useState<BlossomDescriptor | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
-  // Pending badge for the current user on THIS challenge — drives the
-  // "You earned a badge!" banner that nudges them toward Achievements
-  // to publish kind:30008. Empty when the user has no badge yet, or
-  // already accepted it.
-  const [hasPendingBadge, setHasPendingBadge] = useState(false);
+  // The signed-in user's badge row for THIS challenge, if any.
+  // Drives the "You earned a badge!" banner (when accepted_at is null)
+  // and the creator-as-participant one-step recovery flow (when the
+  // creator has an approved completion but no badge row yet, or has
+  // a row that they never accepted on Nostr).
+  const [myBadge, setMyBadge] = useState<AchievementItem | null>(null);
+  const hasPendingBadge = !!myBadge && !myBadge.accepted_at;
   // Tab is mirrored in the URL (`?tab=manage`) so creators can deep-
   // link straight to the Manage view from notifications. Source of
   // truth is the query string; the JSX reads via `activeTab` and we
@@ -320,7 +324,7 @@ export default function ChallengeClient() {
   // refetching after every unrelated state change.
   const refreshPendingBadge = useCallback(async () => {
     if (!sessionUser) {
-      setHasPendingBadge(false);
+      setMyBadge(null);
       return;
     }
     try {
@@ -329,10 +333,8 @@ export default function ChallengeClient() {
       const json = await res.json();
       if (!json.success) return;
       const items: AchievementItem[] = json.data?.items ?? [];
-      const match = items.find(
-        (b) => b.challenge?.id === challengeId && !b.accepted_at
-      );
-      setHasPendingBadge(!!match);
+      const match = items.find((b) => b.challenge?.id === challengeId) ?? null;
+      setMyBadge(match);
     } catch {
       /* non-blocking — banner just stays hidden */
     }
@@ -505,10 +507,13 @@ export default function ChallengeClient() {
       }
       // Creator participating in their own challenge: `decideAutoApprove`
       // lets them auto-complete (no one else can judge them), but the
-      // badge-award flow is normally triggered from the manual approve
-      // path — which never runs here. Self-issue the badge so the
-      // creator gets the same NIP-58 award path as every other completer.
-      await maybeSelfAwardBadge(json.data?.status);
+      // badge-award flow AND the kind:30008 acceptance are normally
+      // gated behind two separate manual gestures. Bundle both into
+      // one shot so the creator gets the full NIP-58 round-trip from
+      // the same submit click.
+      if (json.data?.status === "approved") {
+        await awardAndAcceptOwnBadge();
+      }
       await fetchAll();
       showToast(t("submitProofSuccess"), "success");
       if (challenge) {
@@ -692,10 +697,11 @@ export default function ChallengeClient() {
         if (json.data?.status === "pending") {
           showToast(t("proofPendingReview"), "info");
         }
-        // Creator participating in their own challenge: same self-
-        // award path as the manual textarea flow. See
-        // maybeSelfAwardBadge for the decision criteria.
-        await maybeSelfAwardBadge(json.data?.status);
+        // Creator participating in their own challenge: same one-step
+        // issue+accept path as the manual textarea flow.
+        if (json.data?.status === "approved") {
+          await awardAndAcceptOwnBadge();
+        }
         await fetchAll();
       }
     } catch {
@@ -1331,25 +1337,82 @@ export default function ChallengeClient() {
     }
   };
 
-  // Self-award path for the creator-as-participant scenario. When the
-  // creator submits their own proof, `decideAutoApprove` lets the row
-  // land `approved` directly (no manual review) — but the badge-award
-  // flow is normally triggered from the creator's "Approve" click on
-  // someone else's pending row, which never runs here. The result was
-  // a creator who completed their own challenge but never showed up
-  // in `/api/my-badges` and never received the kind:8. We catch that
-  // gap by re-using `awardBadgeToUser` against the creator's own
-  // user_id whenever the response status is `approved` and the
-  // challenge has a badge to send. The award API is idempotent (409
-  // on duplicate) so this stays safe across retries.
-  const maybeSelfAwardBadge = async (
-    completionStatus: string | undefined
-  ) => {
-    if (completionStatus !== "approved") return;
+  // Publish the NIP-58 kind:30008 acceptance for the signed-in user's
+  // badge on this challenge — same flow as the manual "Accept" button
+  // in /my-challenges → Achievements, inlined here so the creator-as-
+  // participant path can do issue + accept in a single gesture.
+  const acceptOwnBadge = async (badge: AchievementItem) => {
+    if (!badge.challenge.badge_nostr_event_id || !badge.nostr_event_id) {
+      // The kind:30009 / kind:8 publish step didn't complete (relay
+      // flake, signer cancel). Nothing to merge into kind:30008 yet.
+      return;
+    }
+    if (!sessionUser?.nostr_pubkey) return;
+    if (needsSigner) {
+      try {
+        await requestReSignIn();
+      } catch {
+        return;
+      }
+    }
+    try {
+      const definitionATag = `30009:${badge.issuer.nostr_pubkey}:${badge.challenge.slug}`;
+      const newPair = {
+        definitionATag,
+        awardEventId: badge.nostr_event_id,
+      };
+      const latest = await fetchLatestEventOfKind(
+        sessionUser.nostr_pubkey,
+        30008
+      ).catch(() => null);
+      const existing = latest ? parseProfileBadgesPairs(latest) : [];
+      const deduped = existing.filter(
+        (p) => p.awardEventId !== newPair.awardEventId
+      );
+      const merged = [...deduped, newPair];
+      const event = buildProfileBadgesEvent(merged);
+      const signed = await signWithPrompt(event);
+      await publishSignedEvent(signed);
+      await fetch(`/api/badges/${badge.id}`, { method: "PATCH" }).catch(
+        () => null
+      );
+      await refreshPendingBadge();
+    } catch {
+      /* non-blocking — banner will still nudge them to /my-challenges */
+    }
+  };
+
+  // Creator-as-participant one-step issuance. When the creator
+  // completes their own challenge `decideAutoApprove` skips the manual
+  // review path, so the kind:8 award AND the kind:30008 acceptance both
+  // go missing. We catch that here by chaining `awardBadgeToUser` (DB
+  // row + kind:30009 def + kind:8) and `acceptOwnBadge` (kind:30008
+  // merge) into a single click — the creator never has to leave the
+  // page to claim what they earned. Both halves are idempotent (the
+  // award API returns 409 on duplicate, the accept merge dedupes by
+  // event id) so calling this twice is safe.
+  const awardAndAcceptOwnBadge = async () => {
     if (!sessionUser || !challenge) return;
     if (challenge.creator_id !== sessionUser.user_id) return;
+    if (!isParticipant) return;
     if (!challenge.badge_name && !challenge.badge_image_url) return;
+    const hasApproved = completions.some(
+      (c) => c.user.id === sessionUser.user_id && c.status === "approved"
+    );
+    if (!hasApproved) return;
     await awardBadgeToUser(sessionUser.user_id);
+    // awardBadgeToUser fires `refreshPendingBadge` without awaiting, so
+    // reading `myBadge` here would lag the network. Re-fetch directly
+    // to pick up the row we just created (or the pre-existing one in
+    // the recovery case) plus its now-populated nostr_event_id.
+    const res = await fetch("/api/my-badges?limit=50").catch(() => null);
+    if (!res || !res.ok) return;
+    const json = await res.json().catch(() => null);
+    if (!json?.success) return;
+    const items: AchievementItem[] = json.data?.items ?? [];
+    const fresh = items.find((b) => b.challenge?.id === challengeId);
+    if (!fresh || fresh.accepted_at) return;
+    await acceptOwnBadge(fresh);
   };
 
   // Award + publish the NIP-58 badge for a single recipient. Idempotent
@@ -1523,6 +1586,25 @@ export default function ChallengeClient() {
   // never tries to render the creator-only surfaces for the wrong viewer.
   const showManage = activeTab === "manage" && isCreator;
 
+  // One-step badge recovery for the creator-as-participant case.
+  // Renders when the creator joined their own challenge, completed it
+  // (approved row exists), the challenge has a badge to issue, and they
+  // either have no badge row yet (pre-self-award fix) OR have a row they
+  // never accepted on Nostr. The button bundles award + acceptance into
+  // a single click.
+  const challengeHasBadge = !!(
+    challenge.badge_name || challenge.badge_image_url
+  );
+  const myApprovedCompletion = !!sessionUser && completions.some(
+    (c) => c.user.id === sessionUser.user_id && c.status === "approved"
+  );
+  const showSelfBadgeRecovery =
+    isCreator &&
+    isParticipant &&
+    challengeHasBadge &&
+    myApprovedCompletion &&
+    (!myBadge || !myBadge.accepted_at);
+
   return (
     <div className={styles.page}>
       <div className={styles.topBar}>
@@ -1567,21 +1649,54 @@ export default function ChallengeClient() {
           /api/my-badges row gets `accepted_at` and the next refetch
           drops it from the unaccepted list).
         */}
-        {hasPendingBadge && (
+        {showSelfBadgeRecovery ? (
+          // Creator-as-participant one-step recovery. Replaces the
+          // generic pending-badge banner because the creator IS the
+          // issuer — punting them to /my-challenges to "Accept" their
+          // own badge would just split a single intent across two
+          // pages. Clicking the button runs award (idempotent) +
+          // accept in one shot.
           <div className={styles.badgeBanner} role="status">
             <BoltIcon size={18} color="var(--color-secondary)" />
             <div className={styles.badgeBannerBody}>
-              <strong>{t("youEarnedBadge")}</strong>
-              <span>{t("youEarnedBadgeBody")}</span>
+              <strong>{t("creatorClaimBadge")}</strong>
+              <span>{t("creatorClaimBadgeBody")}</span>
             </div>
             <Button
               variant="primary"
               size="sm"
-              onClick={() => router.push("/my-challenges?tab=achievements")}
+              disabled={actionLoading === "self-badge"}
+              onClick={async () => {
+                setActionLoading("self-badge");
+                try {
+                  await awardAndAcceptOwnBadge();
+                } finally {
+                  setActionLoading(null);
+                }
+              }}
             >
-              {t("youEarnedBadgeCta")}
+              {actionLoading === "self-badge"
+                ? t("creatorClaimBadgePending")
+                : t("creatorClaimBadgeCta")}
             </Button>
           </div>
+        ) : (
+          hasPendingBadge && (
+            <div className={styles.badgeBanner} role="status">
+              <BoltIcon size={18} color="var(--color-secondary)" />
+              <div className={styles.badgeBannerBody}>
+                <strong>{t("youEarnedBadge")}</strong>
+                <span>{t("youEarnedBadgeBody")}</span>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => router.push("/my-challenges?tab=achievements")}
+              >
+                {t("youEarnedBadgeCta")}
+              </Button>
+            </div>
+          )
         )}
 
         {!showManage && (
