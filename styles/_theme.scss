@@ -133,3 +133,13 @@ $themes: (
   @include theme-properties(map.get($themes, dark));
   color-scheme: dark;
 }
+
+// Honor the OS preference on the very first paint, before next-themes'
+// inline script has applied [data-theme]. Without this, dark-mode users
+// see a white flash on initial load.
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    @include theme-properties(map.get($themes, dark));
+    color-scheme: dark;
+  }
+}

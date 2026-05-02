@@ -22,9 +22,10 @@
   gap: $spacing-16;
 
   @include mobile {
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: $spacing-20;
+    justify-content: space-between;
+    gap: $spacing-16;
   }
 }
 
@@ -54,7 +55,8 @@
 
   @include mobile {
     flex-direction: column;
-    width: 100%;
+    align-items: flex-end;
+    width: auto;
     gap: $spacing-4;
   }
 }
@@ -74,10 +76,10 @@
   }
 
   @include mobile {
-    justify-content: center;
-    min-height: 44px;
-    padding: $spacing-8 $spacing-12;
-    width: 100%;
+    justify-content: flex-end;
+    min-height: 0;
+    padding: 0;
+    width: auto;
   }
 }
 
@@ -111,7 +113,7 @@
   margin-top: $spacing-12;
 
   @include mobile {
-    flex-direction: column;
+    flex-direction: row;
     gap: $spacing-8;
   }
 }

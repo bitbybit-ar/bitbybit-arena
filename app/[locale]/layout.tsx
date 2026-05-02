@@ -72,6 +72,7 @@ export default async function LocaleLayout({
     <html lang={locale} className={cn(nunito.variable, nunitoSans.variable)} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#8B5CF6" />
+        <meta name="color-scheme" content="light dark" />
         <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
       </head>
       <body suppressHydrationWarning>
