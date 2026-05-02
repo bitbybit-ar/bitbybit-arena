@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/routing";
 import { Block } from "@/components/common/Block";
 import { GithubIcon } from "@/components/icons";
 import styles from "./footer.module.scss";
@@ -24,9 +23,14 @@ export function Footer() {
           </div>
 
           <div className={styles.links}>
-            <Link href="/about" className={styles.link}>
+            <a
+              href="https://bitbybit.com.ar"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.link}
+            >
               {t("aboutUs")}
-            </Link>
+            </a>
             <a
               href="https://github.com/bitbybit-ar"
               target="_blank"

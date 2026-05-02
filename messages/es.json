@@ -117,7 +117,6 @@
     "explore": "Explorar desafíos",
     "myChallenges": "Mis desafíos",
     "create": "Crear desafío",
-    "about": "Acerca de",
     "signIn": "Iniciar sesión"
   },
   "loadingStates": {
@@ -811,79 +810,6 @@
     "acceptFailed": "No se pudo publicar tus profile badges. Intentá de nuevo.",
     "acceptMissingIds": "A este badge le faltan los event ids de Nostr y todavía no se puede agregar a un perfil.",
     "acceptMissingSession": "Necesitás estar firmado con una clave Nostr para aceptar un badge."
-  },
-  "about": {
-    "story": {
-      "title": "La historia de BitByBit",
-      "p1": "BitByBit nació durante la hackathon FOUNDATIONS de La Crypta en marzo de 2026. La idea era simple: ¿y si los chicos pudieran ganar bitcoin real por construir buenos hábitos? Así nació **BitByBit Habits** — un tracker familiar donde los sponsors premian a los chicos con sats vía Lightning Network.",
-      "p2": "El nombre \"BitByBit\" refleja la filosofía: pequeñas acciones consistentes, apiladas en el tiempo, crean grandes resultados. Como stackear sats, como apilar bloques.",
-      "p3": "Para la segunda hackathon de La Crypta (tema Nostr), tomamos la misma idea — recompensas reales por esfuerzo real — y la llevamos a la red abierta de Nostr. **BitByBit Arena** permite a cualquiera crear desafíos públicos, competir con otros, y ganar badges y sats. Sin familias, sin permisos — solo el protocolo abierto.",
-      "p4": "Ambos proyectos comparten la misma calidad de código, el mismo equipo, y la misma creencia: Bitcoin debe premiar la acción, no la especulación."
-    },
-    "projects": {
-      "title": "Los dos proyectos",
-      "habitsName": "BitByBit Habits",
-      "arenaName": "BitByBit Arena",
-      "hackathon": "Hackathon",
-      "habitsHackathon": "FOUNDATIONS (#1) — Lightning",
-      "arenaHackathon": "IDENTITY (#2) — Nostr",
-      "theme": "Tema",
-      "habitsTheme": "Privado, familiar",
-      "arenaTheme": "Público, social",
-      "auth": "Auth",
-      "habitsAuth": "Email/password + Nostr",
-      "arenaAuth": "Solo Nostr",
-      "users": "Usuarios",
-      "habitsUsers": "Sponsors + Chicos",
-      "arenaUsers": "Cualquier identidad Nostr",
-      "rewards": "Recompensas",
-      "habitsRewards": "El sponsor paga al chico vía NWC",
-      "arenaRewards": "El creador fondea el premio, la comunidad zapea",
-      "data": "Datos",
-      "habitsData": "Base de datos privada",
-      "arenaData": "Eventos Nostr públicos + cache DB",
-      "status": "Estado",
-      "habitsStatus": "v1.0.0 lanzado",
-      "arenaStatus": "v1.0.0 lanzado — Hackathon #2, abril 2026",
-      "link": "Link",
-      "habitsLink": "bitbybit.com.ar",
-      "arenaLink": "Estás acá"
-    },
-    "team": {
-      "title": "Quiénes somos",
-      "anix": {
-        "name": "Anix",
-        "role": "Dev y organización de equipo",
-        "bio": "Mantiene el código limpio y al equipo en línea. Probablemente debuggeando a las 3am."
-      },
-      "llopo": {
-        "name": "Llopo",
-        "role": "El bitcoiner de la familia. Licenciado en vibe coding",
-        "bio": "Si no corre sobre Lightning, no corre. Certificado en desarrollo basado en vibras."
-      },
-      "wander": {
-        "name": "Wander",
-        "role": "Licenciado en 'Mi abuela puede usarlo' y tester",
-        "bio": "Si Wander no lo puede romper, nadie puede. Crítico jefe de UX y cazador de bugs."
-      },
-      "leon": {
-        "name": "Leon",
-        "role": "Consultor y especialista en pitches",
-        "bio": "Puede venderle hielo a los pingüinos. Transforma nuestras ideas espagueti en 3 minutos de magia."
-      }
-    },
-    "lacrypta": {
-      "title": "La Crypta & Hackathons",
-      "description": "Ambos proyectos BitByBit nacieron en hackathons de La Crypta — una comunidad Bitcoin en Argentina que organiza eventos para construir sobre Lightning y Nostr.",
-      "visitSite": "Visitar hackaton.lacrypta.ar"
-    },
-    "openSource": {
-      "title": "Open Source",
-      "description": "BitByBit es totalmente open source. Todo el código es público en GitHub.",
-      "contribute": "Contribuí o abrí un issue — toda ayuda suma.",
-      "arenaRepo": "Arena en GitHub",
-      "habitsRepo": "Habits en GitHub"
-    }
   },
   "notFound": {
     "code": "404",
