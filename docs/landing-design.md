@@ -318,7 +318,7 @@ There is no standalone QR code or Lightning address rendered directly on the sec
 Source: `components/layout/Footer/index.tsx`.
 
 - **Brand**: three tiny blocks (purple/gold/green) + "BitByBit Arena".
-- **Links**: "Sobre nosotros", GitHub, "BitByBit Habits".
+- **Links**: the studio credit *"Un proyecto de BitByBit"* (only "BitByBit" is a link, to `bitbybit.com.ar/es` in Spanish and `/en` otherwise; a normal followed link), GitHub, "BitByBit Habits".
 - **Hackathon credit**: *"Construido para Hackathon #2 de La Crypta"*, rendered alongside the La Crypta logo.
 - **Motto**: "Bitcoin o Muerte" with a purple → gold → green gradient text effect.
 - Subtle top border, surface background, compact height.
