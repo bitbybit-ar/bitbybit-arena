@@ -1,13 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Block } from "@/components/common/Block";
 import { GithubIcon } from "@/components/icons";
 import styles from "./footer.module.scss";
 
 export function Footer() {
   const t = useTranslations("landing.footer");
+  const locale = useLocale();
 
   return (
     <footer className={styles.footer}>
@@ -23,14 +24,20 @@ export function Footer() {
           </div>
 
           <div className={styles.links}>
-            <a
-              href="https://bitbybit.com.ar"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.link}
-            >
-              {t("aboutUs")}
-            </a>
+            <span className={styles.link}>
+              {t.rich("projectBy", {
+                studio: (chunks) => (
+                  <a
+                    href={`https://bitbybit.com.ar/${locale === "es" ? "es" : "en"}`}
+                    target="_blank"
+                    rel="noopener"
+                    className={styles.inlineLink}
+                  >
+                    {chunks}
+                  </a>
+                ),
+              })}
+            </span>
             <a
               href="https://github.com/bitbybit-ar"
               target="_blank"
@@ -58,7 +65,7 @@ export function Footer() {
               href="https://hackaton.lacrypta.ar"
               target="_blank"
               rel="noopener noreferrer"
-              className={styles.hackathonLink}
+              className={styles.inlineLink}
             >
               {t("hackathonName")}
             </a>
