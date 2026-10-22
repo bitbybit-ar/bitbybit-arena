@@ -117,7 +117,8 @@
     "explore": "Explore challenges",
     "myChallenges": "My challenges",
     "create": "Create challenge",
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "description": "Create challenges, compete with others, and earn badges on your Nostr identity."
   },
   "loadingStates": {
     "exploreList": "Loading challenges…",

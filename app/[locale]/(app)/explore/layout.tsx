@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { alternatesFor } from "@/lib/seo";
+import { alternatesFor, TITLE_TEMPLATE } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -10,7 +10,7 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "metadata" });
   return {
-    title: t("explore"),
+    title: { default: t("explore"), template: TITLE_TEMPLATE },
     alternates: alternatesFor(locale, "/explore"),
   };
 }

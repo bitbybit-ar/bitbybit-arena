@@ -117,7 +117,8 @@
     "explore": "Explorar desafíos",
     "myChallenges": "Mis desafíos",
     "create": "Crear desafío",
-    "signIn": "Iniciar sesión"
+    "signIn": "Iniciar sesión",
+    "description": "Creá desafíos, competí con otros y ganá badges en tu identidad Nostr."
   },
   "loadingStates": {
     "exploreList": "Cargando desafíos…",
