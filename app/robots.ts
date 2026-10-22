@@ -15,20 +15,12 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: [
-          "/api/",
-          "/es/signin",
-          "/en/signin",
-          "/es/settings",
-          "/en/settings",
-          "/es/create",
-          "/en/create",
-          "/es/my-challenges",
-          "/en/my-challenges",
-        ],
+        // Private pages carry a noindex instead of a Disallow: a blocked
+        // URL is never fetched, so Google can't see its noindex and may
+        // still index it from links.
+        disallow: "/api/",
       },
     ],
     sitemap: `${base}/sitemap.xml`,
-    host: base,
   };
 }

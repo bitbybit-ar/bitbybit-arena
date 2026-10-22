@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages, setRequestLocale } from "next-intl/server";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { Nunito, Nunito_Sans } from "next/font/google";
 import { routing } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
 import { getBaseUrl } from "@/lib/env";
+import { APP_NAME, TITLE_TEMPLATE } from "@/lib/seo";
 import { ThemeProvider } from "@/lib/contexts/theme-context";
 import { SessionProvider } from "@/lib/contexts/session-context";
 import { ToastProvider } from "@/components/ui/toast";
@@ -27,26 +28,24 @@ const nunitoSans = Nunito_Sans({
   display: "swap",
 });
 
-const appName = "BitByBit Arena";
-const appDescription =
-  "Create challenges, compete with others, and earn badges on your Nostr identity.";
-
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata" });
+  const description = t("description");
   return {
     title: {
-      default: appName,
-      template: `%s | ${appName}`,
+      default: APP_NAME,
+      template: TITLE_TEMPLATE,
     },
-    description: appDescription,
+    description,
     metadataBase: new URL(getBaseUrl()),
     openGraph: {
-      title: appName,
-      description: appDescription,
+      title: APP_NAME,
+      description,
       type: "website",
       locale,
     },

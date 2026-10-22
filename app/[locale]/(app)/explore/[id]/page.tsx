@@ -69,13 +69,15 @@ export async function generateMetadata({
       type: "article",
       locale,
       url: `${base}/${locale}${path}`,
-      images: ogImage ? [{ url: ogImage }] : undefined,
+      // An `images` key, even undefined, suppresses the generated
+      // opengraph-image, so only set it when the challenge has its own.
+      ...(ogImage && { images: [{ url: ogImage }] }),
     },
     twitter: {
-      card: ogImage ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title: challenge.title,
       description,
-      images: ogImage ? [ogImage] : undefined,
+      ...(ogImage && { images: [ogImage] }),
     },
   };
 }
@@ -87,6 +89,8 @@ export default async function ChallengeDetailPage({
 }) {
   const { locale, id } = await params;
   const challenge = await getChallenge(id);
+  // Keep any loading.tsx out of this route: its fallback would flush a 200
+  // before this runs, turning a missing challenge into a soft 404.
   if (!challenge) notFound();
 
   const base = getBaseUrl();
