@@ -31,6 +31,11 @@ DATABASE_URL="<branch-connection-string>" npm run db:migrate
 7. Node.js version: **20.x**
 8. Production branch: `main`
 
+Every deployment's function counts toward the team's Vercel storage, so deployments stay few:
+
+- `vercel.json` deploys `main` only (`git.deploymentEnabled`); a pushed branch or PR gets no preview. Try a branch locally with `npm run build` and `npm run start`. The Preview-scoped variables below are unused while that rule is on.
+- The project keeps a deployment 1 day (**Settings → Deployment Retention**). Vercel still keeps the current production deployment and the last 10 for rollback.
+
 ### Environment Variables
 
 Set these in **Project Settings → Environment Variables**:
@@ -101,4 +106,4 @@ Go to **Repository Settings → Rules → Rulesets** (or Branch protection rules
 feature branch → PR → CI checks pass → review → merge to main → Vercel auto-deploys to production
 ```
 
-Preview deployments are created automatically for every PR by Vercel.
+Pull requests get no Vercel preview: only `main` deploys (see section 2).
